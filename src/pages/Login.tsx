@@ -274,7 +274,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   leftPane: {
     flex: '1 1 50%',
-    background: 'radial-gradient(circle at top left, #3b0764 0%, #0f172a 100%)',
+    backgroundColor: '#0f172a',
     borderRight: '1px solid rgba(255,255,255,0.06)',
     display: 'flex',
     flexDirection: 'column',
@@ -431,8 +431,7 @@ const styles: Record<string, React.CSSProperties> = {
   submitBtn: {
     width: '100%',
     padding: '1rem',
-    backgroundColor: '#a855f7',
-    backgroundImage: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)',
+    backgroundColor: '#2563eb',
     color: '#ffffff',
     border: 'none',
     borderRadius: '12px',
@@ -440,7 +439,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     cursor: 'pointer',
     marginTop: '0.5rem',
-    boxShadow: '0 4px 20px rgba(168, 85, 247, 0.25)',
+    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
     transition: 'all 0.2s ease',
   },
   footerRow: {
