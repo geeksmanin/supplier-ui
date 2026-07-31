@@ -4,7 +4,7 @@ import { apiClient } from '@geeksman/core-ui';
 export function Dashboard() {
   const [productCount, setProductCount] = useState<number | string>('...');
   const [skuCount, setSkuCount] = useState<number | string>('...');
-  const [mappingCount, setMappingCount] = useState<number | string>('...');
+  const [categoryCount, setCategoryCount] = useState<number | string>('...');
 
   useEffect(() => {
     // Fetch live product stats from backend
@@ -15,27 +15,23 @@ export function Dashboard() {
         setProductCount(products.length);
 
         let skus = 0;
+        const categories = new Set<string>();
+        
         products.forEach((p: any) => {
           skus += (p.variants?.length || 0);
+          if (p.category) {
+            categories.add(p.category.trim());
+          }
         });
+        
         setSkuCount(skus);
+        setCategoryCount(categories.size);
       })
       .catch((err) => {
         console.error('Failed to load dashboard stats:', err);
         setProductCount(0);
         setSkuCount(0);
-      });
-
-    // Fetch mappings
-    apiClient
-      .get('/rfq/vendor-catalogue/mappings', { params: { limit: 100 } })
-      .then((res: any) => {
-        const mappings = res.data?.data || res.data || [];
-        setMappingCount(mappings.length);
-      })
-      .catch((err) => {
-        console.error('Failed to load mapping stats:', err);
-        setMappingCount(0);
+        setCategoryCount(0);
       });
   }, []);
 
@@ -119,9 +115,9 @@ export function Dashboard() {
         </div>
 
         <div style={styles.card('#8b5cf6')}>
-          <div style={styles.cardLabel}>Linked Mappings</div>
-          <div style={styles.cardValue}>{mappingCount}</div>
-          <div style={styles.cardDesc}>Mapped to internal Geeksman products</div>
+          <div style={styles.cardLabel}>Active Categories</div>
+          <div style={styles.cardValue}>{categoryCount}</div>
+          <div style={styles.cardDesc}>Product classification categories</div>
         </div>
       </div>
     </div>
