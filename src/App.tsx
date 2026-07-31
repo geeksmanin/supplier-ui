@@ -3,7 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider, UIRegistry, PortalConfigModal, HelpGuide } from '@geeksman/core-ui';
 import { Login } from './pages/Login';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { CustomerLayout } from './components/CustomerLayout';
+import { SupplierLayout } from './components/SupplierLayout';
 import Overlays from './components/Overlays';
 
 export const App: React.FC = () => {
@@ -141,7 +141,7 @@ export const App: React.FC = () => {
                   path={route.path}
                   element={
                     <ProtectedRoute>
-                      <CustomerLayout>{route.element}</CustomerLayout>
+                      <SupplierLayout>{route.element}</SupplierLayout>
                     </ProtectedRoute>
                   }
                 />
