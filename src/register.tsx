@@ -2,6 +2,7 @@ import React from 'react';
 import { UIRegistry } from '@geeksman/core-ui';
 import { Dashboard } from './pages/Dashboard';
 import { ProductList } from './pages/Products/ProductList';
+import { ProductForm } from './pages/Products/ProductForm';
 
 export function registerSupplierPortalModule() {
   // Register Routes
@@ -20,6 +21,18 @@ export function registerSupplierPortalModule() {
   UIRegistry.registerRoute({
     path: '/products',
     element: React.createElement(ProductList),
+    isProtected: true,
+  });
+
+  UIRegistry.registerRoute({
+    path: '/products/new',
+    element: React.createElement(ProductForm),
+    isProtected: true,
+  });
+
+  UIRegistry.registerRoute({
+    path: '/products/:id/edit',
+    element: React.createElement(ProductForm),
     isProtected: true,
   });
 
