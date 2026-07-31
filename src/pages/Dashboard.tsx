@@ -1,6 +1,44 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { apiClient } from '@geeksman/core-ui';
 
 export function Dashboard() {
+  const [productCount, setProductCount] = useState<number | string>('...');
+  const [skuCount, setSkuCount] = useState<number | string>('...');
+  const [mappingCount, setMappingCount] = useState<number | string>('...');
+
+  useEffect(() => {
+    // Fetch live product stats from backend
+    apiClient
+      .get('/rfq/vendor-products', { params: { limit: 100 } })
+      .then((res: any) => {
+        const products = res.data?.data || res.data || [];
+        setProductCount(products.length);
+
+        let skus = 0;
+        products.forEach((p: any) => {
+          skus += (p.variants?.length || 0);
+        });
+        setSkuCount(skus);
+      })
+      .catch((err) => {
+        console.error('Failed to load dashboard stats:', err);
+        setProductCount(0);
+        setSkuCount(0);
+      });
+
+    // Fetch mappings
+    apiClient
+      .get('/rfq/vendor-catalogue/mappings', { params: { limit: 100 } })
+      .then((res: any) => {
+        const mappings = res.data?.data || res.data || [];
+        setMappingCount(mappings.length);
+      })
+      .catch((err) => {
+        console.error('Failed to load mapping stats:', err);
+        setMappingCount(0);
+      });
+  }, []);
+
   const styles = {
     container: {
       fontFamily: '"Outfit", "Inter", sans-serif',
@@ -70,19 +108,19 @@ export function Dashboard() {
       <div style={styles.grid}>
         <div style={styles.card('#2563eb')}>
           <div style={styles.cardLabel}>Total Products</div>
-          <div style={styles.cardValue}>12</div>
+          <div style={styles.cardValue}>{productCount}</div>
           <div style={styles.cardDesc}>Across all categories</div>
         </div>
 
         <div style={styles.card('#10b981')}>
           <div style={styles.cardLabel}>Active SKUs</div>
-          <div style={styles.cardValue}>38</div>
+          <div style={styles.cardValue}>{skuCount}</div>
           <div style={styles.cardDesc}>Currently visible in marketplace</div>
         </div>
 
         <div style={styles.card('#8b5cf6')}>
           <div style={styles.cardLabel}>Linked Mappings</div>
-          <div style={styles.cardValue}>9</div>
+          <div style={styles.cardValue}>{mappingCount}</div>
           <div style={styles.cardDesc}>Mapped to internal Geeksman products</div>
         </div>
       </div>
