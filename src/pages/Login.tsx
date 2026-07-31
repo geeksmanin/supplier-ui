@@ -63,15 +63,15 @@ export const Login: React.FC = () => {
         throw new Error('No authentication token returned from server');
       }
 
-      // Decode JWT to verify CUSTOMER role
+      // Decode JWT to verify SUPPLIER/VENDOR role
       const payloadBase64 = token.split('.')[1];
       const decoded = JSON.parse(atob(payloadBase64));
       const roles = decoded.roles || decoded.role || [];
       const roleList = Array.isArray(roles) ? roles : [roles];
-      const isCustomer = roleList.some((r: string) => r.toUpperCase() === 'CUSTOMER');
+      const isSupplier = roleList.some((r: string) => r.toUpperCase() === 'SUPPLIER' || r.toUpperCase() === 'VENDOR');
 
-      if (!isCustomer) {
-        setError('Access denied: Only accounts with the CUSTOMER role can access this portal.');
+      if (!isSupplier) {
+        setError('Access denied: Only accounts with the SUPPLIER or VENDOR role can access this portal.');
         setLoading(false);
         return;
       }
@@ -80,7 +80,7 @@ export const Login: React.FC = () => {
       if (user) {
         localStorage.setItem('user', JSON.stringify(user));
       }
-      navigate('/catalog');
+      navigate('/dashboard');
     } catch (err: any) {
       console.error(err);
       setError(err.response?.data?.message || err.response?.data?.error || 'Invalid credentials or login failed.');
