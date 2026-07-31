@@ -140,8 +140,8 @@ export const Login: React.FC = () => {
           </div>
 
           <div style={styles.leftFooter}>
-            <h2 style={styles.visualTitle}>Customer Center</h2>
-            <p style={styles.visualSubtitle}>Access catalog, check quotes, submit enquiries, and manage your tickets in a unified dashboard.</p>
+            <h2 style={styles.visualTitle}>Supplier Portal</h2>
+            <p style={styles.visualSubtitle}>Manage products, respond to RFQs, track purchase orders, and grow your business with Geeksman ERP.</p>
           </div>
         </div>
       )}
@@ -274,7 +274,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   leftPane: {
     flex: '1 1 50%',
-    background: 'radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%)',
+    background: 'radial-gradient(circle at top left, #3b0764 0%, #0f172a 100%)',
     borderRight: '1px solid rgba(255,255,255,0.06)',
     display: 'flex',
     flexDirection: 'column',
@@ -431,8 +431,8 @@ const styles: Record<string, React.CSSProperties> = {
   submitBtn: {
     width: '100%',
     padding: '1rem',
-    backgroundColor: '#3b82f6',
-    backgroundImage: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+    backgroundColor: '#a855f7',
+    backgroundImage: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)',
     color: '#ffffff',
     border: 'none',
     borderRadius: '12px',
@@ -440,7 +440,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     cursor: 'pointer',
     marginTop: '0.5rem',
-    boxShadow: '0 4px 20px rgba(59, 130, 246, 0.25)',
+    boxShadow: '0 4px 20px rgba(168, 85, 247, 0.25)',
     transition: 'all 0.2s ease',
   },
   footerRow: {
