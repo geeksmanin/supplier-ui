@@ -1,0 +1,32 @@
+{
+  "name": "@geeksman/supplier-ui",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run vendor && vite",
+    "build": "npm run vendor && tsc && vite build",
+    "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "vendor": "rm -rf vendor && mkdir -p vendor/core-ui && rsync -a --exclude=\"node_modules\" --exclude=\".git\" ../core-ui/ vendor/core-ui/ && mkdir -p vendor/notification-ui && rsync -a --exclude=\"node_modules\" --exclude=\".git\" ../notification-ui/ vendor/notification-ui/"
+  },
+  "dependencies": {
+    "@geeksman/core-ui": "file:./vendor/core-ui",
+    "@geeksman/notification": "file:./vendor/notification-ui/packages/notification",
+    "axios": "^1.7.0",
+    "framer-motion": "^11.11.1",
+    "lucide-react": "^0.446.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.0.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "typescript": "^5.0.0",
+    "vite": "^6.0.0"
+  }
+}

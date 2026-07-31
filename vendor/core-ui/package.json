@@ -1,0 +1,24 @@
+{
+  "name": "@geeksman/core-ui",
+  "version": "1.0.2",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css"
+  },
+  "dependencies": {
+    "@geeksman/notification": "file:../notification-ui/packages/notification",
+    "axios": "^1.7.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.0.0",
+    "xlsx": "^0.18.5",
+    "@wailsio/runtime": "^3.0.0-alpha.97"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.0.0"
+  }
+}

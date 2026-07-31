@@ -1,0 +1,51 @@
+# GEEKSMan ERP Coding Practices & Constraints - Frontend (TypeScript)
+
+## General Principles
+
+### 1. Typings & Enums over Raw Strings
+* **Never use raw hardcoded string constants** for document types, statuses, categories, or actions (e.g., `"sales_challan"`, `"DRAFT"`, `"PAID"`).
+* Utilize TypeScript union literals or `enum` types exported from shared core models.
+
+---
+
+## Frontend Architecture (React / TypeScript)
+
+### 1. Desktop Dashboard Left Sidebar Navigation
+* Dashboard views wrapping multiple sub-entities (e.g., Contacts, Sales, Settings) must not implement their own custom left sidebar components.
+* Instead, they must register their subnavigation options in the centralized `UIRegistry` using `section: 'extended'` and `parentId: '<parent-main-menu-id>'`.
+* This ensures that the global core layout (`Layout.desktop.tsx`) automatically renders the collapsible left sidebar (width: `240px` when open, `0px` when collapsed) docked flush to the leftmost main menu sidebar, avoiding disconnected/floating elements or duplicate headers.
+* Individual routes must be registered for each sub-entity (e.g. `/sales-orders`, `/sales-enquiries`) so that changing tabs performs standard page navigation while keeping the sidebar state synchronized.
+
+### 2. Dedicated Form Pages & Navigation Guards
+* **Dedicated Form Pages**: Creation and editing forms (such as product creation, inventory item registration, contact onboarding, sales order creation, etc.) must be implemented as dedicated full-width pages rather than inline drawers or modal dialogs.
+* **Layout Design System**:
+  * **Desktop**: Display the form inputs in a responsive 2-column or grid card structure. Action buttons (Cancel, Save) and breadcrumbs must be locked inside a sticky header at the top of the page.
+  * **Mobile**: Stack the form cards in a single column. Action buttons must be locked inside a sticky bottom bar fixed at the bottom of the mobile viewport.
+  * **Constraints**: Cap input field maximum widths at `480px` to maintain optimal scanning and input density.
+* **Dirty Form Interception**: Forms must implement navigation protection. Intercept in-app route transitions if the form state is dirty to prompt with a confirmation warning modal, and register a browser window `beforeunload` listener.
+
+### 3. List State Retention & Visual Feedback
+* **URL Parameter Sync**: All list views (e.g. `ProductList`, `ItemList`, `CustomerList`) must read/write filter, search query, and pagination states to/from the URL query parameters using `useSearchParams`.
+* **State Retention**: Navigation transitions to creation or edit form pages must append and forward the current `window.location.search` parameters. On cancel or save, carry back those query parameters to restore the list state.
+* **Row Flash Highlight**: Upon redirecting back to list views with a `highlightedId` query parameter, scroll the targeted row (`#row-{id}`) into view and apply a brief visual success flash-highlight animation (e.g. using CSS keyframe animations).
+
+### 4. Core UI Components
+* Use UI components from `@geeksman/core-ui` (e.g., `DataTable`, `Button`, `Input`, `Select`, `ConfirmModal`, `useToast`) instead of raw HTML elements.
+* Note that the `Select` component does not accept a `required` attribute.
+* In table rows, always pass a stable HTML `id` attribute (`id={row.id ? "row-" + row.id : undefined}`) to the table row `tr` element to enable target row scroll and flash highlights.
+
+### 5. Aesthetics & Colors
+* Avoid basic raw colors. Use premium, harmonious palettes (e.g., HSL tailored variables, dark modes, gradients).
+* Add smooth hover micro-animations and consistent border rounding (`10px` to `14px`) to elements.
+* **Header Buttons**: All top-level page header action buttons (such as "+ Create Organisation", "+ Create Product", "+ Create Address", and "+ Create Sales Order") must utilize `variant="primary"` (blue background) to maintain a cohesive and standard layout across all modules.
+
+### 6. API Client
+* Use `apiClient` from `@geeksman/core-ui` for all HTTP request communication. Never instantiate axios or fetch clients manually.
+
+---
+
+## Workspace Tooling
+
+### 1. Monorepo Synchronization
+* When modifying frontend packages inside the `vendor/` directory of the `erp-ui` monorepo, synchronize package dependencies using `npm run vendor <module-name>` to copy updates to target folders before executing builds.
+* **Desktop Synchronization**: Always run `npm run sync-desktop` inside `erp-ui` after modifying frontend components to sync the newly built production assets to the Wails desktop frontend source directory. This guarantees that changes are correctly reflected in the local desktop application.

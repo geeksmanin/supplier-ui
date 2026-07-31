@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": false,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@geeksman/core-ui": ["./vendor/core-ui/src"],
+      "@geeksman/core-ui/*": ["./vendor/core-ui/src/*"],
+      "@geeksman/notification": ["./vendor/notification-ui/packages/notification/src"],
+      "@geeksman/notification/*": ["./vendor/notification-ui/packages/notification/src/*"]
+    }
+  },
+  "include": ["src"]
+}
