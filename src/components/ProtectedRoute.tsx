@@ -13,10 +13,10 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
     
     const roles = decoded.roles || decoded.role || [];
     const roleList = Array.isArray(roles) ? roles : [roles];
-    const isCustomer = roleList.some((r: string) => r.toUpperCase() === 'CUSTOMER');
+    const isSupplier = roleList.some((r: string) => r.toUpperCase() === 'SUPPLIER' || r.toUpperCase() === 'VENDOR');
     
-    if (!isCustomer) {
-      console.warn("Access denied: User does not have CUSTOMER role.");
+    if (!isSupplier) {
+      console.warn("Access denied: User does not have SUPPLIER or VENDOR role.");
       return <Navigate to="/login" replace />;
     }
   } catch (err) {
