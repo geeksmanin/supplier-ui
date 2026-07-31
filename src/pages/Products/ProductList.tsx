@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { apiClient, Button, DataTable, Column, useToast, Select } from '@geeksman/core-ui';
+import { apiClient, Button, useToast, Select } from '@geeksman/core-ui';
+import { Search, SlidersHorizontal, Plus, Minus, X, Edit, Trash2, Tag, Layers, CheckCircle } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -18,6 +19,7 @@ interface Variant {
   price: number;
   min_order_qty: number;
   packings: Packing[];
+  media_paths?: string[];
 }
 
 interface Product {
@@ -29,6 +31,7 @@ interface Product {
   category: string;
   is_active: boolean;
   variants?: Variant[];
+  media_paths?: string[];
 }
 
 const EMPTY_VARIANT: Variant = {
@@ -49,6 +52,22 @@ const EMPTY_FORM = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const resolveImageUrl = (url?: string) => {
+  if (!url) return '/assets/pharmaceutical-placeholder-premium.png';
+  try {
+    const idx = url.indexOf('/api/v1/media/');
+    if (idx !== -1 && apiClient.defaults.baseURL) {
+      const mediaPath = url.substring(idx);
+      const pathAfterV1 = mediaPath.replace('/api/v1', '');
+      const base = apiClient.defaults.baseURL.replace(/\/+$/, '');
+      return `${base}${pathAfterV1}`;
+    }
+  } catch (e) {
+    console.error('Error resolving image URL:', e);
+  }
+  return url;
+};
 
 const FieldLabel: React.FC<{ label: string; required?: boolean }> = ({ label, required }) => (
   <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '0.35rem' }}>
@@ -96,7 +115,7 @@ export function ProductList() {
   const fetchProducts = useCallback(() => {
     setLoading(true);
     apiClient
-      .get('/rfq/vendor-products', { params: { search: searchVal, page: pageParam, limit: limitParam } })
+      .get('/rfq/vendor-products', { params: { search: searchVal, page: pageParam, limit: 250 } })
       .then((res: any) => {
         const data = res.data?.data || [];
         const total = res.data?.total ?? data.length;
@@ -255,118 +274,6 @@ export function ProductList() {
     }
   };
 
-  // ─── DataTable columns ──────────────────────────────────────────────────────
-
-  const columns: Column<Product>[] = [
-    {
-      key: 'name',
-      label: 'Product Name',
-      render: (val, row) => (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          <span style={{ fontWeight: 700, color: '#111827', fontSize: '0.9rem' }}>{row.name}</span>
-          {row.description && (
-            <span style={{ fontSize: '0.75rem', color: '#6b7280', maxWidth: '320px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {row.description}
-            </span>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'brand_name',
-      label: 'Brand',
-      render: (val, row) => (
-        <span style={{ color: '#374151', fontSize: '0.875rem' }}>{row.brand_name || '—'}</span>
-      ),
-    },
-    {
-      key: 'category',
-      label: 'Category',
-      render: (val, row) => (
-        <span style={{
-          display: 'inline-block',
-          padding: '0.2rem 0.65rem',
-          borderRadius: '20px',
-          backgroundColor: '#eff6ff',
-          color: '#1d4ed8',
-          fontSize: '0.78rem',
-          fontWeight: 600,
-        }}>
-          {row.category || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'variants',
-      label: 'SKUs',
-      render: (val, row) => (
-        <span style={{
-          display: 'inline-block',
-          padding: '0.2rem 0.6rem',
-          borderRadius: '20px',
-          backgroundColor: '#f3f4f6',
-          color: '#374151',
-          fontSize: '0.78rem',
-          fontWeight: 600,
-        }}>
-          {row.variants?.length || 0} variant{(row.variants?.length || 0) !== 1 ? 's' : ''}
-        </span>
-      ),
-    },
-    {
-      key: 'is_active',
-      label: 'Status',
-      render: (val, row) => (
-        <span style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '0.3rem',
-          padding: '0.2rem 0.7rem',
-          borderRadius: '20px',
-          fontSize: '0.78rem',
-          fontWeight: 700,
-          backgroundColor: row.is_active ? '#d1fae5' : '#fee2e2',
-          color: row.is_active ? '#065f46' : '#991b1b',
-        }}>
-          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'currentColor', display: 'inline-block' }} />
-          {row.is_active ? 'Active' : 'Inactive'}
-        </span>
-      ),
-    },
-    {
-      key: 'id' as any,
-      label: 'Actions',
-      render: (val, row) => (
-        <button
-          onClick={(e) => { e.stopPropagation(); openEdit(row); }}
-          style={{
-            padding: '0.35rem 0.9rem',
-            borderRadius: '8px',
-            border: '1.5px solid #e5e7eb',
-            background: '#fff',
-            color: '#374151',
-            fontSize: '0.8rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.borderColor = '#6366f1';
-            e.currentTarget.style.color = '#6366f1';
-            e.currentTarget.style.background = '#f5f3ff';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.borderColor = '#e5e7eb';
-            e.currentTarget.style.color = '#374151';
-            e.currentTarget.style.background = '#fff';
-          }}
-        >
-          Edit
-        </button>
-      ),
-    },
-  ];
-
   // ─── Styles ─────────────────────────────────────────────────────────────────
 
   const backdropStyle: React.CSSProperties = {
@@ -388,53 +295,229 @@ export function ProductList() {
   // ─── JSX ────────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ padding: '1rem 2rem', fontFamily: 'Inter, system-ui, -apple-system, sans-serif', backgroundColor: '#ffffff', minHeight: '100vh' }}>
+    <div style={{ padding: '1.5rem 2rem', fontFamily: '"Outfit", "Inter", sans-serif', backgroundColor: '#f8fafc', minHeight: '100vh', textAlign: 'left' }}>
       <style>{`
         @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
         .row-flash-highlight { animation: rowFlash 2s ease; }
         @keyframes rowFlash { 0%,100% { background-color: transparent; } 20%,80% { background-color: #ede9fe; } }
       `}</style>
 
-      {/* Header */}
-      <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
-        <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.25rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-          <span>Dashboard</span>
-          <span>›</span>
-          <span style={{ color: '#0f172a', fontWeight: 700 }}>My Product Catalogue</span>
+      {/* Header Section */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <div>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.025em' }}>
+            My Product Catalogue
+          </h2>
+          <p style={{ color: '#64748b', fontSize: '0.875rem', marginTop: '0.35rem', margin: 0 }}>
+            Manage and edit your products and variations.
+          </p>
         </div>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a', margin: '0 0 0.25rem', letterSpacing: '-0.025em' }}>
-          My Product Catalogue
-        </h2>
-        <p style={{ color: '#64748b', fontSize: '0.85rem', margin: 0 }}>
-          Manage your vendor product listings, SKUs, and pricing for buyers.
-        </p>
+        <Button onClick={openCreate} variant="primary">
+          <Plus size={16} style={{ marginRight: '6px' }} />
+          + Add Product
+        </Button>
       </div>
 
-      {/* DataTable */}
-      <DataTable
-        columns={columns}
-        data={products}
-        loading={loading}
-        searchVal={searchVal}
-        setSearchVal={(val) =>
-          setSearchParams(prev => {
-            val ? prev.set('search', val) : prev.delete('search');
-            prev.set('page', '1');
-            return prev;
-          })
-        }
-        searchPlaceholder="Search products by name, brand, or category…"
-        pageSize={limitParam}
-        setPageSize={(size) => setSearchParams(prev => { prev.set('limit', String(size)); prev.set('page', '1'); return prev; })}
-        currentPage={pageParam}
-        setCurrentPage={(pg) => setSearchParams(prev => { prev.set('page', String(pg)); return prev; })}
-        totalItems={totalItems}
-        onRefresh={fetchProducts}
-        onRowClick={openEdit}
-        actionButton={
-          <Button onClick={openCreate} variant="primary">+ Add Product</Button>
-        }
-      />
+      {/* Filter and Search Bar */}
+      <div style={{
+        backgroundColor: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderRadius: '16px',
+        padding: '1rem 1.25rem',
+        marginBottom: '2rem',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.75rem',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+      }}>
+        <Search size={18} color="#64748b" />
+        <input
+          type="text"
+          placeholder="Search your products..."
+          value={searchVal}
+          onChange={(e) =>
+            setSearchParams(prev => {
+              const val = e.target.value;
+              val ? prev.set('search', val) : prev.delete('search');
+              prev.set('page', '1');
+              return prev;
+            })
+          }
+          style={{
+            flex: 1,
+            border: 'none',
+            outline: 'none',
+            fontSize: '0.9rem',
+            color: '#1f2937',
+            backgroundColor: 'transparent',
+          }}
+        />
+      </div>
+
+      {/* Normal Layout Grid (No Table!) */}
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
+          <div style={{ border: '3px solid #e2e8f0', borderTop: '3px solid #3b82f6', borderRadius: '50%', width: '32px', height: '32px', animation: 'spin 1s linear infinite' }} />
+          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        </div>
+      ) : products.length === 0 ? (
+        <div style={{
+          backgroundColor: '#ffffff',
+          border: '1px solid #e2e8f0',
+          borderRadius: '16px',
+          padding: '4rem 2rem',
+          textAlign: 'center',
+          color: '#64748b'
+        }}>
+          <Layers size={48} style={{ marginBottom: '1rem', color: '#94a3b8' }} />
+          <p style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 0.5rem' }}>No products found</p>
+          <p style={{ fontSize: '0.85rem', margin: '0 0 1.25rem' }}>Get started by adding a product to your catalogue.</p>
+          <Button onClick={openCreate} variant="secondary">Add First Product</Button>
+        </div>
+      ) : (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+          gap: '1.5rem'
+        }}>
+          {products.map((product) => {
+            const firstVariant = product.variants?.[0];
+            const defaultImage = resolveImageUrl(product.media_paths?.[0] || firstVariant?.media_paths?.[0]);
+            
+            return (
+              <div
+                key={product.id}
+                id={`row-${product.id}`}
+                style={{
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '16px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.01)',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  position: 'relative'
+                }}
+                className="product-card"
+              >
+                {/* Image Section */}
+                <div style={{
+                  height: '180px',
+                  backgroundColor: '#f8fafc',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '1rem',
+                  borderBottom: '1px solid #f1f5f9'
+                }}>
+                  <img
+                    src={defaultImage}
+                    alt={product.name}
+                    style={{
+                      maxHeight: '100%',
+                      maxWidth: '100%',
+                      objectFit: 'contain'
+                    }}
+                  />
+                </div>
+
+                {/* Info Section */}
+                <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                    <span style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      color: '#2563eb',
+                      backgroundColor: '#eff6ff',
+                      padding: '0.2rem 0.6rem',
+                      borderRadius: '20px'
+                    }}>
+                      {product.category || 'Uncategorized'}
+                    </span>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      color: product.is_active ? '#10b981' : '#f43f5e'
+                    }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'currentColor' }} />
+                      {product.is_active ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: '0 0 0.35rem 0', lineHeight: 1.3 }}>
+                    {product.name}
+                  </h3>
+                  
+                  {product.brand_name && (
+                    <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '0.75rem' }}>
+                      <Tag size={12} /> {product.brand_name}
+                    </span>
+                  )}
+
+                  <p style={{
+                    fontSize: '0.8rem',
+                    color: '#64748b',
+                    margin: '0 0 1.25rem 0',
+                    lineHeight: 1.5,
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    height: '2.4rem'
+                  }}>
+                    {product.description || 'No description provided.'}
+                  </p>
+
+                  <div style={{
+                    marginTop: 'auto',
+                    borderTop: '1px solid #f1f5f9',
+                    paddingTop: '0.85rem',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>
+                      {product.variants?.length || 0} variant{(product.variants?.length || 0) !== 1 ? 's' : ''}
+                    </span>
+                    <button
+                      onClick={() => openEdit(product)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '0.45rem 0.95rem',
+                        borderRadius: '8px',
+                        border: '1.5px solid #e2e8f0',
+                        backgroundColor: '#ffffff',
+                        color: '#0f172a',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.borderColor = '#2563eb';
+                        e.currentTarget.style.color = '#2563eb';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.borderColor = '#e2e8f0';
+                        e.currentTarget.style.color = '#0f172a';
+                      }}
+                    >
+                      <Edit size={13} />
+                      Edit
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Backdrop + Sidebar */}
       {isOpen && (
