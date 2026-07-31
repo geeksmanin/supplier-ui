@@ -45,13 +45,13 @@ export const SupplierLayout: React.FC<{ children: React.ReactNode }> = ({ childr
     },
   ];
 
-  // Inline styles for high-fidelity Vanilla CSS dark theme
+  // Inline styles for high-fidelity Vanilla CSS LIGHT theme
   const styles = {
     container: {
       display: 'flex',
       height: '100vh',
-      backgroundColor: '#0f172a',
-      color: '#f8fafc',
+      backgroundColor: '#f8fafc', // slate-50 light background
+      color: '#1e293b', // dark slate text
       overflow: 'hidden',
       fontFamily: '"Outfit", "Inter", sans-serif',
     },
@@ -62,8 +62,8 @@ export const SupplierLayout: React.FC<{ children: React.ReactNode }> = ({ childr
       bottom: 0,
       left: 0,
       zIndex: 100,
-      backgroundColor: '#090d16',
-      borderRight: '1px solid #1e293b',
+      backgroundColor: '#ffffff', // pure white sidebar
+      borderRight: '1px solid #e2e8f0', // light grey border
       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       display: 'flex',
       flexDirection: 'column' as const,
@@ -76,8 +76,8 @@ export const SupplierLayout: React.FC<{ children: React.ReactNode }> = ({ childr
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '0 1rem',
-      borderBottom: '1px solid #1e293b',
-      backgroundColor: '#090d16',
+      borderBottom: '1px solid #e2e8f0',
+      backgroundColor: '#ffffff',
     },
     logoWrapper: {
       display: 'flex',
@@ -88,17 +88,18 @@ export const SupplierLayout: React.FC<{ children: React.ReactNode }> = ({ childr
       height: '32px',
       maxWidth: '120px',
       objectFit: 'contain' as const,
+      filter: 'invert(1)', // invert logo for white background if needed
     },
     logoText: {
       fontSize: '0.75rem',
       fontWeight: 800,
       letterSpacing: '0.05em',
-      color: '#60a5fa',
+      color: '#2563eb', // blue accent
     },
     closeBtn: {
       background: 'none',
       border: 'none',
-      color: '#94a3b8',
+      color: '#64748b',
       cursor: 'pointer',
       display: isDesktop ? 'none' : 'block',
     },
@@ -121,13 +122,13 @@ export const SupplierLayout: React.FC<{ children: React.ReactNode }> = ({ childr
       cursor: 'pointer',
       textAlign: 'left' as const,
       transition: 'all 0.2s ease',
-      backgroundColor: isActive ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-      color: isActive ? '#60a5fa' : '#94a3b8',
+      backgroundColor: isActive ? 'rgba(37, 99, 235, 0.08)' : 'transparent',
+      color: isActive ? '#2563eb' : '#64748b',
     }),
     sidebarFooter: {
       padding: '1rem',
-      borderTop: '1px solid #1e293b',
-      backgroundColor: 'rgba(9, 13, 22, 0.5)',
+      borderTop: '1px solid #e2e8f0',
+      backgroundColor: '#f8fafc',
     },
     userSection: {
       display: 'flex',
@@ -140,13 +141,13 @@ export const SupplierLayout: React.FC<{ children: React.ReactNode }> = ({ childr
       height: '36px',
       width: '36px',
       borderRadius: '50%',
-      backgroundColor: '#1e293b',
+      backgroundColor: '#e2e8f0',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      color: '#cbd5e1',
+      color: '#334155',
       fontWeight: 'bold',
-      border: '1px solid #334155',
+      border: '1px solid #cbd5e1',
     },
     userInfo: {
       flex: 1,
@@ -155,7 +156,7 @@ export const SupplierLayout: React.FC<{ children: React.ReactNode }> = ({ childr
     userName: {
       fontSize: '0.875rem',
       fontWeight: 600,
-      color: '#e2e8f0',
+      color: '#334155',
       margin: 0,
       whiteSpace: 'nowrap' as const,
       overflow: 'hidden',
@@ -178,7 +179,7 @@ export const SupplierLayout: React.FC<{ children: React.ReactNode }> = ({ childr
       borderRadius: '12px',
       fontSize: '0.875rem',
       fontWeight: 500,
-      color: '#f87171',
+      color: '#ef4444',
       backgroundColor: 'transparent',
       border: 'none',
       cursor: 'pointer',
@@ -193,9 +194,8 @@ export const SupplierLayout: React.FC<{ children: React.ReactNode }> = ({ childr
     },
     header: {
       height: '64px',
-      borderBottom: '1px solid #1e293b',
-      backgroundColor: 'rgba(9, 13, 22, 0.8)',
-      backdropFilter: 'blur(8px)',
+      borderBottom: '1px solid #e2e8f0',
+      backgroundColor: '#ffffff',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -210,7 +210,7 @@ export const SupplierLayout: React.FC<{ children: React.ReactNode }> = ({ childr
     menuBtn: {
       background: 'none',
       border: 'none',
-      color: '#94a3b8',
+      color: '#64748b',
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
@@ -219,7 +219,7 @@ export const SupplierLayout: React.FC<{ children: React.ReactNode }> = ({ childr
     headerTitle: {
       fontSize: '1rem',
       fontWeight: 700,
-      color: '#e2e8f0',
+      color: '#334155',
       margin: 0,
     },
     headerRight: {
@@ -231,8 +231,8 @@ export const SupplierLayout: React.FC<{ children: React.ReactNode }> = ({ childr
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
-      backgroundColor: '#0f172a',
-      border: '1px solid #1e293b',
+      backgroundColor: '#f1f5f9',
+      border: '1px solid #e2e8f0',
       padding: '6px 12px',
       borderRadius: '9999px',
       fontSize: '0.75rem',
@@ -246,7 +246,7 @@ export const SupplierLayout: React.FC<{ children: React.ReactNode }> = ({ childr
     contentArea: {
       flex: 1,
       overflowY: 'auto' as const,
-      backgroundColor: '#0f172a',
+      backgroundColor: '#f8fafc',
       padding: '1.5rem',
     },
   };
@@ -320,7 +320,7 @@ export const SupplierLayout: React.FC<{ children: React.ReactNode }> = ({ childr
           <div style={styles.headerRight}>
             <div style={styles.statusBadge}>
               <span style={styles.statusDot}></span>
-              <span style={{ color: '#94a3b8' }}>Supplier Portal Online</span>
+              <span style={{ color: '#64748b' }}>Supplier Portal Online</span>
             </div>
           </div>
         </header>

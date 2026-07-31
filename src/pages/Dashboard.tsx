@@ -1,34 +1,89 @@
 import React from 'react';
 
 export function Dashboard() {
+  const styles = {
+    container: {
+      fontFamily: '"Outfit", "Inter", sans-serif',
+      color: '#1e293b',
+    },
+    headerSection: {
+      marginBottom: '2rem',
+    },
+    title: {
+      fontSize: '1.75rem',
+      fontWeight: 800,
+      color: '#0f172a',
+      margin: '0 0 0.5rem 0',
+    },
+    subtitle: {
+      fontSize: '0.875rem',
+      color: '#64748b',
+      margin: 0,
+    },
+    grid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+      gap: '1.5rem',
+      marginBottom: '2rem',
+    },
+    card: (borderColor: string) => ({
+      backgroundColor: '#ffffff',
+      borderLeft: `4px solid ${borderColor}`,
+      borderTop: '1px solid #e2e8f0',
+      borderRight: '1px solid #e2e8f0',
+      borderBottom: '1px solid #e2e8f0',
+      borderRadius: '16px',
+      padding: '1.5rem',
+      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05)',
+      transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    }),
+    cardLabel: {
+      fontSize: '0.75rem',
+      fontWeight: 700,
+      textTransform: 'uppercase' as const,
+      letterSpacing: '0.05em',
+      color: '#64748b',
+      marginBottom: '0.5rem',
+    },
+    cardValue: {
+      fontSize: '2.25rem',
+      fontWeight: 800,
+      color: '#0f172a',
+      margin: '0.5rem 0',
+    },
+    cardDesc: {
+      fontSize: '0.75rem',
+      color: '#94a3b8',
+      margin: 0,
+    },
+  };
+
   return (
-    <div className="p-6 bg-slate-900 min-h-screen text-slate-100">
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
-          Supplier Portal Dashboard
-        </h1>
-        <p className="text-slate-400 mt-2">
+    <div style={styles.container}>
+      <div style={styles.headerSection}>
+        <h1 style={styles.title}>Supplier Portal Dashboard</h1>
+        <p style={styles.subtitle}>
           Manage your products, variant specifications, packings, and monitor catalogue listings.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/10">
-          <div className="text-sm font-semibold text-slate-400">Total Products</div>
-          <div className="text-3xl font-bold mt-2 text-blue-400">12</div>
-          <div className="text-xs text-slate-500 mt-2">Across all categories</div>
+      <div style={styles.grid}>
+        <div style={styles.card('#2563eb')}>
+          <div style={styles.cardLabel}>Total Products</div>
+          <div style={styles.cardValue}>12</div>
+          <div style={styles.cardDesc}>Across all categories</div>
         </div>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/10">
-          <div className="text-sm font-semibold text-slate-400">Active SKUs</div>
-          <div className="text-3xl font-bold mt-2 text-emerald-400">38</div>
-          <div className="text-xs text-slate-500 mt-2">Currently visible in marketplace</div>
+        <div style={styles.card('#10b981')}>
+          <div style={styles.cardLabel}>Active SKUs</div>
+          <div style={styles.cardValue}>38</div>
+          <div style={styles.cardDesc}>Currently visible in marketplace</div>
         </div>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-indigo-500/10">
-          <div className="text-sm font-semibold text-slate-400">Linked Mappings</div>
-          <div className="text-3xl font-bold mt-2 text-purple-400">9</div>
-          <div className="text-xs text-slate-500 mt-2">Mapped to internal Geeksman products</div>
+        <div style={styles.card('#8b5cf6')}>
+          <div style={styles.cardLabel}>Linked Mappings</div>
+          <div style={styles.cardValue}>9</div>
+          <div style={styles.cardDesc}>Mapped to internal Geeksman products</div>
         </div>
       </div>
     </div>
