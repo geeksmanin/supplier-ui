@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Grid, LogOut, User, Home, Package, Menu, X } from 'lucide-react';
+import { Home, Package, Menu, X, LogOut } from 'lucide-react';
 import { useMediaQuery } from '@geeksman/core-ui';
 
 export const SupplierLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -45,32 +45,230 @@ export const SupplierLayout: React.FC<{ children: React.ReactNode }> = ({ childr
     },
   ];
 
+  // Inline styles for high-fidelity Vanilla CSS dark theme
+  const styles = {
+    container: {
+      display: 'flex',
+      height: '100vh',
+      backgroundColor: '#0f172a',
+      color: '#f8fafc',
+      overflow: 'hidden',
+      fontFamily: '"Outfit", "Inter", sans-serif',
+    },
+    sidebar: {
+      width: isDesktop ? (sidebarOpen ? '260px' : '72px') : (sidebarOpen ? '260px' : '0px'),
+      position: isDesktop ? 'static' as const : 'fixed' as const,
+      top: 0,
+      bottom: 0,
+      left: 0,
+      zIndex: 100,
+      backgroundColor: '#090d16',
+      borderRight: '1px solid #1e293b',
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      justifyContent: 'space-between',
+      overflow: 'hidden',
+    },
+    logoContainer: {
+      height: '64px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0 1rem',
+      borderBottom: '1px solid #1e293b',
+      backgroundColor: '#090d16',
+    },
+    logoWrapper: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+    },
+    logoImg: {
+      height: '32px',
+      maxWidth: '120px',
+      objectFit: 'contain' as const,
+    },
+    logoText: {
+      fontSize: '0.75rem',
+      fontWeight: 800,
+      letterSpacing: '0.05em',
+      color: '#60a5fa',
+    },
+    closeBtn: {
+      background: 'none',
+      border: 'none',
+      color: '#94a3b8',
+      cursor: 'pointer',
+      display: isDesktop ? 'none' : 'block',
+    },
+    nav: {
+      padding: '1rem 0.75rem',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: '4px',
+    },
+    navItem: (isActive: boolean) => ({
+      width: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      padding: '10px 14px',
+      borderRadius: '12px',
+      fontSize: '0.875rem',
+      fontWeight: 500,
+      border: 'none',
+      cursor: 'pointer',
+      textAlign: 'left' as const,
+      transition: 'all 0.2s ease',
+      backgroundColor: isActive ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+      color: isActive ? '#60a5fa' : '#94a3b8',
+    }),
+    sidebarFooter: {
+      padding: '1rem',
+      borderTop: '1px solid #1e293b',
+      backgroundColor: 'rgba(9, 13, 22, 0.5)',
+    },
+    userSection: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      marginBottom: '1rem',
+      padding: '0 4px',
+    },
+    avatar: {
+      height: '36px',
+      width: '36px',
+      borderRadius: '50%',
+      backgroundColor: '#1e293b',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: '#cbd5e1',
+      fontWeight: 'bold',
+      border: '1px solid #334155',
+    },
+    userInfo: {
+      flex: 1,
+      minWidth: 0,
+    },
+    userName: {
+      fontSize: '0.875rem',
+      fontWeight: 600,
+      color: '#e2e8f0',
+      margin: 0,
+      whiteSpace: 'nowrap' as const,
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+    },
+    userRole: {
+      fontSize: '0.75rem',
+      color: '#64748b',
+      margin: 0,
+      whiteSpace: 'nowrap' as const,
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+    },
+    logoutBtn: {
+      width: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      padding: '10px 14px',
+      borderRadius: '12px',
+      fontSize: '0.875rem',
+      fontWeight: 500,
+      color: '#f87171',
+      backgroundColor: 'transparent',
+      border: 'none',
+      cursor: 'pointer',
+      textAlign: 'left' as const,
+      transition: 'all 0.2s ease',
+    },
+    mainContent: {
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column' as const,
+      overflow: 'hidden',
+    },
+    header: {
+      height: '64px',
+      borderBottom: '1px solid #1e293b',
+      backgroundColor: 'rgba(9, 13, 22, 0.8)',
+      backdropFilter: 'blur(8px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0 1.5rem',
+      zIndex: 50,
+    },
+    headerLeft: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '1rem',
+    },
+    menuBtn: {
+      background: 'none',
+      border: 'none',
+      color: '#94a3b8',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      padding: '4px',
+    },
+    headerTitle: {
+      fontSize: '1rem',
+      fontWeight: 700,
+      color: '#e2e8f0',
+      margin: 0,
+    },
+    headerRight: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '1rem',
+    },
+    statusBadge: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      backgroundColor: '#0f172a',
+      border: '1px solid #1e293b',
+      padding: '6px 12px',
+      borderRadius: '9999px',
+      fontSize: '0.75rem',
+    },
+    statusDot: {
+      height: '8px',
+      width: '8px',
+      borderRadius: '50%',
+      backgroundColor: '#10b981',
+    },
+    contentArea: {
+      flex: 1,
+      overflowY: 'auto' as const,
+      backgroundColor: '#0f172a',
+      padding: '1.5rem',
+    },
+  };
+
   return (
-    <div className="flex h-screen bg-slate-900 text-slate-100 overflow-hidden font-sans">
-      {/* Left Sidebar */}
-      <div
-        className={`${
-          isDesktop
-            ? sidebarOpen ? 'w-64' : 'w-20'
-            : sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } fixed lg:static inset-y-0 left-0 z-30 bg-slate-950 border-r border-slate-800 transition-all duration-300 flex flex-col justify-between`}
-      >
+    <div style={styles.container}>
+      {/* Sidebar navigation */}
+      <div style={styles.sidebar}>
         <div>
-          {/* Logo Section */}
-          <div className="h-16 flex items-center justify-between px-4 border-b border-slate-800 bg-slate-950">
-            <div className="flex items-center gap-2">
-              <img src="/geeksman-side-logo.png" alt="Geeksman Logo" className="h-8 object-contain" />
-              {sidebarOpen && <span className="font-extrabold text-sm tracking-wider text-blue-400">SUPPLIER</span>}
+          <div style={styles.logoContainer}>
+            <div style={styles.logoWrapper}>
+              <img src="/geeksman-side-logo.png" alt="Geeksman Logo" style={styles.logoImg} />
+              {(sidebarOpen || !isDesktop) && <span style={styles.logoText}>SUPPLIER</span>}
             </div>
             {!isDesktop && (
-              <button onClick={() => setSidebarOpen(false)} className="text-slate-400 hover:text-slate-200">
+              <button onClick={() => setSidebarOpen(false)} style={styles.closeBtn}>
                 <X size={20} />
               </button>
             )}
           </div>
 
-          {/* Navigation Links */}
-          <nav className="p-4 space-y-1">
+          <nav style={styles.nav}>
             {navItems.map((item) => {
               const isActive = currentPath === item.path || (item.path !== '/dashboard' && currentPath.startsWith(item.path));
               return (
@@ -80,67 +278,54 @@ export const SupplierLayout: React.FC<{ children: React.ReactNode }> = ({ childr
                     navigate(item.path);
                     if (!isDesktop) setSidebarOpen(false);
                   }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                    isActive
-                      ? 'bg-blue-600/10 text-blue-400 border border-blue-500/20'
-                      : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200 border border-transparent'
-                  }`}
+                  style={styles.navItem(isActive)}
                 >
-                  <span className={isActive ? 'text-blue-400' : 'text-slate-400'}>{item.icon}</span>
-                  {sidebarOpen && <span>{item.label}</span>}
+                  <span>{item.icon}</span>
+                  {(sidebarOpen || !isDesktop) && <span>{item.label}</span>}
                 </button>
               );
             })}
           </nav>
         </div>
 
-        {/* Footer / Logout */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/50">
-          {sidebarOpen && (
-            <div className="flex items-center gap-3 mb-4 px-2">
-              <div className="h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 font-bold border border-slate-700">
+        <div style={styles.sidebarFooter}>
+          {(sidebarOpen || !isDesktop) && (
+            <div style={styles.userSection}>
+              <div style={styles.avatar}>
                 {userName.charAt(0).toUpperCase()}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate text-slate-200">{userName}</p>
-                <p className="text-xs text-slate-500 truncate">Supplier Representative</p>
+              <div style={styles.userInfo}>
+                <p style={styles.userName}>{userName}</p>
+                <p style={styles.userRole}>Supplier Rep</p>
               </div>
             </div>
           )}
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors"
-          >
+          <button onClick={handleLogout} style={styles.logoutBtn}>
             <LogOut size={18} />
-            {sidebarOpen && <span>Logout</span>}
+            {(sidebarOpen || !isDesktop) && <span>Logout</span>}
           </button>
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Header */}
-        <header className="h-16 border-b border-slate-800 bg-slate-950/80 backdrop-blur flex items-center justify-between px-6 z-20">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="text-slate-400 hover:text-slate-200 transition-colors"
-            >
+      {/* Main content viewport */}
+      <div style={styles.mainContent}>
+        <header style={styles.header}>
+          <div style={styles.headerLeft}>
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} style={styles.menuBtn}>
               <Menu size={20} />
             </button>
-            <h2 className="font-bold text-slate-200 hidden sm:block">Supplier Management Center</h2>
+            <h2 style={styles.headerTitle}>Supplier Management Center</h2>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full text-xs">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-slate-400">Supplier Portal Online</span>
+          <div style={styles.headerRight}>
+            <div style={styles.statusBadge}>
+              <span style={styles.statusDot}></span>
+              <span style={{ color: '#94a3b8' }}>Supplier Portal Online</span>
             </div>
           </div>
         </header>
 
-        {/* Content Wrapper */}
-        <main className="flex-1 overflow-y-auto bg-slate-900">
+        <main style={styles.contentArea}>
           {children}
         </main>
       </div>
