@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
-import { registerCustomerPortalModule } from './register';
+import { registerSupplierPortalModule } from './register';
 import './index.css';
 import { initializeConfig, resolveTenantCodeFromServer, apiClient } from '@geeksman/core-ui';
 import { getAppConfig } from './config';
@@ -9,7 +9,7 @@ import { getAppConfig } from './config';
 // Initialize configuration
 initializeConfig(getAppConfig());
 
-registerCustomerPortalModule();
+registerSupplierPortalModule();
 
 const applyDynamicBranding = async (target: 'staff' | 'customer') => {
   if (typeof window === 'undefined') return;
