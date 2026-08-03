@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { getAppConfig } from '../config';
+import { getWorkspaceFromUrl } from '../api/client';
 
 export interface SelectOption {
   value: string;
@@ -350,19 +352,21 @@ export const Select: React.FC<SelectProps> = ({
           Object.entries(baseParams).map(([k, v]) => [k, String(v)])
         ).toString();
 
-        // derive base URL — works with window.runtimeConfig like apiClient
+        // derive base URL — same source as apiClient
         const baseUrl =
+          getAppConfig().apiBaseUrl ||
           (typeof window !== 'undefined' && (window as Window & { runtimeConfig?: { apiBaseUrl?: string } }).runtimeConfig?.apiBaseUrl) ||
           '';
 
         const fullUrl = asyncConfig.url.startsWith('http')
           ? `${asyncConfig.url}?${qs}`
-          : `${baseUrl}${asyncConfig.url}?${qs}`;
+          : `${baseUrl.replace(/\/$/, '')}${asyncConfig.url.startsWith('/') ? '' : '/'}${asyncConfig.url}?${qs}`;
 
         const resp = await fetch(fullUrl, {
           signal: ctrl.signal,
           headers: {
             'Content-Type': 'application/json',
+            'X-Tenant-Code': getWorkspaceFromUrl(),
             ...(localStorage.getItem('token')
               ? { Authorization: `Bearer ${localStorage.getItem('token')}` }
               : {}),
@@ -371,7 +375,7 @@ export const Select: React.FC<SelectProps> = ({
 
         if (!resp.ok) throw new Error(`Server error: ${resp.status}`);
         const data = await resp.json();
-        const transformed = asyncConfig.transform(data);
+        const transformed = asyncConfig.transform(data) || [];
         setAsyncOptions(transformed);
         setAsyncCache((prev) => {
           const next = { ...prev };
@@ -468,40 +472,55 @@ export const Select: React.FC<SelectProps> = ({
     const opt = staticOptions.find((o) => o.value === selectedValues[0]) ||
                 asyncOptions.find((o) => o.value === selectedValues[0]) ||
                 asyncCache[selectedValues[0]];
-    const label = opt?.label;
+    if (!selectedValues[0]) {
+      return (
+        <span style={{
+          color: 'var(--text-secondary, #9ca3af)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          display: 'block',
+          width: '100%',
+        }}>
+          {placeholder}
+        </span>
+      );
+    }
+    const label = opt?.label ?? getLabel(selectedValues[0]);
     return (
       <span style={{
-        color: label ? 'var(--text-primary, #111827)' : 'var(--text-secondary, #9ca3af)',
+        color: 'var(--text-primary, #111827)',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
         display: 'block',
         width: '100%',
       }}>
-        {label ?? placeholder}
+        {label}
       </span>
     );
   };
 
   // ── Styles ──────────────────────────────────────────────────────────────
+  const customHeight = style?.height ? (typeof style.height === 'number' ? `${style.height}px` : style.height) : undefined;
   const triggerStyle: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: '8px',
-    padding: '0.6rem 0.75rem',
-    paddingLeft: leftIcon ? '2.75rem' : '0.75rem',
+    padding: customHeight ? '0.2rem 0.55rem' : '0.6rem 0.75rem',
+    paddingLeft: leftIcon ? '2.75rem' : (customHeight ? '0.55rem' : '0.75rem'),
     border: isOpen || isFocused ? '1px solid #4f46e5' : '1px solid #d1d5db',
-    borderRadius: '8px',
+    borderRadius: '6px',
     backgroundColor: disabled ? '#f3f4f6' : '#ffffff',
-    fontSize: '0.9rem',
+    fontSize: style?.fontSize || (customHeight ? '0.8rem' : '0.9rem'),
     cursor: disabled ? 'not-allowed' : 'pointer',
     userSelect: 'none' as const,
     boxSizing: 'border-box' as const,
     transition: 'all 0.15s ease',
     boxShadow: isOpen || isFocused ? '0 0 0 3px rgba(79, 70, 229, 0.25)' : 'none',
-    minHeight: '38px',
-    maxHeight: '38px',
+    minHeight: customHeight || '38px',
+    maxHeight: customHeight || '38px',
     overflow: 'hidden',
     whiteSpace: 'nowrap',
     outline: 'none',

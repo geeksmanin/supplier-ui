@@ -23,25 +23,40 @@ export const downloadFile = async (url: string, filename: string): Promise<void>
 			type: mimeType
 		});
 		
-		const wails = (window as any).go;
-		if (isDesktopEnvironment() && wails && wails.main && wails.main.App && wails.main.App.SaveFileFromBlob) {
-			// If a native file saving method exists on Go-side, use it
-			const reader = new FileReader();
-			reader.onloadend = async () => {
-				const base64data = (reader.result as string).split(',')[1];
-				await wails.main.App.SaveFileFromBlob(filename, base64data);
-			};
-			reader.readAsDataURL(blob);
-		} else {
-			// Standard browser blob download
-			const blobUrl = window.URL.createObjectURL(blob);
+		const triggerBrowserDownload = (b: Blob, fn: string) => {
+			const blobUrl = window.URL.createObjectURL(b);
 			const link = document.createElement('a');
 			link.href = blobUrl;
-			link.setAttribute('download', filename);
+			link.setAttribute('download', fn);
 			document.body.appendChild(link);
 			link.click();
 			link.parentNode?.removeChild(link);
 			window.URL.revokeObjectURL(blobUrl);
+		};
+
+		if (isDesktopEnvironment()) {
+			const reader = new FileReader();
+			reader.onloadend = async () => {
+				const base64data = (reader.result as string).split(',')[1];
+				try {
+					const res = await apiClient.post('/runtime/save-file', {
+						filename: filename,
+						content: base64data,
+						is_base64: true
+					});
+					if (res.data?.cancelled) {
+						return;
+					}
+					const path = res.data?.data?.path || res.data?.path || '';
+					alert(`File saved successfully:\n${path}`);
+				} catch (err: any) {
+					console.warn('Native save failed, falling back to browser write:', err);
+					triggerBrowserDownload(blob, filename);
+				}
+			};
+			reader.readAsDataURL(blob);
+		} else {
+			triggerBrowserDownload(blob, filename);
 		}
 	} catch (err) {
 		console.error("Downloader utility error:", err);

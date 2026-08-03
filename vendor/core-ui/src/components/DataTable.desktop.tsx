@@ -1,6 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Loader } from './Loader';
+import { apiClient } from '../api/client';
+import { isDesktopEnvironment } from '../utils/downloader';
 
 interface DebouncedFilterInputProps {
   value: string;
@@ -94,6 +96,7 @@ interface DataTableProps<T = any> {
   hideSerialNumberColumn?: boolean;
   hideAutoActionColumn?: boolean;
   hideFilterRow?: boolean;
+  onExportAll?: () => Promise<any[]>;
 }
 
 export const DataTable: React.FC<DataTableProps> = ({
@@ -123,47 +126,110 @@ export const DataTable: React.FC<DataTableProps> = ({
   hideSerialNumberColumn = false,
   hideAutoActionColumn = false,
   hideFilterRow = false,
+  onExportAll,
 }) => {
   const localSearchInputRef = useRef<HTMLInputElement>(null);
   const [detectedShortcut, setDetectedShortcut] = useState('⌘/');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (exportDropdownOpen && exportDropdownRef.current && !exportDropdownRef.current.contains(e.target as Node)) {
+        setExportDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, [exportDropdownOpen]);
+
   const [openSelectCol, setOpenSelectCol] = useState<string | null>(null);
 
-  const handleClientExport = () => {
-    const exportCols = columns.filter(col => col.key !== 'action' && col.key !== 'actions' && col.key !== 'index');
-    const headers = exportCols.map(col => col.label);
-    const rows = data.map((row, rowIdx) => {
-      const rowData: Record<string, any> = {};
-      exportCols.forEach(col => {
-        let val = (row as any)[col.key];
-        if (col.render) {
-          const rendered = col.render(val, row, rowIdx);
-          if (typeof rendered === 'string' || typeof rendered === 'number') {
-            val = rendered;
-          } else if (React.isValidElement(rendered)) {
-            const extractText = (el: any): string => {
-              if (!el) return '';
-              if (typeof el === 'string' || typeof el === 'number') return String(el);
-              if (Array.isArray(el)) return el.map(extractText).join(' ');
-              if (el.props && el.props.children) {
-                return extractText(el.props.children);
-              }
-              return '';
-            };
-            val = extractText(rendered);
-          }
-        }
-        rowData[col.label] = val === undefined || val === null ? '' : val;
-      });
-      return rowData;
-    });
+  const [exportingAll, setExportingAll] = useState(false);
 
-    const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Exported Data');
-    XLSX.writeFile(workbook, `DataTable_Export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  const exportDataList = async (exportData: any[]) => {
+    try {
+      const exportCols = columns.filter(col => col.key !== 'action' && col.key !== 'actions' && col.key !== 'index');
+      const headers = exportCols.map(col => col.label);
+      const rows = exportData.map((row, rowIdx) => {
+        const rowData: Record<string, any> = {};
+        exportCols.forEach(col => {
+          let val = (row as any)[col.key];
+          if (col.render) {
+            const rendered = col.render(val, row, rowIdx);
+            if (typeof rendered === 'string' || typeof rendered === 'number') {
+              val = rendered;
+            } else if (React.isValidElement(rendered)) {
+              const extractText = (el: any): string => {
+                if (!el) return '';
+                if (typeof el === 'string' || typeof el === 'number') return String(el);
+                if (Array.isArray(el)) return el.map(extractText).join(' ');
+                if (el.props && el.props.children) {
+                  return extractText(el.props.children);
+                }
+                return '';
+              };
+              val = extractText(rendered);
+            }
+          }
+          rowData[col.label] = val === undefined || val === null ? '' : val;
+        });
+        return rowData;
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Exported Data');
+      
+      const b64 = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
+      const rand = Math.floor(1000 + Math.random() * 9000);
+      const filename = `DataTable_Export_${new Date().toISOString().slice(0, 10)}_${rand}.xlsx`;
+
+      if (!isDesktopEnvironment()) {
+        XLSX.writeFile(workbook, filename);
+        return;
+      }
+
+      apiClient.post('/runtime/save-file', {
+        filename: filename,
+        content: b64,
+        is_base64: true
+      })
+        .then((res) => {
+          if (res.data?.cancelled) {
+            return;
+          }
+          const path = res.data?.data?.path || res.data?.path || '';
+          alert(`File exported successfully:\n${path}`);
+        })
+        .catch((err) => {
+          alert('Error during backend save: ' + (err.message || err));
+          console.warn('Native save failed, falling back to browser write:', err);
+          XLSX.writeFile(workbook, filename);
+        });
+    } catch (err: any) {
+      alert('Failed to export: ' + (err.message || err));
+    }
+  };
+
+  const handleClientExport = () => {
+    exportDataList(data);
+  };
+
+  const handleExportAll = async () => {
+    if (!onExportAll) return;
+    setExportingAll(true);
+    try {
+      const allData = await onExportAll();
+      await exportDataList(allData);
+    } catch (err: any) {
+      alert('Failed to fetch all data for export: ' + (err.message || err));
+    } finally {
+      setExportingAll(false);
+    }
   };
   const [selectQuery, setSelectQuery] = useState('');
 
@@ -890,31 +956,101 @@ export const DataTable: React.FC<DataTableProps> = ({
                             >
                               Reset
                             </button>
-                            <button
-                              onClick={handleClientExport}
-                              style={{
-                                padding: '4px 8px',
-                                fontSize: '0.7rem',
-                                fontWeight: 600,
-                                color: '#ffffff',
-                                backgroundColor: '#10b981',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: 'auto',
-                                minHeight: '24px',
-                                boxSizing: 'border-box',
-                                transition: 'all 0.15s ease',
-                                margin: '0',
-                                boxShadow: '0 1px 2px rgba(16, 185, 129, 0.2)'
-                              }}
-                              title="Export to Excel"
-                            >
-                              Export
-                            </button>
+                            <div ref={exportDropdownRef} style={{ position: 'relative', display: 'inline-flex' }}>
+                              <button
+                                onClick={() => {
+                                  if (onExportAll) {
+                                    setExportDropdownOpen(!exportDropdownOpen);
+                                  } else {
+                                    handleClientExport();
+                                  }
+                                }}
+                                disabled={exportingAll}
+                                style={{
+                                  padding: '4px 8px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 600,
+                                  color: '#ffffff',
+                                  backgroundColor: '#10b981',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: 'auto',
+                                  minHeight: '24px',
+                                  boxSizing: 'border-box',
+                                  transition: 'all 0.15s ease',
+                                  margin: '0',
+                                  boxShadow: '0 1px 2px rgba(16, 185, 129, 0.2)'
+                                }}
+                                title={onExportAll ? "Export Options" : "Export to Excel"}
+                              >
+                                {exportingAll ? 'Exporting...' : 'Export'}
+                              </button>
+                              
+                              {exportDropdownOpen && onExportAll && (
+                                <div style={{
+                                  position: 'absolute',
+                                  top: '100%',
+                                  right: 0,
+                                  marginTop: '4px',
+                                  backgroundColor: '#ffffff',
+                                  border: '1px solid #cbd5e1',
+                                  borderRadius: '6px',
+                                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                                  zIndex: 50,
+                                  minWidth: '120px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  padding: '4px 0'
+                                }}>
+                                  <button
+                                    onClick={() => {
+                                      setExportDropdownOpen(false);
+                                      handleClientExport();
+                                    }}
+                                    style={{
+                                      padding: '6px 12px',
+                                      fontSize: '0.75rem',
+                                      color: '#374151',
+                                      backgroundColor: 'transparent',
+                                      border: 'none',
+                                      textAlign: 'left',
+                                      cursor: 'pointer',
+                                      width: '100%',
+                                      transition: 'background-color 0.15s ease'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                  >
+                                    Current Page
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setExportDropdownOpen(false);
+                                      handleExportAll();
+                                    }}
+                                    style={{
+                                      padding: '6px 12px',
+                                      fontSize: '0.75rem',
+                                      color: '#374151',
+                                      backgroundColor: 'transparent',
+                                      border: 'none',
+                                      textAlign: 'left',
+                                      cursor: 'pointer',
+                                      width: '100%',
+                                      transition: 'background-color 0.15s ease'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                  >
+                                    All Pages
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>

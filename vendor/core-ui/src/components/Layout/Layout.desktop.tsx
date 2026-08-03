@@ -20,8 +20,8 @@ export const LayoutDesktop: React.FC<any> = ({
   // New props:
   tabs = [],
   activeTabPath = '/dashboard',
-  onCloseTab = () => {},
-  onSelectTab = () => {},
+  onCloseTab = () => { },
+  onSelectTab = () => { },
   unreadCount = 0,
   onOpenNotifications,
 }) => {
@@ -254,7 +254,7 @@ export const LayoutDesktop: React.FC<any> = ({
     if (hasChildren) {
       setActiveMainMenuId(item.id || null);
       setIsSubNavCollapsed(false);
-      
+
       const firstChild = navItems.find(child => child.parentId === item.id);
       if (firstChild && firstChild.path) {
         onNavigate(firstChild.path);
@@ -289,14 +289,15 @@ export const LayoutDesktop: React.FC<any> = ({
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f9fafb' }}>
-      <style dangerouslySetInnerHTML={{__html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes pulse-dot {
           0% { transform: scale(0.85); opacity: 0.6; }
           50% { transform: scale(1.2); opacity: 1; }
           100% { transform: scale(0.85); opacity: 0.6; }
         }
       `}} />
-      
+
       {/* 1. Persistent Leftmost Dock Sidebar */}
       <aside style={{
         width: leftSidebarWidth,
@@ -361,7 +362,7 @@ export const LayoutDesktop: React.FC<any> = ({
         <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, width: '100%', alignItems: 'center', overflowY: 'auto', paddingRight: '2px' }}>
           {mainNavItems.map((item) => {
             const isActive = activeMainMenuId === item.id && !isDashboard;
-            
+
             // Map item to a beautiful, modern, colored SVG icon matching the main dashboard look
             const getAppIcon = (id: string, label: string) => {
               const lowerLabel = label.toLowerCase();
@@ -517,13 +518,13 @@ export const LayoutDesktop: React.FC<any> = ({
                     {React.isValidElement(item.icon) && typeof item.icon.type === 'string' && item.icon.type !== 'svg' ? (
                       item.icon
                     ) : React.isValidElement(item.icon) ? (
-                      React.cloneElement(item.icon as React.ReactElement<any>, { 
-                        style: { 
+                      React.cloneElement(item.icon as React.ReactElement<any>, {
+                        style: {
                           color: '#ffffff',
                           width: '100%',
                           height: '100%',
                           display: 'block'
-                        } 
+                        }
                       })
                     ) : (
                       item.icon
@@ -1074,7 +1075,7 @@ export const LayoutDesktop: React.FC<any> = ({
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
                   <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#111827', lineHeight: 1.2 }}>
-                     {userEmail ? userEmail.split('@')[0] : 'Administrator'}
+                    {userEmail ? userEmail.split('@')[0] : 'Administrator'}
                   </span>
                   <span style={{ fontSize: '0.7rem', color: '#6b7280' }}>
                     admin
