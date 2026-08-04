@@ -54,11 +54,12 @@ export function mapOfficialGstResponse(json: any, fallbackGstin: string): Offici
  * Step 1 & 2: Fetch Captcha image from backend proxy endpoint or direct GST portal.
  * Converts raw image blob to base64 string.
  */
-export async function fetchOfficialGstCaptcha(): Promise<{ captchaBase64: string }> {
+export async function fetchOfficialGstCaptcha(): Promise<{ captchaBase64: string; cookies?: string }> {
   try {
     const proxyRes = await apiClient.get('/contacts/gst/captcha');
-    const data = proxyRes.data;
-    const captchaBase64 = data.data?.captchaBase64 || data.captchaBase64;
+    const data = proxyRes.data?.data || proxyRes.data;
+    const captchaBase64 = data.captchaBase64;
+    const cookies = data.cookies;
     if (captchaBase64) {
       try {
         const decodedHead = window.atob(captchaBase64.substring(0, 100));
@@ -68,7 +69,7 @@ export async function fetchOfficialGstCaptcha(): Promise<{ captchaBase64: string
       } catch (decodeErr: any) {
         if (decodeErr.message?.includes('Firewall')) throw decodeErr;
       }
-      return { captchaBase64 };
+      return { captchaBase64, cookies };
     }
   } catch (proxyErr: any) {
     console.warn('Backend GST captcha proxy error:', proxyErr);
@@ -99,19 +100,25 @@ export async function fetchOfficialGstCaptcha(): Promise<{ captchaBase64: string
  */
 export async function fetchOfficialGstTaxpayerDetails(
   gstin: string,
-  captchaText: string
+  captchaText: string,
+  cookies?: string
 ): Promise<OfficialGstTaxpayerDetails> {
   try {
     const proxyRes = await apiClient.post('/contacts/gst/taxpayer-details', {
       gstin: gstin.toUpperCase(),
-      captcha: captchaText.trim()
+      captcha: captchaText.trim(),
+      cookies
     });
     const json = proxyRes.data?.data || proxyRes.data;
     if (json) {
+      if (json.errorCode || json.error) {
+        throw new Error(json.message || json.error || 'Invalid Captcha or GSTIN not found');
+      }
       return mapOfficialGstResponse(json, gstin);
     }
   } catch (proxyErr: any) {
     console.warn('Backend GST taxpayer proxy error:', proxyErr);
+    throw proxyErr;
   }
 
   const detailsUrl = 'https://services.gst.gov.in/services/api/search/taxpayerDetails';
