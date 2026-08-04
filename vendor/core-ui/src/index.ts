@@ -48,3 +48,6 @@ export { fetchOfficialGstCaptcha, fetchOfficialGstTaxpayerDetails, fetchQuickGst
 export type { OfficialGstTaxpayerDetails, OfficialGstCaptchaResponse } from './services/gstService';
 export { saveFormDraft, getFormDraft, clearFormDraft } from './utils/draftStore';
 export { useFormDraft, DraftBanner } from './hooks/useFormDraft';
+export type { UseFormDraftOptions, UseFormDraftReturn, DraftBannerProps } from './hooks/useFormDraft';
+export { DraftBanner as DraftBannerComponent } from './components/DraftBanner';
+
