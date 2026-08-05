@@ -1,6 +1,8 @@
 import React from 'react';
 
-export const ViewIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+interface IconProps extends Omit<React.SVGProps<SVGSVGElement>, 'ref'> {}
+
+export const ViewIcon: React.FC<IconProps> = (props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="18"
@@ -18,7 +20,7 @@ export const ViewIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
-export const EditIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+export const EditIcon: React.FC<IconProps> = (props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="18"
@@ -36,7 +38,7 @@ export const EditIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
-export const DeleteIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+export const DeleteIcon: React.FC<IconProps> = (props) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="18"
