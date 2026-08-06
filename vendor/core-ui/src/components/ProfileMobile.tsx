@@ -49,6 +49,11 @@ export const ProfileMobile: React.FC = () => {
   const handleTriggerUpdate = async () => {
     setUpdating(true);
     setError('');
+    // Safety timeout: if the app hasn't reloaded in 15s, reset spinner so user can retry
+    const safetyTimer = setTimeout(() => {
+      setUpdating(false);
+      setError('Update is taking longer than expected. Please try again or reload manually.');
+    }, 15000);
     try {
       const res = await apiClient.post('/runtime/trigger-update');
       if (res.data && res.data.data) {
@@ -56,7 +61,13 @@ export const ProfileMobile: React.FC = () => {
       } else {
         setUpdateSuccessMsg('Update process started. The application will close and install the update.');
       }
+      // App should reload itself; give it 3 extra seconds before clearing the spinner
+      setTimeout(() => {
+        clearTimeout(safetyTimer);
+        setUpdating(false);
+      }, 3000);
     } catch (err: any) {
+      clearTimeout(safetyTimer);
       console.error('Update failed to trigger', err);
       const errMsg = err.response?.data?.message || err.response?.data?.error?.message || err.message;
       setError(`Failed to trigger update: ${errMsg}`);
