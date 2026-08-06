@@ -376,6 +376,27 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
 
             setUnreadCount((prev) => prev + batch.filter((item) => !item.is_read).length);
 
+            const playNotificationSound = () => {
+              try {
+                const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+                osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.15);
+              } catch (e) {}
+            };
+
+            if (batch.length > 0) {
+              playNotificationSound();
+            }
+
             batch.forEach((item) => {
               const customEvent = new CustomEvent('notification_received', { detail: item });
               window.dispatchEvent(customEvent);
