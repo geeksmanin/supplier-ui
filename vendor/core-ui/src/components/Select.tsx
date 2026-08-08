@@ -555,8 +555,9 @@ export const Select: React.FC<SelectProps> = ({
       )}
 
       {/* Trigger */}
-      <div 
-        onClick={() => !disabled && setIsOpen((o) => !o)} 
+      <div
+        className="select-trigger"
+        onClick={() => !disabled && setIsOpen((o) => !o)}
         tabIndex={disabled ? -1 : 0}
         onFocus={() => !disabled && setIsFocused(true)}
         onBlur={() => setIsFocused(false)}

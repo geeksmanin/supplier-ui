@@ -116,6 +116,16 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       path.startsWith('data:image/');
   };
 
+  const openAttachment = (url: string) => {
+    const mediaUrl = getMediaUrl(url);
+    if (!mediaUrl) return;
+    if (isImageUrl(url)) {
+      setPreviewImage(url);
+      return;
+    }
+    window.open(mediaUrl, '_blank', 'noopener,noreferrer');
+  };
+
   return (
     <div style={{ marginBottom: '1rem' }}>
       {label ? <label style={labelStyle}>{label}</label> : null}
@@ -127,7 +137,12 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
           {value.map((url, i) => (
             <div key={`${url}-${i}`} style={{ position: 'relative' }}>
               {!isImageUrl(url) ? (
-                <div style={{
+                <button
+                  type="button"
+                  onClick={() => openAttachment(url)}
+                  title="Open attachment"
+                  aria-label={`Open attachment ${url.split('/').pop() || i + 1}`}
+                  style={{
                   width: '72px',
                   height: '72px',
                   borderRadius: 'var(--radius-md)',
@@ -143,18 +158,20 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
                   padding: '4px',
                   textAlign: 'center',
                   wordBreak: 'break-all',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  cursor: 'pointer',
                 }}>
                   <span style={{ fontSize: '1.25rem', marginBottom: '2px' }}>📄</span>
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', width: '100%', whiteSpace: 'nowrap' }}>
                     {url.split('/').pop()?.substring(0, 12) || 'File'}
                   </span>
-                </div>
+                </button>
               ) : (
                 <img
                   src={getMediaUrl(url)}
                   alt={`Upload ${i + 1}`}
-                  onClick={() => setPreviewImage(url)}
+                  onClick={() => openAttachment(url)}
+                  title="View attachment"
                   style={{
                     width: '72px',
                     height: '72px',

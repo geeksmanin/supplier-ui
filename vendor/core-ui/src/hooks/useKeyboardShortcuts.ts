@@ -80,7 +80,7 @@ export function useFormKeyboardShortcuts({
   useEffect(() => {
     const timer = setTimeout(() => {
       const container = containerRef?.current || document;
-      const selector = 'input:not([disabled]):not([readonly]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), button.select-trigger';
+      const selector = 'input:not([disabled]):not([readonly]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), button.select-trigger, .select-trigger';
       const inputs = container.querySelectorAll(selector);
       let firstInput: HTMLElement | null = null;
       for (let i = 0; i < inputs.length; i++) {
