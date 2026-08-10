@@ -690,7 +690,12 @@ export const LayoutDesktop: React.FC<any> = ({
                 {extendedNavItems.map(item => {
                   const isPathMatch = (current: string, target: string) => {
                     if (current === target) return true;
-                    if (target !== '/' && current.startsWith(target + '/')) return true;
+                    if (target !== '/' && current.startsWith(target + '/')) {
+                      const hasMoreSpecific = extendedNavItems.some(
+                        other => other.path !== target && (current === other.path || (other.path !== '/' && current.startsWith(other.path + '/')))
+                      );
+                      return !hasMoreSpecific;
+                    }
                     return false;
                   };
                   const isActive = isPathMatch(currentPath, item.path) || (item.path.startsWith('#') && window.location.hash.endsWith(item.path.substring(1)));
