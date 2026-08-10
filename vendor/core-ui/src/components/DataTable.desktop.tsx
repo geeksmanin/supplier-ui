@@ -97,6 +97,12 @@ interface DataTableProps<T = any> {
   hideAutoActionColumn?: boolean;
   hideFilterRow?: boolean;
   onExportAll?: () => Promise<any[]>;
+
+  // Row selection (opt-in)
+  selectable?: boolean;
+  selectedIds?: Set<any>;
+  onSelectChange?: (ids: Set<any>) => void;
+  rowId?: (row: T) => any;
 }
 
 export const DataTable: React.FC<DataTableProps> = ({
@@ -127,11 +133,29 @@ export const DataTable: React.FC<DataTableProps> = ({
   hideAutoActionColumn = false,
   hideFilterRow = false,
   onExportAll,
+  selectable = false,
+  selectedIds: controlledSelectedIds,
+  onSelectChange,
+  rowId = (row: any) => row.id,
 }) => {
   const localSearchInputRef = useRef<HTMLInputElement>(null);
   const [detectedShortcut, setDetectedShortcut] = useState('⌘/');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Internal selection state (used when uncontrolled)
+  const [internalSelectedIds, setInternalSelectedIds] = useState<Set<any>>(new Set());
+  const selectedIds = controlledSelectedIds !== undefined ? controlledSelectedIds : internalSelectedIds;
+  const setSelectedIds = (next: Set<any>) => {
+    if (onSelectChange) onSelectChange(next);
+    else setInternalSelectedIds(next);
+  };
+  const handleToggleRow = (id: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelectedIds(next);
+  };
 
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
@@ -466,6 +490,16 @@ export const DataTable: React.FC<DataTableProps> = ({
     return sortedData.slice(startIdx, endIdx);
   }, [sortedData, startIdx, endIdx, data.length, pageSize, totalItems, columnFilters, sortConfig, propSetColumnFilters, isServerPaged]);
 
+  // Select-all helpers — defined after displayData so they can reference it
+  const handleSelectAll = () => {
+    if (selectedIds.size === displayData.length && displayData.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(displayData.map((row: any) => rowId(row))));
+    }
+  };
+  const allSelected = displayData.length > 0 && selectedIds.size === displayData.length;
+
   // Reset highlight index when displayed data changes
   useEffect(() => {
     setHighlightedIndex(-1);
@@ -717,12 +751,39 @@ export const DataTable: React.FC<DataTableProps> = ({
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', width: '100%', justifyContent: col.align === 'center' ? 'center' : 'flex-start' }}>
                         {(col.key === 'index' || col.key === 'sno' || col.key === 's_no') && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#4b5563', fontWeight: 600, fontSize: '0.7rem' }}>
-                            <svg style={{ width: '12px', height: '12px', color: '#4b5563' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                            </svg>
-                            <span>Filters</span>
-                          </div>
+                          selectable ? (
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', userSelect: 'none' }} onClick={e => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={allSelected}
+                                onChange={handleSelectAll}
+                                style={{ width: '14px', height: '14px', cursor: 'pointer', accentColor: '#6366f1', flexShrink: 0 }}
+                              />
+                              <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#4b5563', whiteSpace: 'nowrap' }}>
+                                {allSelected ? 'Deselect All' : 'Select All'}
+                              </span>
+                              {selectedIds.size > 0 && (
+                                <span style={{
+                                  backgroundColor: '#ede9fe',
+                                  color: '#6d28d9',
+                                  fontSize: '0.65rem',
+                                  fontWeight: 700,
+                                  padding: '1px 7px',
+                                  borderRadius: '999px',
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {selectedIds.size} selected
+                                </span>
+                              )}
+                            </label>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#4b5563', fontWeight: 600, fontSize: '0.7rem' }}>
+                              <svg style={{ width: '12px', height: '12px', color: '#4b5563' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                              </svg>
+                              <span>Filters</span>
+                            </div>
+                          )
                         )}
                         {col.filterRender ? col.filterRender(columnFilters, setColumnFilters) : (col.filterType === 'text' && (
                           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1 }}>
@@ -1124,10 +1185,12 @@ export const DataTable: React.FC<DataTableProps> = ({
                         if (prevRow) prevRow.focus();
                       }
                     }}
-                    style={{
+                   style={{
                       cursor: onRowClick ? 'pointer' : 'default',
                       outline: 'none',
-                      backgroundColor: rIdx === highlightedIndex ? '#f1f5f9' : undefined,
+                      backgroundColor: selectable && selectedIds.has(rowId(row))
+                        ? '#f0f4ff'
+                        : rIdx === highlightedIndex ? '#f1f5f9' : undefined,
                       boxShadow: rIdx === highlightedIndex ? 'inset 4px 0 0 0 #2563eb' : undefined
                     }}
                   >
@@ -1139,7 +1202,20 @@ export const DataTable: React.FC<DataTableProps> = ({
                           className={col.key === 'action' ? 'sticky-action-col' : undefined}
                           style={{ textAlign: col.align || 'left' }}
                         >
-                          {col.render ? col.render(value, row, rIdx) : (value !== undefined && value !== null ? String(value) : '-')}
+                          {selectable && (col.key === 'index' || col.key === 'sno' || col.key === 's_no') ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.has(rowId(row))}
+                                onChange={() => {}}
+                                onClick={(e) => handleToggleRow(rowId(row), e as any)}
+                                style={{ cursor: 'pointer', width: '14px', height: '14px', accentColor: '#6366f1', flexShrink: 0 }}
+                              />
+                              {col.render ? col.render(value, row, rIdx) : (value !== undefined && value !== null ? String(value) : rIdx + 1)}
+                            </div>
+                          ) : (
+                            col.render ? col.render(value, row, rIdx) : (value !== undefined && value !== null ? String(value) : '-')
+                          )}
                         </td>
                       );
                     })}
