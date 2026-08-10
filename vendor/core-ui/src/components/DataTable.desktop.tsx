@@ -103,6 +103,7 @@ interface DataTableProps<T = any> {
   selectedIds?: Set<any>;
   onSelectChange?: (ids: Set<any>) => void;
   rowId?: (row: T) => any;
+  onBulkDelete?: (ids: Set<any>) => void;
 }
 
 export const DataTable: React.FC<DataTableProps> = ({
@@ -137,6 +138,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   selectedIds: controlledSelectedIds,
   onSelectChange,
   rowId = (row: any) => row.id,
+  onBulkDelete,
 }) => {
   const localSearchInputRef = useRef<HTMLInputElement>(null);
   const [detectedShortcut, setDetectedShortcut] = useState('⌘/');
@@ -1112,6 +1114,38 @@ export const DataTable: React.FC<DataTableProps> = ({
                                 </div>
                               )}
                             </div>
+                            {/* Bulk Delete button — shown when selectable and rows are selected */}
+                            {selectable && selectedIds.size > 0 && onBulkDelete && (
+                              <button
+                                onClick={() => onBulkDelete(selectedIds)}
+                                style={{
+                                  padding: '4px 8px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 600,
+                                  color: '#ffffff',
+                                  backgroundColor: '#dc2626',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  minHeight: '24px',
+                                  boxSizing: 'border-box',
+                                  transition: 'all 0.15s ease',
+                                  boxShadow: '0 1px 2px rgba(220, 38, 38, 0.3)'
+                                }}
+                                title={`Delete ${selectedIds.size} selected row${selectedIds.size > 1 ? 's' : ''}`}
+                              >
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="3 6 5 6 21 6"/>
+                                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                  <path d="M10 11v6M14 11v6"/>
+                                  <path d="M9 6V4h6v2"/>
+                                </svg>
+                                Delete ({selectedIds.size})
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
