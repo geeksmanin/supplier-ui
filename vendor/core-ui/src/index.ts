@@ -33,6 +33,8 @@ export type { AboutAppProps } from './components/AboutApp';
 export { HelpGuide } from './components/HelpGuide';
 export { STATES_MAP, INDIAN_STATES_GST_OPTIONS } from './constants';
 export { ImportWizard } from './components/ImportWizard/ImportWizard';
+export { ImportHistoryPage } from './components/ImportWizard/ImportHistoryPage';
+export type { ImportHistoryPageProps } from './components/ImportWizard/ImportHistoryPage';
 export { downloadFile, isDesktopEnvironment } from './utils/downloader';
 export { Loader } from './components/Loader';
 export type { LoaderProps } from './components/Loader';

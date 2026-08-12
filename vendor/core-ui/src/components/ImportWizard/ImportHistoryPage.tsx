@@ -13,7 +13,17 @@ interface ImportJob {
   created_at: string;
 }
 
-export const ImportHistoryPage: React.FC = () => {
+export interface ImportHistoryPageProps {
+  entityType?: string;
+  title?: string;
+  hideHeader?: boolean;
+}
+
+export const ImportHistoryPage: React.FC<ImportHistoryPageProps> = ({
+  entityType,
+  title = 'Import History Logs',
+  hideHeader = false,
+}) => {
   const { showToast } = useToast();
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const [jobs, setJobs] = useState<ImportJob[]>([]);
@@ -34,11 +44,13 @@ export const ImportHistoryPage: React.FC = () => {
       if (res.data && res.data.data) {
         const allJobs = res.data.data as ImportJob[];
         const filtered = allJobs.filter(job => {
-          return searchQuery ? (
+          const matchEntity = entityType ? job.entity_type?.toLowerCase() === entityType.toLowerCase() : true;
+          const matchQuery = searchQuery ? (
             job.filename?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             job.entity_type?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             job.status?.toLowerCase().includes(searchQuery.toLowerCase())
           ) : true;
+          return matchEntity && matchQuery;
         });
 
         const start = (currentPage - 1) * pageSize;

@@ -111,7 +111,6 @@ apiClient.interceptors.response.use((response) => {
     if (typeof window !== 'undefined') {
       if (!window.location.hash.includes('/login')) {
         window.location.hash = '#/login';
-        window.location.reload();
       }
     }
   }
