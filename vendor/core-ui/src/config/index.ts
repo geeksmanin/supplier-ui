@@ -1,20 +1,29 @@
 import { AppConfig } from './types';
 
-let activeConfig: AppConfig | null = null;
-
 export const initializeConfig = (config: AppConfig) => {
-  activeConfig = config;
+  if (typeof window !== 'undefined') {
+    (window as any).__geeksmanActiveConfig = config;
+  }
 };
 
 export const getAppConfig = (): AppConfig => {
-  if (!activeConfig) {
-    activeConfig = {
+  if (typeof window !== 'undefined') {
+    const globalConfig = (window as any).__geeksmanActiveConfig;
+    if (globalConfig) return globalConfig;
+    
+    const fallback = {
       apiBaseUrl: '',
       defaultTenant: 'platform',
       resolveTenantFromUrl: true,
     };
+    (window as any).__geeksmanActiveConfig = fallback;
+    return fallback;
   }
-  return activeConfig;
+  return {
+    apiBaseUrl: '',
+    defaultTenant: 'platform',
+    resolveTenantFromUrl: true,
+  };
 };
 
 export const resolveAppConfig = (
