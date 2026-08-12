@@ -12,6 +12,7 @@ interface NotificationContextType {
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   unsubscribePush: () => Promise<void>;
+  registerListener: (filter: (n: Notification) => boolean, callback: (n: Notification) => void) => () => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -82,6 +83,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
 
   const pendingNotificationsRef = useRef<Notification[]>([]);
   const throttleTimeoutRef = useRef<number | null>(null);
+  const listenersRef = useRef<{ filter: (n: Notification) => boolean; callback: (n: Notification) => void }[]>([]);
 
   const fallbackPollingIntervalRef = useRef<number | null>(null);
 
@@ -164,7 +166,18 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     setLoading(true);
     try {
       const res = await api.get('');
-      const items = res.data?.data || [];
+      const rawItems = res.data?.data || [];
+      const items = rawItems.map((n: Notification) => {
+        if (n.metadata) {
+          try {
+            const meta = typeof n.metadata === 'string' ? JSON.parse(n.metadata) : n.metadata;
+            if (meta.entity_name) n.entity_name = meta.entity_name;
+            if (meta.entity_id) n.entity_id = meta.entity_id;
+          } catch (e) {}
+        }
+        return n;
+      });
+
       setNotifications(items);
       if (items.length > 0) {
         lastEventIdRef.current = items[0].id;
@@ -216,6 +229,17 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     } catch (err) {
       console.error('Failed to unsubscribe from Web Push:', err);
     }
+  };
+
+  const registerListener = (
+    filter: (n: Notification) => boolean,
+    callback: (n: Notification) => void
+  ) => {
+    const listener = { filter, callback };
+    listenersRef.current.push(listener);
+    return () => {
+      listenersRef.current = listenersRef.current.filter((l) => l !== listener);
+    };
   };
 
   const runTabChecks = (): boolean => {
@@ -355,6 +379,43 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
 
         const notif: Notification = envelope.payload;
         if (!notif) return;
+
+        if (notif.metadata) {
+          try {
+            const meta = typeof notif.metadata === 'string' ? JSON.parse(notif.metadata) : notif.metadata;
+            if (meta.entity_name) notif.entity_name = meta.entity_name;
+            if (meta.entity_id) notif.entity_id = meta.entity_id;
+          } catch (e) {}
+        }
+
+        // Route chat notifications to the custom event immediately, bypassing global inbox
+        if (notif.entity_name === 'staff_chat') {
+          const customEvent = new CustomEvent('notification_received', { detail: notif });
+          window.dispatchEvent(customEvent);
+        }
+
+        const activeTicketId = (window as any).activeTicketId;
+        const activeChatId = (window as any).activeChatId;
+        const isViewingActiveEntity = 
+          (activeTicketId && notif.link && notif.link.toLowerCase().includes(activeTicketId.toLowerCase())) ||
+          (activeChatId && notif.link && notif.link.toLowerCase().includes(activeChatId.toLowerCase())) ||
+          (activeChatId && notif.entity_id && String(activeChatId).toLowerCase() === String(notif.entity_id).toLowerCase());
+
+        if (isViewingActiveEntity) {
+          notif.is_read = true;
+          api.post(`/${notif.id}/read`).catch(() => {});
+        }
+
+        // Trigger any matching registered listeners
+        listenersRef.current.forEach((listener) => {
+          try {
+            if (listener.filter(notif)) {
+              listener.callback(notif);
+            }
+          } catch (e) {
+            console.error('Error in notification listener callback:', e);
+          }
+        });
 
         pendingNotificationsRef.current.push(notif);
 
@@ -558,6 +619,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         markAsRead,
         markAllAsRead,
         unsubscribePush,
+        registerListener,
       }}
     >
       {children}

@@ -10,4 +10,6 @@ export interface Notification {
   read_at?: string;
   created_at: string;
   metadata?: string;
+  entity_name?: string;
+  entity_id?: string;
 }
