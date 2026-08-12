@@ -4,7 +4,7 @@ export interface Notification {
   user_id: string;
   title: string;
   body: string;
-  type: 'mention' | 'chat_reply' | 'ticket_update' | 'read_state_changed' | 'read_all_state_changed';
+  type: 'mention' | 'chat_reply' | 'support_chat' | 'ticket_update' | 'new_chat' | 'silent_sync' | 'comment' | 'import_status' | 'read_state_changed' | 'read_all_state_changed' | (string & {});
   link?: string;
   is_read: boolean;
   read_at?: string;

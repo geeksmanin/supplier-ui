@@ -11,6 +11,11 @@ interface NotificationDrawerDesktopProps {
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   onNavigate?: (link: string) => void;
+  sseActive: boolean;
+  reconnectSSE: () => void;
+  pushPermission: 'default' | 'granted' | 'denied';
+  requestPushPermission: () => Promise<void>;
+  unsubscribePush: () => Promise<void>;
 }
 
 export const NotificationDrawerDesktop: React.FC<NotificationDrawerDesktopProps> = ({
@@ -23,6 +28,11 @@ export const NotificationDrawerDesktop: React.FC<NotificationDrawerDesktopProps>
   markAsRead,
   markAllAsRead,
   onNavigate,
+  sseActive,
+  reconnectSSE,
+  pushPermission,
+  requestPushPermission,
+  unsubscribePush,
 }) => {
   if (!isOpen) return null;
 
@@ -43,10 +53,98 @@ export const NotificationDrawerDesktop: React.FC<NotificationDrawerDesktopProps>
           <div>
             <h2 style={styles.title}>Notifications</h2>
             <p style={styles.subtitle}>You have {unreadCount} unread alerts</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+              <span style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: sseActive ? '#10b981' : '#f59e0b',
+                display: 'inline-block'
+              }} />
+              <span style={{ fontSize: '11px', color: '#888' }}>
+                {sseActive ? 'Live Connected' : 'Disconnected'}
+              </span>
+              {!sseActive && (
+                <button
+                  onClick={reconnectSSE}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#6366f1',
+                    fontSize: '11px',
+                    cursor: 'pointer',
+                    padding: 0,
+                    textDecoration: 'underline'
+                  }}
+                >
+                  Retry
+                </button>
+              )}
+            </div>
           </div>
           <button style={styles.closeButton} onClick={onClose}>
             &times;
           </button>
+        </div>
+
+        {/* Push Notification Quick Settings Panel */}
+        <div style={{
+          padding: '12px 24px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          backgroundColor: 'rgba(255, 255, 255, 0.01)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <span style={{ fontSize: '12px', color: '#a1a1aa' }}>
+            Push Notifications
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {pushPermission === 'granted' && (
+              <>
+                <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 500 }}>Active</span>
+                <button
+                  onClick={unsubscribePush}
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                    color: '#ef4444',
+                    borderRadius: '4px',
+                    padding: '2px 8px',
+                    fontSize: '11px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Disable
+                </button>
+              </>
+            )}
+            {pushPermission === 'default' && (
+              <button
+                onClick={requestPushPermission}
+                style={{
+                  background: '#6366f1',
+                  border: 'none',
+                  color: '#fff',
+                  borderRadius: '4px',
+                  padding: '4px 10px',
+                  fontSize: '11px',
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+              >
+                Enable / Subscribe
+              </button>
+            )}
+            {pushPermission === 'denied' && (
+              <span
+                title="Browser notification permission is blocked. Reset permission in your browser address bar to enable."
+                style={{ fontSize: '11px', color: '#ef4444', textDecoration: 'underline dotted', cursor: 'help' }}
+              >
+                Blocked
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Tab Ceiling Warning Banner */}

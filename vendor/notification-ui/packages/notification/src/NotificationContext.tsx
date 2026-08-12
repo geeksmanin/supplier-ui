@@ -12,6 +12,9 @@ interface NotificationContextType {
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   unsubscribePush: () => Promise<void>;
+  reconnectSSE: () => void;
+  pushPermission: 'default' | 'granted' | 'denied';
+  requestPushPermission: () => Promise<void>;
   registerListener: (filter: (n: Notification) => boolean, callback: (n: Notification) => void) => () => void;
 }
 
@@ -70,6 +73,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   const [loading, setLoading] = useState(false);
   const [sseActive, setSseActive] = useState(false);
   const [tabLimitExceeded, setTabLimitExceeded] = useState(false);
+  const [pushPermission, setPushPermission] = useState<'default' | 'granted' | 'denied'>(
+    typeof window !== 'undefined' && 'Notification' in window
+      ? window.Notification.permission
+      : 'default'
+  );
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
@@ -162,6 +170,22 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     }
   };
 
+  const requestPushPermission = async () => {
+    if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+      return;
+    }
+    try {
+      const permission = await window.Notification.requestPermission();
+      setPushPermission(permission);
+      if (permission === 'granted') {
+        window.dispatchEvent(new Event('notification-permission-granted'));
+        await registerPushSubscription();
+      }
+    } catch (err) {
+      console.warn('Failed to request notification permission:', err);
+    }
+  };
+
   const fetchNotifications = async () => {
     setLoading(true);
     try {
@@ -191,24 +215,28 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   };
 
   const markAsRead = async (id: string) => {
+    // Optimistic local state update immediately
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+    );
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+
     try {
       await api.post(`/${id}/read`);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (err) {
-      console.error('Failed to mark notification as read:', err);
+      console.error('Failed to mark notification as read on server:', err);
     }
   };
 
   const markAllAsRead = async () => {
+    // Optimistic local state update immediately
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+
     try {
       await api.post('/read-all');
-      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-      setUnreadCount(0);
     } catch (err) {
-      console.error('Failed to mark all as read:', err);
+      console.error('Failed to mark all as read on server:', err);
     }
   };
 
@@ -459,26 +487,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
             }
 
             batch.forEach((item) => {
+              if (item.is_read) return;
+
               const customEvent = new CustomEvent('notification_received', { detail: item });
               window.dispatchEvent(customEvent);
-
-              // Trigger native OS notification banner via Service Worker
-              if ('Notification' in window && window.Notification.permission === 'granted') {
-                if ('serviceWorker' in navigator) {
-                  navigator.serviceWorker.ready.then((reg) => {
-                    reg.showNotification(item.title || 'Geeksman OS', {
-                      body: item.body || 'You have a new update.',
-                      icon: window.location.origin + '/geeksman_logo.png',
-                      badge: window.location.origin + '/favicon.png',
-                      data: {
-                        url: item.link || '/'
-                      }
-                    });
-                  }).catch((err) => {
-                    console.error('Failed to trigger OS notification via SW:', err);
-                  });
-                }
-              }
             });
           }, 100);
         }
@@ -514,6 +526,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
       heartbeatTimeoutRef.current = null;
     }
     setSseActive(false);
+  };
+
+  const reconnectSSE = () => {
+    cleanupSSE();
+    if (runTabChecks()) {
+      connectSSE();
+    }
   };
 
   useEffect(() => {
@@ -619,6 +638,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         markAsRead,
         markAllAsRead,
         unsubscribePush,
+        reconnectSSE,
+        pushPermission,
+        requestPushPermission,
         registerListener,
       }}
     >
