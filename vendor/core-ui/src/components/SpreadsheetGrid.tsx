@@ -14,6 +14,7 @@ export interface SpreadsheetColumn {
   width?: string;
   placeholder?: string;
   render?: (value: any, row: any, rIdx: number) => React.ReactNode;
+  renderOption?: (option: any, isSelected: boolean) => React.ReactNode;
 }
 
 interface SpreadsheetGridProps {
@@ -236,6 +237,7 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                             options={col.options || []}
                             async={col.async}
                             defaultOpen={true}
+                            renderOption={col.renderOption}
                           />
                         </div>
                       ) : (

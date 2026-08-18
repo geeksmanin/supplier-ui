@@ -247,6 +247,10 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
   // TDI state management
   const [tabs, setTabs] = React.useState<Tab[]>([]);
   const [activeTabPath, setActiveTabPath] = React.useState<string>('/dashboard');
+  // Mirror tabs into a ref so handleCloseTab always reads the latest list without
+  // stale closures — state updater functions work but calling navigate() inside
+  // one is a React anti-pattern and can cause subtle double-render issues.
+  const tabsRef = React.useRef<Tab[]>([]);
 
   React.useEffect(() => {
     window.scrollTo(0, 0);
@@ -284,11 +288,13 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
 
       if (kept.some(t => t.path === currentPath)) {
         // Return prev when unchanged so unstable effect deps cannot loop setState.
-        return droppedStaleForms ? kept : prev;
+        const result = droppedStaleForms ? kept : prev;
+        tabsRef.current = result;
+        return result;
       }
 
       if (matchedRoute) {
-        return [
+        const result = [
           ...kept,
           {
             path: currentPath,
@@ -298,33 +304,35 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
             params: matchedParams
           }
         ];
+        tabsRef.current = result;
+        return result;
       }
 
-      return droppedStaleForms ? kept : prev;
+      const result = droppedStaleForms ? kept : prev;
+      tabsRef.current = result;
+      return result;
     });
     setActiveTabPath(currentPath);
   }, [location.pathname, routes, finalNavItems]);
 
   const handleCloseTab = (pathClose: string) => {
-    setTabs(prev => {
-      const index = prev.findIndex(t => t.path === pathClose);
-      if (index === -1) return prev;
+    // Read current tabs from the ref — always up-to-date, no stale closure.
+    const current = tabsRef.current;
+    const index = current.findIndex(t => t.path === pathClose);
+    if (index === -1) return;
 
-      const newTabs = prev.filter(t => t.path !== pathClose);
+    const newTabs = current.filter(t => t.path !== pathClose);
+    tabsRef.current = newTabs;
+    setTabs(newTabs);
 
-      if (activeTabPath === pathClose) {
-        setTimeout(() => {
-          if (newTabs.length > 0) {
-            const nextActiveIndex = Math.min(index, newTabs.length - 1);
-            navigate(newTabs[nextActiveIndex].path);
-          } else {
-            navigate('/dashboard');
-          }
-        }, 0);
-      }
-
-      return newTabs;
-    });
+    // Compare against location.pathname (always live) — not the potentially
+    // stale activeTabPath state value — to decide whether we need to redirect.
+    if (location.pathname === pathClose) {
+      const nextPath = newTabs.length > 0
+        ? newTabs[Math.min(index, newTabs.length - 1)].path
+        : '/dashboard';
+      navigate(nextPath);
+    }
   };
 
   React.useEffect(() => {

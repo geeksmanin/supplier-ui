@@ -31,8 +31,97 @@ export const LayoutDesktop: React.FC<any> = ({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const [tabSearchOpen, setTabSearchOpen] = useState(false);
+  const [tabSearchQuery, setTabSearchQuery] = useState('');
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+  
+  const handleScrollSubnav = (direction: 'left' | 'right') => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = 200;
+      scrollContainerRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const handleScrollTabs = (direction: 'left' | 'right') => {
+    if (tabsContainerRef.current) {
+      const scrollAmount = 150;
+      tabsContainerRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const getTabIcon = (path: string) => {
+    const p = path.toLowerCase();
+    if (p.includes('catalogue') || p.includes('products') || p.includes('variants') || p.includes('categories') || p.includes('groups') || p.includes('brands') || p.includes('hsn')) {
+      return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#db2777' }}>
+          <path d="M12 2L2 7l10 5 10-5-10-5z" />
+          <path d="M2 17l10 5 10-5" />
+          <path d="M2 12l10 5 10-5" />
+        </svg>
+      );
+    }
+    if (p.includes('inventory') || p.includes('items')) {
+      return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#7c3aed' }}>
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+          <line x1="12" y1="22.08" x2="12" y2="12" />
+        </svg>
+      );
+    }
+    if (p.includes('crm') || p.includes('leads')) {
+      return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#16a34a' }}>
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+        </svg>
+      );
+    }
+    if (p.includes('sales')) {
+      return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#e11d48' }}>
+          <circle cx="9" cy="21" r="1" />
+          <circle cx="20" cy="21" r="1" />
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+        </svg>
+      );
+    }
+    if (p.includes('contact')) {
+      return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ea580c' }}>
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        </svg>
+      );
+    }
+    if (p.includes('location')) {
+      return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#0d9488' }}>
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+          <circle cx="12" cy="10" r="3" />
+        </svg>
+      );
+    }
+    return (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#2563eb' }}>
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
+    );
+  };
 
 
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -128,10 +217,15 @@ export const LayoutDesktop: React.FC<any> = ({
   // Auto-activate main menu parent based on active route path (including child prefix matching)
   useEffect(() => {
     const getMatchingNavItem = (path: string) => {
-      // Find exact match first
-      let found = navItems.find(item => item.path === path);
+      // Prioritize exact matches that are main menu items (no parentId)
+      let found = navItems.find(item => item.path === path && !item.parentId);
       if (found) return found;
-      // Find prefix match (e.g. /products/9 matches /products)
+
+      // Otherwise, find any exact match
+      found = navItems.find(item => item.path === path);
+      if (found) return found;
+
+      // Prefix matching
       found = navItems.find(item => item.path !== '/' && path.startsWith(item.path + '/'));
       return found;
     };
@@ -281,7 +375,7 @@ export const LayoutDesktop: React.FC<any> = ({
 
   // Width calculations based on state
   const leftSidebarWidth = '72px';
-  const subNavWidth = !isDashboard && extendedNavItems.length > 0 && !isSubNavCollapsed ? '240px' : '0px';
+  const subNavWidth = '0px';
   const mainMarginLeft = `calc(${leftSidebarWidth} + ${subNavWidth})`;
 
   const activeParentItem = mainNavItems.find(item => item.id === activeMainMenuId);
@@ -476,9 +570,9 @@ export const LayoutDesktop: React.FC<any> = ({
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '0.2rem',
-                  backgroundColor: isActive ? '#f3f4f6' : 'transparent',
+                  backgroundColor: isActive ? '#eff6ff' : 'transparent',
                   transition: 'all var(--transition-fast)',
-                  border: isActive ? '1px solid #e5e7eb' : '1px solid transparent',
+                  border: isActive ? '1px solid #bfdbfe' : '1px solid transparent',
                   padding: '4px 0',
                 }}
                 onMouseEnter={(e) => {
@@ -635,131 +729,7 @@ export const LayoutDesktop: React.FC<any> = ({
         </div>
       </aside>
 
-      {/* 2. Sub-navigation Column (Collapsible) */}
-      {!isDashboard && (
-        <aside style={{
-          width: subNavWidth,
-          height: '100vh',
-          position: 'fixed',
-          left: leftSidebarWidth,
-          top: 0,
-          backgroundColor: '#ffffff',
-          borderRight: extendedNavItems.length > 0 && !isSubNavCollapsed ? '1px solid #e5e7eb' : 'none',
-          display: 'flex',
-          flexDirection: 'column',
-          padding: extendedNavItems.length > 0 && !isSubNavCollapsed ? '1.5rem 1rem 1.5rem 1rem' : '0',
-          zIndex: 20,
-          transition: 'width var(--transition-normal), padding var(--transition-normal)',
-          overflow: 'hidden',
-        }}>
-          {extendedNavItems.length > 0 && !isSubNavCollapsed && (
-            <>
-              {/* Header section with collapse trigger */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '1.75rem',
-              }}>
-                <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#111827', margin: 0 }}>
-                  {subNavTitle === 'Setting' ? 'Settings' : subNavTitle}
-                </h2>
-                <button
-                  onClick={() => setIsSubNavCollapsed(true)}
-                  style={{
-                    background: '#f3f4f6',
-                    border: 'none',
-                    borderRadius: '50%',
-                    width: '24px',
-                    height: '24px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    fontSize: '0.75rem',
-                    color: '#4b5563'
-                  }}
-                  title="Collapse Sidebar"
-                >
-                  ◀
-                </button>
-              </div>
 
-              {/* Subnav links */}
-              <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
-                {extendedNavItems.map(item => {
-                  const isPathMatch = (current: string, target: string) => {
-                    if (current === target) return true;
-                    if (target !== '/' && current.startsWith(target + '/')) {
-                      const hasMoreSpecific = extendedNavItems.some(
-                        other => other.path !== target && (current === other.path || (other.path !== '/' && current.startsWith(other.path + '/')))
-                      );
-                      return !hasMoreSpecific;
-                    }
-                    return false;
-                  };
-                  const isActive = isPathMatch(currentPath, item.path) || (item.path.startsWith('#') && window.location.hash.endsWith(item.path.substring(1)));
-                  return (
-                    <div
-                      key={item.id || item.path}
-                      onClick={() => onNavigate(item.path)}
-                      style={{
-                        padding: '0.6rem 0.8rem',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        fontSize: '0.875rem',
-                        fontWeight: isActive ? 600 : 500,
-                        color: isActive ? '#ffffff' : '#4b5563',
-                        backgroundColor: isActive ? 'var(--primary)' : 'transparent',
-                        transition: 'all var(--transition-fast)'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isActive) e.currentTarget.style.backgroundColor = '#f3f4f6';
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
-                      }}
-                    >
-                      <span>{item.icon}</span>
-                      <span>{item.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </aside>
-      )}
-
-      {/* Re-expand indicator trigger */}
-      {!isDashboard && extendedNavItems.length > 0 && isSubNavCollapsed && (
-        <button
-          onClick={() => setIsSubNavCollapsed(false)}
-          style={{
-            position: 'fixed',
-            left: `calc(${leftSidebarWidth} + 8px)`,
-            top: '20px',
-            backgroundColor: '#ffffff',
-            border: '1px solid #e5e7eb',
-            borderRadius: '50%',
-            width: '28px',
-            height: '28px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: 'var(--shadow-sm)',
-            cursor: 'pointer',
-            zIndex: 25,
-            fontSize: '0.75rem'
-          }}
-          title="Expand Sidebar"
-        >
-          ▶
-        </button>
-      )}
 
       {/* 3. Main content frame */}
       <div style={{
@@ -774,12 +744,12 @@ export const LayoutDesktop: React.FC<any> = ({
       }}>
         {/* Top Header containing Search Bar & Profile drop */}
         <header style={{
-          height: '70px',
-          borderBottom: '1px solid #e5e7eb',
+          height: '50px',
+          borderBottom: '1px solid #e2e8f0',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 2.5rem',
+          padding: '0 2rem',
           backgroundColor: '#ffffff',
           position: 'sticky',
           top: 0,
@@ -800,10 +770,10 @@ export const LayoutDesktop: React.FC<any> = ({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '1.5rem',
-                padding: '0.45rem 1rem',
+                gap: '1rem',
+                padding: '0.3rem 0.8rem',
                 border: '1px solid #e5e7eb',
-                borderRadius: '8px',
+                borderRadius: '6px',
                 backgroundColor: '#f9fafb',
                 color: '#8e9aa8',
                 fontSize: '0.85rem',
@@ -828,7 +798,7 @@ export const LayoutDesktop: React.FC<any> = ({
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Search settings & pages..."
+                  placeholder="Search settings, pages, products..."
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -1140,96 +1110,456 @@ export const LayoutDesktop: React.FC<any> = ({
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            backgroundColor: '#ffffff',
-            borderBottom: '1px solid #e5e7eb',
-            padding: '0 2.5rem',
-            gap: '4px',
+            backgroundColor: '#f1f5f9',
+            borderBottom: '1px solid #e2e8f0',
+            padding: '0 8px',
             position: 'sticky',
-            top: '70px',
+            top: '50px',
             zIndex: 90,
-            overflowX: 'auto',
-            height: '40px',
+            height: '32px',
+            width: '100%',
+            boxSizing: 'border-box',
           }}>
-            {tabs.map((tab: any, idx: number) => {
-              const isActive = tab.path === activeTabPath;
-              return (
-                <div
-                  key={`${tab.path}-${idx}`}
-                  onClick={() => onSelectTab(tab.path)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '0 12px',
-                    height: '100%',
-                    borderBottom: isActive ? '2px solid var(--primary)' : '2px solid transparent',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem',
-                    fontWeight: isActive ? 600 : 500,
-                    color: isActive ? '#111827' : '#6b7280',
-                    backgroundColor: isActive ? '#f9fafb' : 'transparent',
-                    transition: 'all 0.15s ease',
-                    userSelect: 'none',
-                    borderRight: '1px solid #f3f4f6',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) e.currentTarget.style.backgroundColor = '#f3f4f6';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
-                >
-                  <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>{idx + 1}</span>
-                  <span>{tab.title}</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      onCloseTab(tab.path);
-                    }}
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                    }}
-                    onMouseUp={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                    }}
+            {/* Left Scroll Button */}
+            <button
+              onClick={() => handleScrollTabs('left')}
+              style={{
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                fontSize: '0.7rem',
+                color: '#64748b',
+                padding: '0 6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100%',
+              }}
+              title="Scroll Tabs Left"
+            >
+              ◀
+            </button>
+
+            {/* Scrollable Tabs Wrapper */}
+            <div
+              ref={tabsContainerRef}
+              style={{
+                display: 'flex',
+                alignItems: 'flex-end',
+                gap: '2px',
+                flexGrow: 1,
+                overflowX: 'auto',
+                scrollbarWidth: 'none',
+                height: '100%',
+              }}
+            >
+              <style dangerouslySetInnerHTML={{__html: `
+                div::-webkit-scrollbar {
+                  display: none;
+                }
+              `}} />
+            {(() => {
+              const getTabColor = (path: string, isActive: boolean) => {
+                const p = path.toLowerCase();
+                if (p.includes('catalogue') || p.includes('products') || p.includes('variants') || p.includes('categories') || p.includes('groups') || p.includes('brands') || p.includes('hsn')) {
+                  return isActive 
+                    ? { bg: 'linear-gradient(to bottom, #fdf2f8, #fce7f3)', text: '#be185d', borderTop: '3px solid #db2777' }
+                    : { bg: '#fbcfe8', text: '#9d174d', borderTop: '3px solid transparent' };
+                }
+                if (p.includes('inventory') || p.includes('items') || p.includes('locations')) {
+                  return isActive 
+                    ? { bg: 'linear-gradient(to bottom, #faf5ff, #f3e8ff)', text: '#6d28d9', borderTop: '3px solid #7c3aed' }
+                    : { bg: '#e9d5ff', text: '#5b21b6', borderTop: '3px solid transparent' };
+                }
+                if (p.includes('crm') || p.includes('leads')) {
+                  return isActive 
+                    ? { bg: 'linear-gradient(to bottom, #f0fdf4, #dcfce7)', text: '#15803d', borderTop: '3px solid #16a34a' }
+                    : { bg: '#bbf7d0', text: '#166534', borderTop: '3px solid transparent' };
+                }
+                if (p.includes('sales')) {
+                  return isActive 
+                    ? { bg: 'linear-gradient(to bottom, #fff1f2, #ffe4e6)', text: '#be123c', borderTop: '3px solid #e11d48' }
+                    : { bg: '#fecdd3', text: '#9f1239', borderTop: '3px solid transparent' };
+                }
+                if (p.includes('contact')) {
+                  return isActive 
+                    ? { bg: 'linear-gradient(to bottom, #fff7ed, #ffedd5)', text: '#c2410c', borderTop: '3px solid #ea580c' }
+                    : { bg: '#fed7aa', text: '#9a3412', borderTop: '3px solid transparent' };
+                }
+                if (p.includes('location')) {
+                  return isActive 
+                    ? { bg: 'linear-gradient(to bottom, #f0fdfa, #ccfbf1)', text: '#0f766e', borderTop: '3px solid #0d9488' }
+                    : { bg: '#99f6e4', text: '#115e59', borderTop: '3px solid transparent' };
+                }
+                return isActive 
+                  ? { bg: 'linear-gradient(to bottom, #eff6ff, #dbeafe)', text: '#1d4ed8', borderTop: '3px solid #2563eb' }
+                  : { bg: '#bfdbfe', text: '#1e40af', borderTop: '3px solid transparent' };
+              };
+
+
+
+              return tabs.map((tab: any, idx: number) => {
+                const isActive = tab.path === activeTabPath;
+                const theme = getTabColor(tab.path, isActive);
+                return (
+                  <div
+                    key={`${tab.path}-${idx}`}
+                    onClick={() => onSelectTab(tab.path)}
                     style={{
-                      border: 'none',
-                      background: 'none',
-                      color: '#9ca3af',
-                      fontSize: '11px',
-                      cursor: 'pointer',
-                      width: '20px',
-                      height: '20px',
-                      display: 'inline-flex',
+                      display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRadius: '50%',
-                      flexShrink: 0,
-                      padding: 0,
+                      gap: '8px',
+                      padding: '0 12px',
+                      height: '28px',
+                      borderTop: theme.borderTop,
+                      borderLeft: '1px solid rgba(0, 0, 0, 0.08)',
+                      borderRight: '1px solid rgba(0, 0, 0, 0.08)',
+                      borderRadius: '6px 6px 0 0',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      fontWeight: isActive ? 600 : 500,
+                      color: theme.text,
+                      background: theme.bg,
+                      transition: 'all 0.15s ease',
+                      userSelect: 'none',
+                      marginBottom: '-1px',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#e5e7eb';
-                      e.currentTarget.style.color = '#ef4444';
+                      if (!isActive) e.currentTarget.style.filter = 'brightness(0.95)';
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.color = '#9ca3af';
+                      if (!isActive) e.currentTarget.style.filter = 'none';
                     }}
                   >
-                    ✕
-                  </button>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {getTabIcon(tab.path)}
+                    </span>
+                    <span>{tab.title}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        onCloseTab(tab.path);
+                      }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                      }}
+                      onMouseUp={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                      }}
+                      style={{
+                        border: 'none',
+                        background: 'none',
+                        color: theme.text,
+                        opacity: 0.7,
+                        fontSize: '11px',
+                        cursor: 'pointer',
+                        width: '20px',
+                        height: '20px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '50%',
+                        flexShrink: 0,
+                        padding: 0,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              });
+            })()}
+            </div>
+
+            {/* Right Scroll Button */}
+            <button
+              onClick={() => handleScrollTabs('right')}
+              style={{
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                fontSize: '0.7rem',
+                color: '#64748b',
+                padding: '0 6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100%',
+              }}
+              title="Scroll Tabs Right"
+            >
+              ▶
+            </button>
+
+            {/* Tab Search Toggle Button */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: '100%' }}>
+              <button
+                onClick={() => setTabSearchOpen(!tabSearchOpen)}
+                style={{
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  color: '#64748b',
+                  padding: '0 8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                }}
+                title="Search Tabs"
+              >
+                ▼
+              </button>
+              
+              {tabSearchOpen && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '4px',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                  zIndex: 200,
+                  width: '320px',
+                  padding: '8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                }}
+                onMouseLeave={() => setTabSearchOpen(false)}
+                >
+                  <input
+                    type="text"
+                    placeholder="Search tabs..."
+                    value={tabSearchQuery}
+                    onChange={(e) => setTabSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '6px 10px',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '6px',
+                      fontSize: '0.8rem',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                    autoFocus
+                  />
+                  <div style={{
+                    maxHeight: '240px',
+                    overflowY: 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px',
+                  }}>
+                    {tabs
+                      .filter((tab: any) => tab.title.toLowerCase().includes(tabSearchQuery.toLowerCase()))
+                      .map((tab: any, idx: number) => {
+                        return (
+                          <div
+                            key={`${tab.path}-${idx}`}
+                            onClick={() => {
+                              onSelectTab(tab.path);
+                              setTabSearchOpen(false);
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '6px 8px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              backgroundColor: tab.path === activeTabPath ? '#f1f5f9' : 'transparent',
+                              transition: 'all 0.15s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (tab.path !== activeTabPath) e.currentTarget.style.backgroundColor = '#f8fafc';
+                            }}
+                            onMouseLeave={(e) => {
+                              if (tab.path !== activeTabPath) e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                              <span style={{ display: 'inline-flex', flexShrink: 0 }}>
+                                {getTabIcon(tab.path)}
+                              </span>
+                              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {tab.title}
+                                </span>
+                                <span style={{ fontSize: '0.65rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {tab.path}
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onCloseTab(tab.path);
+                              }}
+                              style={{
+                                border: 'none',
+                                background: 'none',
+                                color: '#94a3b8',
+                                cursor: 'pointer',
+                                fontSize: '10px',
+                                padding: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '50%',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#fee2e2';
+                                e.currentTarget.style.color = '#ef4444';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                                e.currentTarget.style.color = '#94a3b8';
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        );
+                      })}
+                  </div>
                 </div>
-              );
-            })}
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Horizontal Module Sub-Navigation Bar */}
+        {!isDashboard && extendedNavItems.length > 0 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            backgroundColor: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '8px',
+            margin: '8px 1.25rem 0 1.25rem',
+            padding: '0 8px',
+            height: '38px',
+            boxSizing: 'border-box',
+            zIndex: 89,
+            position: 'relative',
+          }}>
+            {/* Left Scroll button */}
+            <button
+              onClick={() => handleScrollSubnav('left')}
+              style={{
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                fontSize: '0.75rem',
+                color: '#64748b',
+                padding: '0 6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100%',
+              }}
+              title="Scroll Left"
+            >
+              ◀
+            </button>
+
+            {/* Scrollable container */}
+            <div 
+              ref={scrollContainerRef}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1.2rem',
+                flexGrow: 1,
+                overflowX: 'auto',
+                scrollbarWidth: 'none',
+                height: '100%',
+              }}
+            >
+              <style dangerouslySetInnerHTML={{__html: `
+                div::-webkit-scrollbar {
+                  display: none;
+                }
+              `}} />
+
+              {extendedNavItems.map((item: any) => {
+                const isActive = currentPath === item.path || currentPath.startsWith(item.path + '/');
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => onNavigate(item.path)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      height: '100%',
+                      borderBottom: isActive ? '2px solid #2563eb' : '2px solid transparent',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      fontWeight: isActive ? 600 : 500,
+                      color: isActive ? '#1e293b' : '#64748b',
+                      padding: '0 2px',
+                      transition: 'all 0.15s ease',
+                      userSelect: 'none',
+                      whiteSpace: 'nowrap',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) e.currentTarget.style.color = '#1e293b';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) e.currentTarget.style.color = '#64748b';
+                    }}
+                  >
+                    {item.icon && (
+                      <span style={{ display: 'inline-flex', opacity: isActive ? 0.9 : 0.6, transform: 'scale(0.85)' }}>
+                        {item.icon}
+                      </span>
+                    )}
+                    <span>{item.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Right Scroll button */}
+            <button
+              onClick={() => handleScrollSubnav('right')}
+              style={{
+                border: 'none',
+                background: 'none',
+                cursor: 'pointer',
+                fontSize: '0.75rem',
+                color: '#64748b',
+                padding: '0 6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100%',
+              }}
+              title="Scroll Right"
+            >
+              ▶
+            </button>
           </div>
         )}
 
         {/* Content body wrapper */}
         <main style={{
-          padding: isDashboard ? '0' : '2.5rem',
+          padding: isDashboard ? '0' : '0.75rem 1.25rem',
           flex: 1,
           boxSizing: 'border-box',
           width: '100%',

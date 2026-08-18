@@ -527,7 +527,7 @@ export const Select: React.FC<SelectProps> = ({
   };
 
   return (
-    <div ref={containerRef} data-select-container="true" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '6px', width: '100%', boxSizing: 'border-box', ...style }}>
+    <div ref={containerRef} data-select-container="true" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '6px', width: '100%', minWidth: 0, boxSizing: 'border-box', ...style }}>
       {/* The dropdown itself */}
       <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
       {/* Left icon badge */}
