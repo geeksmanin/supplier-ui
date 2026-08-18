@@ -44,7 +44,7 @@ interface TabRegistry {
 // Can also control via localStorage:
 //   localStorage.setItem('notification_stream_paused', 'true' | 'false')
 //   localStorage.setItem('notification_stream_paused_until', String(Date.now() + ms))
-const NOTIFICATION_STREAM_TEMPORARILY_PAUSED = true;
+const NOTIFICATION_STREAM_TEMPORARILY_PAUSED = false;
 
 const isNotificationStreamPaused = (): boolean => {
   if (typeof window === 'undefined') {
@@ -416,11 +416,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
           } catch (e) {}
         }
 
-        // Route chat notifications to the custom event immediately, bypassing global inbox
-        if (notif.entity_name === 'staff_chat') {
-          const customEvent = new CustomEvent('notification_received', { detail: notif });
-          window.dispatchEvent(customEvent);
-        }
+        // Route all notifications immediately to the custom event bus!
+        // This ensures live chat, ticket comments, and state updates receive the event in real time
+        // even if the notification is marked as read or auto-read because the user is viewing the page.
+        const customEvent = new CustomEvent('notification_received', { detail: notif });
+        window.dispatchEvent(customEvent);
 
         const activeTicketId = (window as any).activeTicketId;
         const activeChatId = (window as any).activeChatId;
@@ -485,13 +485,6 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
             if (batch.length > 0) {
               playNotificationSound();
             }
-
-            batch.forEach((item) => {
-              if (item.is_read) return;
-
-              const customEvent = new CustomEvent('notification_received', { detail: item });
-              window.dispatchEvent(customEvent);
-            });
           }, 100);
         }
       } catch (err) {
