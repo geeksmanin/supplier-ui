@@ -682,41 +682,7 @@ export const DataTable: React.FC<DataTableProps> = ({
       </div>
 
       {/* Table Container */}
-      <div style={{ position: 'relative', overflow: 'auto', flex: 1, minHeight: 0, maxHeight: '600px', border: '1px solid #e5e7eb', borderRadius: '14px' }}>
-        {loading && (
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(255, 255, 255, 0.75)',
-            backdropFilter: 'blur(2px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10
-          }}>
-            <style dangerouslySetInnerHTML={{ __html: `
-              @keyframes antigravity-glow-spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-              }
-            `}} />
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                background: 'conic-gradient(from 0deg, transparent 20%, #2563eb, #a855f7, #ec4899)',
-                WebkitMask: 'radial-gradient(farthest-side, transparent 65%, black 66%)',
-                mask: 'radial-gradient(farthest-side, transparent 65%, black 66%)',
-                animation: 'antigravity-glow-spin 1.2s linear infinite',
-              }} />
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b' }}>Loading data...</span>
-            </div>
-          </div>
-        )}
+      <div style={{ overflow: 'auto', flex: 1, minHeight: 0, maxHeight: '600px', border: '1px solid #e5e7eb', borderRadius: '14px' }}>
         <table className="erp-table erp-table-sticky-header" style={{ margin: 0, border: 'none' }}>
           <thead>
             <tr>
