@@ -15,6 +15,8 @@ export { ToastProvider, useToast } from './components/Toast/Toast';
 export type { ToastType } from './components/Toast/Toast';export { Select } from './components/Select';
 export type { SelectProps, SelectOption, SelectAsyncConfig } from './components/Select';
 export { ViewIcon, EditIcon, DeleteIcon } from './components/ActionIcons';
+export { TableRowActions } from './components/TableRowActions';
+export type { TableRowActionsProps } from './components/TableRowActions';
 export { ConfirmModal } from './components/ConfirmModal';
 export { DocumentPreviewModal } from './components/DocumentPreviewModal';
 export type { DocumentPreviewModalProps } from './components/DocumentPreviewModal';
