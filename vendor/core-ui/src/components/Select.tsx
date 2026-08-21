@@ -148,6 +148,7 @@ export const Select: React.FC<SelectProps> = ({
   const [fetchError, setFetchError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortController = useRef<AbortController | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -314,8 +315,12 @@ export const Select: React.FC<SelectProps> = ({
       setIsLoading(false);
       setFetchError(null);
     } else {
-      // auto-focus search on open
-      setTimeout(() => searchRef.current?.focus(), 50);
+      // auto-focus input on open
+      if (!multi) {
+        setTimeout(() => inputRef.current?.focus(), 50);
+      } else {
+        setTimeout(() => searchRef.current?.focus(), 50);
+      }
       // if async & minSearchLength === 0 → load immediately
       if (isAsync && (asyncConfig?.minSearchLength ?? 0) === 0) {
         fetchAsync('');
@@ -472,32 +477,41 @@ export const Select: React.FC<SelectProps> = ({
     const opt = staticOptions.find((o) => o.value === selectedValues[0]) ||
                 asyncOptions.find((o) => o.value === selectedValues[0]) ||
                 asyncCache[selectedValues[0]];
-    if (!selectedValues[0]) {
-      return (
-        <span style={{
-          color: 'var(--text-secondary, #9ca3af)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          display: 'block',
-          width: '100%',
-        }}>
-          {placeholder}
-        </span>
-      );
-    }
-    const label = opt?.label ?? getLabel(selectedValues[0]);
+    const selectedLabel = opt?.label ?? (selectedValues[0] ? getLabel(selectedValues[0]) : '');
+
     return (
-      <span style={{
-        color: 'var(--text-primary, #111827)',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-        display: 'block',
-        width: '100%',
-      }}>
-        {label}
-      </span>
+      <input
+        ref={inputRef}
+        type="text"
+        value={isOpen ? searchTerm : selectedLabel}
+        onChange={(e) => {
+          setSearchTerm(e.target.value);
+          if (!isOpen) setIsOpen(true);
+        }}
+        onFocus={() => {
+          if (!disabled) {
+            setIsFocused(true);
+            setIsOpen(true);
+          }
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!disabled && !isOpen) setIsOpen(true);
+        }}
+        placeholder={isOpen && selectedLabel ? selectedLabel : placeholder}
+        disabled={disabled}
+        style={{
+          border: 'none',
+          outline: 'none',
+          background: 'transparent',
+          width: '100%',
+          fontSize: 'inherit',
+          color: !selectedValues[0] && !isOpen ? 'var(--text-secondary, #9ca3af)' : 'var(--text-primary, #111827)',
+          fontFamily: 'inherit',
+          padding: 0,
+          cursor: disabled ? 'not-allowed' : 'text',
+        }}
+      />
     );
   };
 
@@ -721,7 +735,9 @@ export const Select: React.FC<SelectProps> = ({
             position: 'absolute',
             top: 'calc(100% + 4px)',
             left: 0,
-            minWidth: '340px',
+            width: '100%',
+            minWidth: '100%',
+            boxSizing: 'border-box',
             backgroundColor: '#ffffff',
             border: '1px solid #e5e7eb',
             borderRadius: '10px',
@@ -732,8 +748,8 @@ export const Select: React.FC<SelectProps> = ({
             overflow: 'hidden',
           }}
         >
-          {/* Search input */}
-          {!hideDropdownSearch && (
+          {/* Search input (only in multi-chip mode where input is not in the top bar) */}
+          {multi && !hideDropdownSearch && (
           <div
             style={{
               padding: '8px',
