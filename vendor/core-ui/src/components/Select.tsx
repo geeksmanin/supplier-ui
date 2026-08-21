@@ -154,11 +154,16 @@ export const Select: React.FC<SelectProps> = ({
   const listRef = useRef<HTMLDivElement>(null);
 
   // ── Filtered options (async & local modes) ──────────────────────────────
-  const displayOptions: SelectOption[] = isAsync
-    ? asyncOptions
-    : staticOptions.filter((opt) =>
-        String(opt?.label || '').toLowerCase().includes(searchTerm.toLowerCase())
-      );
+  const basePool = isAsync
+    ? (asyncOptions.length > 0 ? asyncOptions : staticOptions)
+    : staticOptions;
+
+  const displayOptions: SelectOption[] = searchTerm.trim()
+    ? basePool.filter((opt) =>
+        String(opt?.label || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(opt?.value || '').toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : basePool;
 
   // Reset highlighted index when options length, search term, or dropdown state changes
   useEffect(() => {
@@ -485,7 +490,7 @@ export const Select: React.FC<SelectProps> = ({
         type="text"
         value={isOpen ? searchTerm : selectedLabel}
         onChange={(e) => {
-          setSearchTerm(e.target.value);
+          handleSearchChange(e.target.value);
           if (!isOpen) setIsOpen(true);
         }}
         onFocus={() => {
