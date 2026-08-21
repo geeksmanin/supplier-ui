@@ -3,6 +3,7 @@ import { UIRegistry } from '@geeksman/core-ui';
 import { Dashboard } from './pages/Dashboard';
 import { ProductList } from './pages/Products/ProductList';
 import { ProductForm } from './pages/Products/ProductForm';
+import { Tickets } from './pages/Tickets';
 
 export function registerSupplierPortalModule() {
   // Register Routes
@@ -33,6 +34,12 @@ export function registerSupplierPortalModule() {
   UIRegistry.registerRoute({
     path: '/products/:id/edit',
     element: React.createElement(ProductForm),
+    isProtected: true,
+  });
+
+  UIRegistry.registerRoute({
+    path: '/tickets',
+    element: React.createElement(Tickets),
     isProtected: true,
   });
 
@@ -95,5 +102,51 @@ export function registerSupplierPortalModule() {
     ),
     section: 'extended',
     parentId: 'supplier-portal'
+  });
+
+  UIRegistry.registerNavItem({
+    id: 'supplier-tickets-nav',
+    label: 'Support Tickets',
+    path: '/tickets',
+    icon: React.createElement('svg', {
+      width: '16',
+      height: '16',
+      viewBox: '0 0 24 24',
+      fill: 'none',
+      stroke: 'currentColor',
+      strokeWidth: '2'
+    },
+      React.createElement('path', { d: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' })
+    ),
+    section: 'extended',
+    parentId: 'supplier-portal'
+  });
+
+  // Register Global Search Items
+  UIRegistry.registerSearchItem({
+    id: 'supplier-products-search',
+    title: 'Supplier Products Catalogue',
+    description: 'Manage and update products, SKU variants, and packings',
+    category: 'Supplier Portal',
+    keywords: ['product', 'sku', 'catalog', 'catalogue', 'variant', 'price', 'packing', 'supplier'],
+    action: (navigate: any) => navigate('/products')
+  });
+
+  UIRegistry.registerSearchItem({
+    id: 'supplier-products-create-search',
+    title: '+ Create Supplier Product',
+    description: 'Add a new product with SKU variants and specifications',
+    category: 'Supplier Portal',
+    keywords: ['create product', 'new product', 'add sku', 'new variant'],
+    action: (navigate: any) => navigate('/products/new')
+  });
+
+  UIRegistry.registerSearchItem({
+    id: 'supplier-tickets-search',
+    title: 'Support Tickets',
+    description: 'View support tickets and communicate with procurement',
+    category: 'Supplier Portal',
+    keywords: ['ticket', 'support', 'help', 'inquiry', 'chat', 'issue'],
+    action: (navigate: any) => navigate('/tickets')
   });
 }
