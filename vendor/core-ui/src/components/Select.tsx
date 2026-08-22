@@ -448,9 +448,9 @@ export const Select: React.FC<SelectProps> = ({
   const renderTrigger = () => {
     if (multi) {
       if (selectedValues.length === 0)
-        return <span style={{ color: 'var(--text-secondary, #9ca3af)' }}>{placeholder}</span>;
+        return <span style={{ color: 'var(--text-secondary, #9ca3af)', fontSize: 'inherit' }}>{placeholder}</span>;
       return (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', flex: 1 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', flex: 1, minWidth: 0, alignItems: 'center' }}>
           {selectedValues.map((v) => (
             <span
               key={v}
@@ -459,18 +459,45 @@ export const Select: React.FC<SelectProps> = ({
                 alignItems: 'center',
                 gap: '4px',
                 padding: '2px 8px',
-                background: '#ede9fe',
-                color: '#5b21b6',
-                borderRadius: '999px',
+                background: '#eff6ff',
+                color: '#1e40af',
+                border: '1px solid #dbeafe',
+                borderRadius: '6px',
                 fontSize: '0.78rem',
                 fontWeight: 600,
                 lineHeight: '1.4',
+                maxWidth: '100%',
+                wordBreak: 'break-word',
               }}
             >
-              {getLabel(v)}
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getLabel(v)}</span>
               <span
                 onClick={(e) => removeChip(v, e)}
-                style={{ cursor: 'pointer', lineHeight: 1, opacity: 0.7 }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '14px',
+                  height: '14px',
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  lineHeight: 1,
+                  fontSize: '11px',
+                  color: '#64748b',
+                  marginLeft: '2px',
+                  backgroundColor: 'rgba(0,0,0,0.06)',
+                  transition: 'all 0.15s ease',
+                  flexShrink: 0,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ef4444';
+                  e.currentTarget.style.color = '#ffffff';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.06)';
+                  e.currentTarget.style.color = '#64748b';
+                }}
+                title="Remove"
               >
                 ×
               </span>
@@ -527,8 +554,8 @@ export const Select: React.FC<SelectProps> = ({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: '8px',
-    padding: customHeight ? '0.2rem 0.55rem' : '0.6rem 0.75rem',
-    paddingLeft: leftIcon ? '2.75rem' : (customHeight ? '0.55rem' : '0.75rem'),
+    padding: customHeight ? '0.2rem 0.55rem' : (multi ? '0.35rem 0.65rem' : '0.6rem 0.75rem'),
+    paddingLeft: leftIcon ? '2.75rem' : (customHeight ? '0.55rem' : (multi ? '0.65rem' : '0.75rem')),
     border: isOpen || isFocused ? '1px solid #4f46e5' : '1px solid #d1d5db',
     borderRadius: '6px',
     backgroundColor: disabled ? '#f3f4f6' : '#ffffff',
@@ -539,9 +566,10 @@ export const Select: React.FC<SelectProps> = ({
     transition: 'all 0.15s ease',
     boxShadow: isOpen || isFocused ? '0 0 0 3px rgba(79, 70, 229, 0.25)' : 'none',
     minHeight: customHeight || '38px',
-    maxHeight: customHeight || '38px',
-    overflow: 'hidden',
-    whiteSpace: 'nowrap',
+    maxHeight: customHeight || (multi ? '120px' : '38px'),
+    overflowY: multi ? 'auto' : 'hidden',
+    overflowX: 'hidden',
+    whiteSpace: multi ? 'normal' : 'nowrap',
     outline: 'none',
   };
 

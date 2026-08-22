@@ -344,11 +344,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     try {
       const payload = JSON.parse(atob(tokenVal.split('.')[1]));
       if (payload && payload.exp && Date.now() >= payload.exp * 1000) {
-        console.warn('JWT token has expired, cleaning up SSE and logging out...');
+        console.warn('JWT token has expired, cleaning up SSE...');
         cleanupSSE();
         localStorage.removeItem('token');
         localStorage.removeItem('user_email');
-        window.location.href = '/#/login';
         return;
       }
     } catch (e) {
