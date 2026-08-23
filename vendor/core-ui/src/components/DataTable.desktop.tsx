@@ -1183,20 +1183,18 @@ export const DataTable: React.FC<DataTableProps> = ({
                 </tr>
               ))
             ) : displayData.length === 0 ? (
-              <tr>
-                <td colSpan={processedColumns.length} style={{ textAlign: 'center', padding: '3.5rem 1.5rem', backgroundColor: '#ffffff' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1.25rem' }}>
-                    <img
-                      src="/no-result.png"
-                      alt="No Matches Found"
-                      style={{ width: '120px', height: '120px', objectFit: 'contain' }}
-                    />
-                    <span style={{ fontSize: '0.95rem', fontWeight: 650, color: '#1e293b' }}>
-                      No Matches Found in the Data Universe
-                    </span>
-                  </div>
-                </td>
-              </tr>
+              Array.from({ length: 5 }).map((_, rowIndex) => (
+                <tr key={`empty-static-row-${rowIndex}`}>
+                  {processedColumns.map((col, colIndex) => {
+                    const widthPercent = colIndex === 0 ? '40%' : colIndex === processedColumns.length - 1 ? '50%' : '75%';
+                    return (
+                      <td key={`empty-static-cell-${colIndex}`} style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f1f5f9' }}>
+                        <div style={{ width: widthPercent, height: '14px', backgroundColor: '#f1f5f9', borderRadius: '6px' }} />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))
             ) : (
               <>
                 {displayData.map((row: any, rIdx) => (
