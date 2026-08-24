@@ -1,5 +1,4 @@
 import React from 'react';
-import { X } from 'lucide-react';
 import type { AppFolderGroup, AppFolderItem } from '../../types/MobileTabTypes';
 
 export interface MobileAppFolderModalProps {
@@ -9,6 +8,13 @@ export interface MobileAppFolderModalProps {
   onSelectApp: (item: AppFolderItem) => void;
   currentPath?: string;
 }
+
+const CloseIcon: React.FC<{ size?: number }> = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
 
 export const MobileAppFolderModal: React.FC<MobileAppFolderModalProps> = ({
   group,
@@ -44,7 +50,7 @@ export const MobileAppFolderModal: React.FC<MobileAppFolderModalProps> = ({
         style={{
           width: '100%',
           maxWidth: '340px',
-          backgroundColor: 'rgba(255, 255, 255, 0.88)',
+          backgroundColor: 'rgba(255, 255, 255, 0.92)',
           borderRadius: '28px',
           padding: '1.5rem 1.25rem',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.6) inset',
@@ -110,7 +116,7 @@ export const MobileAppFolderModal: React.FC<MobileAppFolderModalProps> = ({
               cursor: 'pointer',
             }}
           >
-            <X size={16} />
+            <CloseIcon size={15} />
           </button>
         </div>
 
@@ -127,7 +133,6 @@ export const MobileAppFolderModal: React.FC<MobileAppFolderModalProps> = ({
           {group.items.map((item) => {
             const isActive = currentPath === item.path;
             const ItemIcon = item.icon;
-            const iconBg = item.color || '#f1f5f9';
 
             return (
               <button

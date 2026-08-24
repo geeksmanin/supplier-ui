@@ -1,5 +1,4 @@
 import React from 'react';
-import { Layers } from 'lucide-react';
 import type { AppFolderGroup } from '../../types/MobileTabTypes';
 
 export interface MobileNavItemConfig {
@@ -82,7 +81,7 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
             }}
           >
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+              <Icon size={20} />
               {item.badge !== undefined && item.badge > 0 && (
                 <span
                   style={{

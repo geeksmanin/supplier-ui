@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { X, Plus, Check, Trash2, Home } from 'lucide-react';
 import type { AppTab } from '../../types/MobileTabTypes';
 
 export interface MobileTabSwitcher3DProps {
@@ -12,6 +11,40 @@ export interface MobileTabSwitcher3DProps {
   onCloseAllTabs: () => void;
   onNewTab: () => void;
 }
+
+const CloseIcon: React.FC<{ size?: number }> = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+
+const PlusIcon: React.FC<{ size?: number }> = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+
+const CheckIcon: React.FC<{ size?: number }> = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
+const TrashIcon: React.FC<{ size?: number }> = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+  </svg>
+);
+
+const DefaultHomeIcon: React.FC<{ size?: number; color?: string }> = ({ size = 16, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    <polyline points="9 22 9 12 15 12 15 22" />
+  </svg>
+);
 
 export const MobileTabSwitcher3D: React.FC<MobileTabSwitcher3DProps> = ({
   isOpen,
@@ -28,7 +61,7 @@ export const MobileTabSwitcher3D: React.FC<MobileTabSwitcher3DProps> = ({
 
   if (!isOpen) return null;
 
-  const handleTouchStart = (e: React.TouchEvent, path: string) => {
+  const handleTouchStart = (e: React.TouchEvent, _path: string) => {
     setTouchStartX(e.touches[0].clientX);
   };
 
@@ -123,7 +156,7 @@ export const MobileTabSwitcher3D: React.FC<MobileTabSwitcher3DProps> = ({
                 gap: '0.3rem',
               }}
             >
-              <Trash2 size={13} />
+              <TrashIcon size={13} />
               Close All
             </button>
           )}
@@ -164,7 +197,7 @@ export const MobileTabSwitcher3D: React.FC<MobileTabSwitcher3DProps> = ({
         {tabs.map((tab, index) => {
           const isActive = activePath === tab.path;
           const isBeingDismissed = swipedPath === tab.path;
-          const TabIcon = tab.icon || Home;
+          const TabIcon = tab.icon || DefaultHomeIcon;
           const isHome = tab.path === '/home' || tab.path === '/';
 
           return (
@@ -257,7 +290,7 @@ export const MobileTabSwitcher3D: React.FC<MobileTabSwitcher3DProps> = ({
                       marginLeft: '0.5rem',
                     }}
                   >
-                    <X size={13} />
+                    <CloseIcon size={13} />
                   </button>
                 )}
               </div>
@@ -321,7 +354,7 @@ export const MobileTabSwitcher3D: React.FC<MobileTabSwitcher3DProps> = ({
                         gap: '0.25rem',
                       }}
                     >
-                      <Check size={12} /> Active Tab
+                      <CheckIcon size={12} /> Active Tab
                     </span>
                   )}
                 </div>
@@ -369,7 +402,7 @@ export const MobileTabSwitcher3D: React.FC<MobileTabSwitcher3DProps> = ({
             cursor: 'pointer',
           }}
         >
-          <Plus size={18} />
+          <PlusIcon size={18} />
           New Tab (Home)
         </button>
       </div>
