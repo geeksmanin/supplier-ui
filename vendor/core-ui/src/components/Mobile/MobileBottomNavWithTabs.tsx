@@ -18,7 +18,29 @@ export interface MobileBottomNavWithTabsProps {
   onNavigate: (path: string) => void;
   onOpenFolder: (group: AppFolderGroup) => void;
   onOpenTabSwitcher: () => void;
+  isFloating?: boolean;
 }
+
+const HomeColorIcon: React.FC<{ isActive?: boolean; size?: number }> = ({ isActive = false, size = 20 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{
+      color: isActive ? '#ffffff' : '#2563eb',
+      filter: isActive ? 'drop-shadow(0 2px 4px rgba(37, 99, 235, 0.4))' : 'none',
+      transition: 'all 0.2s ease',
+    }}
+  >
+    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill={isActive ? 'currentColor' : 'none'} />
+    <polyline points="9 22 9 12 15 12 15 22" stroke={isActive ? '#ffffff' : 'currentColor'} />
+  </svg>
+);
 
 export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = ({
   currentPath,
@@ -27,28 +49,36 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
   onNavigate,
   onOpenFolder,
   onOpenTabSwitcher,
+  isFloating = true,
 }) => {
   return (
     <nav
       style={{
         position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        bottom: isFloating ? '10px' : 0,
+        left: isFloating ? '12px' : 0,
+        right: isFloating ? '12px' : 0,
         height: '62px',
-        backgroundColor: '#ffffff',
-        borderTop: '1px solid #e2e8f0',
+        backgroundColor: 'rgba(255, 255, 255, 0.94)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        border: '1px solid rgba(226, 232, 240, 0.85)',
+        borderRadius: isFloating ? '24px' : '0px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-around',
-        zIndex: 100,
-        boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.04)',
-        padding: '0 0.5rem calc(env(safe-area-inset-bottom, 0px))',
+        zIndex: 10000,
+        boxShadow: isFloating
+          ? '0 12px 30px -5px rgba(0, 0, 0, 0.12), 0 4px 10px -2px rgba(0, 0, 0, 0.05)'
+          : '0 -4px 12px rgba(0, 0, 0, 0.04)',
+        padding: isFloating ? '0 0.5rem' : '0 0.5rem calc(env(safe-area-inset-bottom, 0px))',
+        boxSizing: 'border-box',
+        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
     >
       {navItems.map((item) => {
-        const Icon = item.icon;
         const isFolder = Boolean(item.isFolder && item.folderGroup);
+        const isHome = item.id === 'home' || item.path === '/home' || item.path === '/';
         const isActive = isFolder
           ? item.folderGroup?.items.some((sub) => sub.path === currentPath)
           : item.path === currentPath;
@@ -82,26 +112,47 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
               flex: 1,
               position: 'relative',
               outline: 'none',
+              transition: 'transform 0.15s ease',
             }}
           >
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {isFolder && item.folderGroup ? (
+              {isHome ? (
+                /* Colorful Attractive Home Button */
+                <div
+                  style={{
+                    width: '32px',
+                    height: '28px',
+                    borderRadius: '12px',
+                    background: isActive
+                      ? 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)'
+                      : 'rgba(37, 99, 235, 0.08)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: isActive ? '0 4px 10px rgba(37, 99, 235, 0.35)' : 'none',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <HomeColorIcon isActive={isActive} size={18} />
+                </div>
+              ) : isFolder && item.folderGroup ? (
                 /* 3x3 Mini App Folder Preview in Bottom Nav */
                 <div
                   style={{
-                    width: '23px',
-                    height: '23px',
-                    borderRadius: '7px',
-                    backgroundColor: isActive ? 'rgba(37, 99, 235, 0.12)' : 'rgba(226, 232, 240, 0.7)',
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '10px',
+                    backgroundColor: isActive ? 'rgba(37, 99, 235, 0.12)' : 'rgba(241, 245, 249, 0.9)',
                     border: isActive ? '1.5px solid #2563eb' : '1px solid rgba(203, 213, 225, 0.8)',
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 5px)',
-                    gridTemplateRows: 'repeat(3, 5px)',
-                    gap: '1.5px',
+                    gridTemplateColumns: 'repeat(3, 6px)',
+                    gridTemplateRows: 'repeat(3, 6px)',
+                    gap: '2px',
                     justifyContent: 'center',
                     alignContent: 'center',
-                    padding: '1.5px',
+                    padding: '2px',
                     boxSizing: 'border-box',
+                    boxShadow: isActive ? '0 4px 10px rgba(37, 99, 235, 0.2)' : 'none',
                     transition: 'all 0.15s ease',
                   }}
                 >
@@ -109,16 +160,16 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
                     <div
                       key={i}
                       style={{
-                        width: '5px',
-                        height: '5px',
-                        borderRadius: '1.5px',
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '2px',
                         backgroundColor: sub.color || '#2563eb',
                       }}
                     />
                   ))}
                 </div>
-              ) : Icon ? (
-                <Icon size={20} />
+              ) : item.icon ? (
+                React.createElement(item.icon, { size: 20 })
               ) : null}
 
               {/* Red Notification Badge */}
@@ -137,6 +188,7 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
                     minWidth: '14px',
                     textAlign: 'center',
                     border: '1.5px solid #ffffff',
+                    boxShadow: '0 2px 4px rgba(239, 68, 68, 0.3)',
                   }}
                 >
                   {dynamicBadge > 99 ? '99+' : dynamicBadge}
@@ -147,8 +199,10 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
             <span
               style={{
                 fontSize: '0.68rem',
-                fontWeight: isActive ? 700 : 500,
+                fontWeight: isActive ? 800 : 500,
+                color: isActive ? '#2563eb' : '#64748b',
                 letterSpacing: '-0.01em',
+                marginTop: '1px',
               }}
             >
               {item.label}
@@ -174,21 +228,23 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
           cursor: 'pointer',
           flex: 1,
           outline: 'none',
+          transition: 'transform 0.15s ease',
         }}
       >
         <div
           style={{
-            width: '20px',
-            height: '20px',
-            borderRadius: '5px',
+            width: '24px',
+            height: '24px',
+            borderRadius: '7px',
             border: '2px solid #64748b',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '0.68rem',
+            fontSize: '0.72rem',
             fontWeight: 800,
             color: '#334155',
             lineHeight: 1,
+            backgroundColor: 'rgba(241, 245, 249, 0.6)',
           }}
         >
           {tabCount || 1}
@@ -197,7 +253,9 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
           style={{
             fontSize: '0.68rem',
             fontWeight: 500,
+            color: '#64748b',
             letterSpacing: '-0.01em',
+            marginTop: '1px',
           }}
         >
           Tabs
