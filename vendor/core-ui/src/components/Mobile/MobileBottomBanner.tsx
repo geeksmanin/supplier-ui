@@ -9,6 +9,7 @@ export interface MobileBottomBannerProps {
   headerRight?: React.ReactNode;
   height?: string;
   maxHeight?: string;
+  fullHeight?: boolean;
   showDragHandle?: boolean;
   hideHeader?: boolean;
   children: React.ReactNode;
@@ -21,14 +22,18 @@ export const MobileBottomBanner: React.FC<MobileBottomBannerProps> = ({
   subtitle,
   badge,
   headerRight,
-  height = '88vh',
-  maxHeight = '94vh',
+  height,
+  maxHeight,
+  fullHeight = false,
   showDragHandle = true,
   hideHeader = false,
   children,
 }) => {
   const [mounted, setMounted] = useState(isOpen);
   const [animateIn, setAnimateIn] = useState(false);
+
+  const effectiveHeight = fullHeight ? '100%' : (height || '88vh');
+  const effectiveMaxHeight = fullHeight ? '100%' : (maxHeight || '94vh');
 
   useEffect(() => {
     if (isOpen) {
@@ -81,11 +86,11 @@ export const MobileBottomBanner: React.FC<MobileBottomBannerProps> = ({
         style={{
           position: 'relative',
           width: '100%',
-          height,
-          maxHeight,
+          height: effectiveHeight,
+          maxHeight: effectiveMaxHeight,
           backgroundColor: '#ffffff',
-          borderTopLeftRadius: '24px',
-          borderTopRightRadius: '24px',
+          borderTopLeftRadius: fullHeight ? '0px' : '20px',
+          borderTopRightRadius: fullHeight ? '0px' : '20px',
           boxShadow: '0 -10px 40px -5px rgba(0, 0, 0, 0.25)',
           display: 'flex',
           flexDirection: 'column',
