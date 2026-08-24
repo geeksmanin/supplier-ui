@@ -76,7 +76,38 @@ const resolveTabTitle = (path: string, navItems: NavItem[], routes: RouteConfig[
     }
   }
 
-  const baseTitle = bestMatch ? bestMatch.label : 'Document';
+  if (!bestMatch) {
+    const segments = cleanPath.split('/').filter(Boolean);
+    if (segments.length === 0) return 'Home Dashboard';
+
+    const lastSegment = segments[segments.length - 1];
+    const isNew = lastSegment === 'new' || lastSegment.endsWith('-create');
+    const isEdit = lastSegment === 'edit' || segments.includes('edit');
+
+    const roleParam = searchParams.get('role');
+    if (isNew && roleParam) {
+      const cleanRole = roleParam.charAt(0).toUpperCase() + roleParam.slice(1).toLowerCase();
+      return `New ${cleanRole}`;
+    }
+
+    const mainResource = segments.filter(s => s !== 'new' && s !== 'edit' && !s.startsWith('01') && !Number(s) && !s.includes('-create'))[0] || lastSegment;
+
+    const words = mainResource
+      .replace(/^inventory-/, '')
+      .replace(/^contacts-/, '')
+      .replace(/^sales-/, '')
+      .replace(/[-_]/g, ' ')
+      .trim()
+      .split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+
+    if (isNew) return `New ${words}`;
+    if (isEdit) return `Edit ${words}`;
+    return words;
+  }
+
+  const baseTitle = bestMatch.label;
   
   if (cleanPath.endsWith('/new')) {
     const singleName = baseTitle.endsWith('ies') ? baseTitle.slice(0, -3) + 'y' : baseTitle.endsWith('s') ? baseTitle.slice(0, -1) : baseTitle;
