@@ -55,23 +55,23 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
     <nav
       style={{
         position: 'fixed',
-        bottom: isFloating ? '10px' : 0,
-        left: isFloating ? '12px' : 0,
-        right: isFloating ? '12px' : 0,
+        bottom: isFloating ? '14px' : 0,
+        left: isFloating ? '16px' : 0,
+        right: isFloating ? '16px' : 0,
         height: '62px',
-        backgroundColor: 'rgba(255, 255, 255, 0.94)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        border: '1px solid rgba(226, 232, 240, 0.85)',
-        borderRadius: isFloating ? '24px' : '0px',
+        backgroundColor: isFloating ? 'rgba(255, 255, 255, 0.76)' : '#ffffff',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        border: isFloating ? '1px solid rgba(255, 255, 255, 0.65)' : '1px solid #e2e8f0',
+        borderRadius: isFloating ? '9999px' : '0px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-around',
         zIndex: 10000,
         boxShadow: isFloating
-          ? '0 12px 30px -5px rgba(0, 0, 0, 0.12), 0 4px 10px -2px rgba(0, 0, 0, 0.05)'
+          ? '0 12px 32px -4px rgba(0, 0, 0, 0.12), 0 4px 12px -2px rgba(0, 0, 0, 0.06)'
           : '0 -4px 12px rgba(0, 0, 0, 0.04)',
-        padding: isFloating ? '0 0.5rem' : '0 0.5rem calc(env(safe-area-inset-bottom, 0px))',
+        padding: isFloating ? '0 0.75rem' : '0 0.5rem calc(env(safe-area-inset-bottom, 0px))',
         boxSizing: 'border-box',
         transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
       }}
@@ -107,7 +107,7 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
               justifyContent: 'center',
               gap: '2px',
               padding: '4px 6px',
-              color: isActive ? '#2563eb' : '#64748b',
+              color: isActive ? '#2563eb' : '#475569',
               cursor: 'pointer',
               flex: 1,
               position: 'relative',
@@ -142,8 +142,8 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
                     width: '28px',
                     height: '28px',
                     borderRadius: '10px',
-                    backgroundColor: isActive ? 'rgba(37, 99, 235, 0.12)' : 'rgba(241, 245, 249, 0.9)',
-                    border: isActive ? '1.5px solid #2563eb' : '1px solid rgba(203, 213, 225, 0.8)',
+                    backgroundColor: isActive ? 'rgba(37, 99, 235, 0.14)' : 'rgba(241, 245, 249, 0.85)',
+                    border: isActive ? '1.5px solid #2563eb' : '1px solid rgba(203, 213, 225, 0.75)',
                     display: 'grid',
                     gridTemplateColumns: 'repeat(3, 6px)',
                     gridTemplateRows: 'repeat(3, 6px)',
@@ -152,7 +152,7 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
                     alignContent: 'center',
                     padding: '2px',
                     boxSizing: 'border-box',
-                    boxShadow: isActive ? '0 4px 10px rgba(37, 99, 235, 0.2)' : 'none',
+                    boxShadow: isActive ? '0 4px 10px rgba(37, 99, 235, 0.25)' : 'none',
                     transition: 'all 0.15s ease',
                   }}
                 >
@@ -199,8 +199,8 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
             <span
               style={{
                 fontSize: '0.68rem',
-                fontWeight: isActive ? 800 : 500,
-                color: isActive ? '#2563eb' : '#64748b',
+                fontWeight: isActive ? 800 : 600,
+                color: isActive ? '#2563eb' : '#475569',
                 letterSpacing: '-0.01em',
                 marginTop: '1px',
               }}
@@ -224,7 +224,7 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
           justifyContent: 'center',
           gap: '2px',
           padding: '4px 6px',
-          color: '#64748b',
+          color: '#475569',
           cursor: 'pointer',
           flex: 1,
           outline: 'none',
@@ -242,9 +242,9 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
             justifyContent: 'center',
             fontSize: '0.72rem',
             fontWeight: 800,
-            color: '#334155',
+            color: '#1e293b',
             lineHeight: 1,
-            backgroundColor: 'rgba(241, 245, 249, 0.6)',
+            backgroundColor: 'rgba(241, 245, 249, 0.75)',
           }}
         >
           {tabCount || 1}
@@ -252,8 +252,8 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
         <span
           style={{
             fontSize: '0.68rem',
-            fontWeight: 500,
-            color: '#64748b',
+            fontWeight: 600,
+            color: '#475569',
             letterSpacing: '-0.01em',
             marginTop: '1px',
           }}
