@@ -261,15 +261,16 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
   const routes = UIRegistry.getRoutes();
 
   React.useEffect(() => {
-    const currentPath = location.pathname;
-    if (currentPath === '/login') return;
+    const cleanPath = location.pathname;
+    const fullPath = location.pathname + (location.search || '');
+    if (cleanPath === '/login') return;
 
     let matchedRoute: (typeof routes)[number] | null = null;
     let matchedParams: Record<string, string | undefined> = {};
     let matchedPattern = '';
 
     for (const r of routes) {
-      const match = matchPath({ path: r.path, end: true }, currentPath);
+      const match = matchPath({ path: r.path, end: true }, cleanPath);
       if (match) {
         matchedRoute = r;
         matchedParams = match.params;
@@ -279,26 +280,17 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
     }
 
     setTabs(prev => {
-      // Drop create/edit form tabs left behind by submit, cancel, or any navigate-away
-      // so reopening the form mounts a fresh instance instead of restoring stale values.
-      const kept = prev.filter(
-        t => t.path === currentPath || !isFormTabPath(t.path)
-      );
-      const droppedStaleForms = kept.length !== prev.length;
-
-      if (kept.some(t => t.path === currentPath)) {
-        // Return prev when unchanged so unstable effect deps cannot loop setState.
-        const result = droppedStaleForms ? kept : prev;
-        tabsRef.current = result;
-        return result;
+      if (prev.some(t => t.path === fullPath || t.path === cleanPath)) {
+        tabsRef.current = prev;
+        return prev;
       }
 
       if (matchedRoute) {
         const result = [
-          ...kept,
+          ...prev,
           {
-            path: currentPath,
-            title: resolveTabTitle(currentPath, finalNavItems, routes),
+            path: fullPath,
+            title: resolveTabTitle(fullPath, finalNavItems, routes),
             element: matchedRoute.element,
             pattern: matchedPattern,
             params: matchedParams
@@ -308,12 +300,11 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
         return result;
       }
 
-      const result = droppedStaleForms ? kept : prev;
-      tabsRef.current = result;
-      return result;
+      tabsRef.current = prev;
+      return prev;
     });
-    setActiveTabPath(currentPath);
-  }, [location.pathname, routes, finalNavItems]);
+    setActiveTabPath(fullPath);
+  }, [location.pathname, location.search, routes, finalNavItems]);
 
   const handleCloseTab = (pathClose: string) => {
     // Read current tabs from the ref — always up-to-date, no stale closure.
@@ -325,9 +316,8 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
     tabsRef.current = newTabs;
     setTabs(newTabs);
 
-    // Compare against location.pathname (always live) — not the potentially
-    // stale activeTabPath state value — to decide whether we need to redirect.
-    if (location.pathname === pathClose) {
+    const fullCurrent = location.pathname + (location.search || '');
+    if (fullCurrent === pathClose || location.pathname === pathClose) {
       const nextPath = newTabs.length > 0
         ? newTabs[Math.min(index, newTabs.length - 1)].path
         : '/dashboard';
