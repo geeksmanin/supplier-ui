@@ -56,3 +56,13 @@ export type { UseFormDraftOptions, UseFormDraftReturn, DraftBannerProps } from '
 export { DraftBanner as DraftBannerComponent } from './components/DraftBanner';
 export { isMobileDevice } from './utils/device';
 
+// Mobile Navigation & 3D Tab Switcher System
+export { MobileTabSwitcher3D } from './components/Mobile/MobileTabSwitcher3D';
+export type { MobileTabSwitcher3DProps } from './components/Mobile/MobileTabSwitcher3D';
+export { MobileAppFolderModal } from './components/Mobile/MobileAppFolderModal';
+export type { MobileAppFolderModalProps } from './components/Mobile/MobileAppFolderModal';
+export { MobileBottomNavWithTabs } from './components/Mobile/MobileBottomNavWithTabs';
+export type { MobileBottomNavWithTabsProps, MobileNavItemConfig } from './components/Mobile/MobileBottomNavWithTabs';
+export type { AppTab, AppFolderItem, AppFolderGroup } from './types/MobileTabTypes';
+
+
