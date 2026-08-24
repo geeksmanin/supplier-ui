@@ -4,7 +4,7 @@ import type { AppFolderGroup } from '../../types/MobileTabTypes';
 export interface MobileNavItemConfig {
   id: string;
   label: string;
-  icon: React.ComponentType<any>;
+  icon?: React.ComponentType<any>;
   path?: string;
   isFolder?: boolean;
   folderGroup?: AppFolderGroup;
@@ -35,7 +35,7 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
         bottom: 0,
         left: 0,
         right: 0,
-        height: '60px',
+        height: '62px',
         backgroundColor: '#ffffff',
         borderTop: '1px solid #e2e8f0',
         display: 'flex',
@@ -52,6 +52,10 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
         const isActive = isFolder
           ? item.folderGroup?.items.some((sub) => sub.path === currentPath)
           : item.path === currentPath;
+
+        const dynamicBadge = isFolder && item.folderGroup
+          ? item.folderGroup.items.reduce((sum, sub) => sum + (sub.badge || 0), item.badge || 0)
+          : (item.badge || 0);
 
         return (
           <button
@@ -81,13 +85,49 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
             }}
           >
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon size={20} />
-              {item.badge !== undefined && item.badge > 0 && (
+              {isFolder && item.folderGroup ? (
+                /* 3x3 Mini App Folder Preview in Bottom Nav */
+                <div
+                  style={{
+                    width: '23px',
+                    height: '23px',
+                    borderRadius: '7px',
+                    backgroundColor: isActive ? 'rgba(37, 99, 235, 0.12)' : 'rgba(226, 232, 240, 0.7)',
+                    border: isActive ? '1.5px solid #2563eb' : '1px solid rgba(203, 213, 225, 0.8)',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 5px)',
+                    gridTemplateRows: 'repeat(3, 5px)',
+                    gap: '1.5px',
+                    justifyContent: 'center',
+                    alignContent: 'center',
+                    padding: '1.5px',
+                    boxSizing: 'border-box',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {item.folderGroup.items.slice(0, 9).map((sub, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        width: '5px',
+                        height: '5px',
+                        borderRadius: '1.5px',
+                        backgroundColor: sub.color || '#2563eb',
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : Icon ? (
+                <Icon size={20} />
+              ) : null}
+
+              {/* Red Notification Badge */}
+              {dynamicBadge > 0 && (
                 <span
                   style={{
                     position: 'absolute',
-                    top: '-4px',
-                    right: '-6px',
+                    top: '-5px',
+                    right: '-7px',
                     backgroundColor: '#ef4444',
                     color: '#ffffff',
                     fontSize: '0.55rem',
@@ -96,12 +136,14 @@ export const MobileBottomNavWithTabs: React.FC<MobileBottomNavWithTabsProps> = (
                     padding: '0 4px',
                     minWidth: '14px',
                     textAlign: 'center',
+                    border: '1.5px solid #ffffff',
                   }}
                 >
-                  {item.badge}
+                  {dynamicBadge > 99 ? '99+' : dynamicBadge}
                 </span>
               )}
             </div>
+
             <span
               style={{
                 fontSize: '0.68rem',
