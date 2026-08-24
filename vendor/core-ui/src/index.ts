@@ -64,5 +64,6 @@ export type { MobileAppFolderModalProps } from './components/Mobile/MobileAppFol
 export { MobileBottomNavWithTabs } from './components/Mobile/MobileBottomNavWithTabs';
 export type { MobileBottomNavWithTabsProps, MobileNavItemConfig } from './components/Mobile/MobileBottomNavWithTabs';
 export { useMobileBottomNav, setMobileBottomNavVisibility } from './hooks/useMobileBottomNav';
-export type { UseMobileBottomNavOptions } from './hooks/useMobileBottomNav';
+export { MobileBottomBanner } from './components/Mobile/MobileBottomBanner';
+export type { MobileBottomBannerProps } from './components/Mobile/MobileBottomBanner';
 export type { AppTab, AppFolderItem, AppFolderGroup } from './types/MobileTabTypes';
