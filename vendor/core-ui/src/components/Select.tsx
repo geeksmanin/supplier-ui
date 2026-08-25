@@ -935,7 +935,7 @@ export const Select: React.FC<SelectProps> = ({
                 const isHighlighted = index === highlightedIndex;
                 return (
                   <div
-                    key={opt.value}
+                    key={`${opt.value}-${index}`}
                     onMouseDown={(e) => {
                       e.preventDefault();
                     }}
