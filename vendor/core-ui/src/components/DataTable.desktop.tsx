@@ -357,8 +357,8 @@ export const DataTable: React.FC<DataTableProps> = ({
         filterPlaceholder: '',
         filterOptions: [],
         render: (_val: any, _row: any, idx: number) => {
-          const currentPageNum = Number(effectiveCurrentPage) || 1;
-          const pageSizeNum = Number(effectivePageSize) || 25;
+          const currentPageNum = Math.max(1, Number(currentPage) || 1);
+          const pageSizeNum = Math.max(1, Number(pageSize) || 10);
           return (currentPageNum - 1) * pageSizeNum + idx + 1;
         }
       });
@@ -467,38 +467,16 @@ export const DataTable: React.FC<DataTableProps> = ({
     }
   };
 
-  // Internal state fallback for pagination if parent handlers are no-op or uncontrolled
-  const [internalPageSize, setInternalPageSize] = useState<number>(pageSize || 25);
-  const [internalCurrentPage, setInternalCurrentPage] = useState<number>(currentPage || 1);
-
-  useEffect(() => {
-    if (pageSize !== undefined && pageSize > 0) {
-      setInternalPageSize(pageSize);
-    }
-  }, [pageSize]);
-
-  useEffect(() => {
-    if (currentPage !== undefined && currentPage > 0) {
-      setInternalCurrentPage(currentPage);
-    }
-  }, [currentPage]);
-
-  const effectivePageSize = (pageSize !== undefined && pageSize > 0) ? pageSize : internalPageSize;
-  const effectiveCurrentPage = (currentPage !== undefined && currentPage > 0) ? currentPage : internalCurrentPage;
-
   const handleSetCurrentPage = (newPage: number) => {
-    setInternalCurrentPage(newPage);
-    if (setCurrentPage) {
-      setCurrentPage(newPage);
-    }
+    if (setCurrentPage) setCurrentPage(newPage);
   };
 
   const handleSetPageSize = (newSize: number) => {
-    setInternalPageSize(newSize);
-    if (setPageSize) {
-      setPageSize(newSize);
-    }
-    handleSetCurrentPage(1);
+    if (setPageSize) setPageSize(newSize);
+    // NOTE: Do NOT call setCurrentPage(1) here.
+    // URL-synced parents (using useSearchParams) already reset page=1 inside their setPageSize implementation.
+    // Calling setCurrentPage afterwards would issue a second setSearchParams that overwrites the limit change.
+    // useState-based parents (PaymentList, OrganisationList) have useEffect([pageSize]) which fires fetchData — no page reset needed.
   };
 
   const handleResetAll = () => {
@@ -510,35 +488,33 @@ export const DataTable: React.FC<DataTableProps> = ({
       searchValRef.current = '';
       setSearchVal('');
       setSortConfig(null);
-      handleSetCurrentPage(1);
+      if (setCurrentPage) setCurrentPage(1);
     }
   };
 
-  // Pagination logic:
-  // If totalItems is passed and sortedData.length <= effectivePageSize, data is already a single-page slice from server.
-  // Otherwise, if full dataset (length > effectivePageSize) is in memory or totalItems is not provided, perform client-side slicing.
-  const isServerPaged = propSetColumnFilters !== undefined || (totalItems !== undefined && sortedData.length <= effectivePageSize);
+  // Server-paged: backend controls pagination. Data is already the correct page slice.
+  // Client-paged: full dataset loaded, we slice locally.
+  // Detect server-paged by: explicit backend column filters, OR totalItems provided and data is a subset.
+  const isServerPaged = propSetColumnFilters !== undefined
+    || (totalItems !== undefined && totalItems > data.length)
+    || (totalItems !== undefined && data.length <= pageSize && totalItems > pageSize);
+
   const activeTotalItems = totalItems !== undefined ? totalItems : sortedData.length;
-  const totalPages = Math.max(1, Math.ceil(activeTotalItems / (effectivePageSize || 10)));
+  const safePageSize = pageSize > 0 ? pageSize : 10;
+  const totalPages = Math.max(1, Math.ceil(activeTotalItems / safePageSize));
+  // Clamp currentPage within valid range without firing side-effects
+  const safePage = Math.max(1, Math.min(currentPage, totalPages));
 
-  // Safety watchdog: reset to page 1 if current page is out of bounds
-  useEffect(() => {
-    if (effectiveCurrentPage > totalPages && activeTotalItems > 0) {
-      handleSetCurrentPage(1);
-    }
-  }, [totalPages, effectiveCurrentPage, activeTotalItems]);
-
-  const startIdx = (effectiveCurrentPage - 1) * effectivePageSize;
-  const endIdx = isServerPaged 
-    ? Math.min(startIdx + data.length, activeTotalItems) 
-    : Math.min(startIdx + effectivePageSize, sortedData.length);
+  const startIdx = (safePage - 1) * safePageSize;
+  const endIdx = Math.min(startIdx + safePageSize, sortedData.length);
 
   const displayData = React.useMemo(() => {
     if (isServerPaged) {
-      return sortedData; // already filtered and paginated by backend
+      return sortedData; // backend already returned the correct page slice
     }
     return sortedData.slice(startIdx, endIdx);
   }, [sortedData, startIdx, endIdx, isServerPaged]);
+
 
   // Select-all helpers — defined after displayData so they can reference it
   const handleSelectAll = () => {
@@ -1348,7 +1324,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                 borderColor: dropdownOpen ? '#3b82f6' : '#e5e7eb'
               }}
             >
-              <span>{effectivePageSize}</span>
+              <span>{safePageSize}</span>
               <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>▼</span>
             </button>
             {dropdownOpen && (
@@ -1378,18 +1354,18 @@ export const DataTable: React.FC<DataTableProps> = ({
                       padding: '0.5rem 0.75rem',
                       cursor: 'pointer',
                       fontSize: '0.85rem',
-                      color: effectivePageSize === option ? '#2563eb' : '#374151',
-                      backgroundColor: effectivePageSize === option ? '#eff6ff' : '#ffffff',
+                      color: safePageSize === option ? '#2563eb' : '#374151',
+                      backgroundColor: safePageSize === option ? '#eff6ff' : '#ffffff',
                       transition: 'background-color 0.15s ease',
-                      fontWeight: effectivePageSize === option ? 600 : 400
+                      fontWeight: safePageSize === option ? 600 : 400
                     }}
                     onMouseEnter={(e) => {
-                      if (effectivePageSize !== option) {
+                      if (safePageSize !== option) {
                         e.currentTarget.style.backgroundColor = '#f3f4f6';
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (effectivePageSize !== option) {
+                      if (safePageSize !== option) {
                         e.currentTarget.style.backgroundColor = '#ffffff';
                       }
                     }}
@@ -1402,18 +1378,18 @@ export const DataTable: React.FC<DataTableProps> = ({
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', fontSize: '0.85rem', color: '#4b5563' }}>
-          <span>Page {effectiveCurrentPage} of {totalPages} ({activeTotalItems === 0 ? 0 : startIdx + 1}-{endIdx} of {activeTotalItems} Items)</span>
+          <span>Page {safePage} of {totalPages} ({activeTotalItems === 0 ? 0 : startIdx + 1}-{endIdx} of {activeTotalItems} Items)</span>
           <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
             <button
-              disabled={effectiveCurrentPage === 1}
-              onClick={() => handleSetCurrentPage(Math.max(effectiveCurrentPage - 1, 1))}
+              disabled={safePage === 1}
+              onClick={() => handleSetCurrentPage(Math.max(safePage - 1, 1))}
               style={{
                 padding: '0.35rem 0.6rem',
                 border: '1px solid #e5e7eb',
                 borderRadius: '6px',
-                background: effectiveCurrentPage === 1 ? '#f9fafb' : '#ffffff',
-                cursor: effectiveCurrentPage === 1 ? 'not-allowed' : 'pointer',
-                color: effectiveCurrentPage === 1 ? '#d1d5db' : '#4b5563',
+                background: safePage === 1 ? '#f9fafb' : '#ffffff',
+                cursor: safePage === 1 ? 'not-allowed' : 'pointer',
+                color: safePage === 1 ? '#d1d5db' : '#4b5563',
                 fontSize: '0.85rem',
                 display: 'flex',
                 alignItems: 'center',
@@ -1432,12 +1408,12 @@ export const DataTable: React.FC<DataTableProps> = ({
               if (totalPages <= maxVisible) {
                 for (let i = 1; i <= totalPages; i++) pages.push(i);
               } else {
-                if (effectiveCurrentPage <= 3) {
+                if (safePage <= 3) {
                   pages.push(1, 2, 3, '...', totalPages);
-                } else if (effectiveCurrentPage >= totalPages - 2) {
+                } else if (safePage >= totalPages - 2) {
                   pages.push(1, '...', totalPages - 2, totalPages - 1, totalPages);
                 } else {
-                  pages.push(1, '...', effectiveCurrentPage, '...', totalPages);
+                  pages.push(1, '...', safePage, '...', totalPages);
                 }
               }
 
@@ -1461,7 +1437,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                   );
                 }
 
-                const isCurrent = effectiveCurrentPage === page;
+                const isCurrent = safePage === page;
                 return (
                   <button
                     key={page}
@@ -1490,15 +1466,15 @@ export const DataTable: React.FC<DataTableProps> = ({
             })()}
 
             <button
-              disabled={effectiveCurrentPage >= totalPages}
-              onClick={() => handleSetCurrentPage(effectiveCurrentPage + 1)}
+              disabled={safePage >= totalPages}
+              onClick={() => handleSetCurrentPage(safePage + 1)}
               style={{
                 padding: '0.35rem 0.6rem',
                 border: '1px solid #e5e7eb',
                 borderRadius: '6px',
-                background: effectiveCurrentPage >= totalPages ? '#f9fafb' : '#ffffff',
-                cursor: effectiveCurrentPage >= totalPages ? 'not-allowed' : 'pointer',
-                color: effectiveCurrentPage >= totalPages ? '#d1d5db' : '#4b5563',
+                background: safePage >= totalPages ? '#f9fafb' : '#ffffff',
+                cursor: safePage >= totalPages ? 'not-allowed' : 'pointer',
+                color: safePage >= totalPages ? '#d1d5db' : '#4b5563',
                 fontSize: '0.85rem',
                 display: 'flex',
                 alignItems: 'center',

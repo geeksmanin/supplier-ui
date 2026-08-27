@@ -311,7 +311,7 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
     }
 
     setTabs(prev => {
-      if (prev.some(t => t.path === fullPath || t.path === cleanPath)) {
+      if (prev.some(t => t.path === cleanPath)) {
         tabsRef.current = prev;
         return prev;
       }
@@ -320,7 +320,7 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
         const result = [
           ...prev,
           {
-            path: fullPath,
+            path: cleanPath,
             title: resolveTabTitle(fullPath, finalNavItems, routes),
             element: matchedRoute.element,
             pattern: matchedPattern,
@@ -334,7 +334,7 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
       tabsRef.current = prev;
       return prev;
     });
-    setActiveTabPath(fullPath);
+    setActiveTabPath(cleanPath);
   }, [location.pathname, location.search, routes, finalNavItems]);
 
   const handleCloseTab = (pathClose: string) => {
@@ -347,8 +347,7 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
     tabsRef.current = newTabs;
     setTabs(newTabs);
 
-    const fullCurrent = location.pathname + (location.search || '');
-    if (fullCurrent === pathClose || location.pathname === pathClose) {
+    if (location.pathname === pathClose) {
       const nextPath = newTabs.length > 0
         ? newTabs[Math.min(index, newTabs.length - 1)].path
         : '/dashboard';
