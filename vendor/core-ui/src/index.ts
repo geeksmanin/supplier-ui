@@ -55,6 +55,8 @@ export { useFormDraft, DraftBanner } from './hooks/useFormDraft';
 export type { UseFormDraftOptions, UseFormDraftReturn, DraftBannerProps } from './hooks/useFormDraft';
 export { DraftBanner as DraftBannerComponent } from './components/DraftBanner';
 export { isMobileDevice } from './utils/device';
+export { resolveMediaUrl } from './utils/media';
+export type { ResolveMediaOptions } from './utils/media';
 
 // Mobile Navigation & 3D Tab Switcher System
 export { MobileTabSwitcher3D } from './components/Mobile/MobileTabSwitcher3D';

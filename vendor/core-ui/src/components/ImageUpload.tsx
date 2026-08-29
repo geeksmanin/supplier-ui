@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
-import { apiClient, getWorkspaceFromUrl } from '../api/client';
+import { apiClient } from '../api/client';
 import { Button } from './Button';
+import { resolveMediaUrl } from '../utils/media';
 
 interface ImageUploadProps {
   folder: string;
@@ -26,26 +27,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
 
   const atLimit = value.length >= maxFiles;
 
-  const getMediaUrl = (path: string) => {
-    if (!path) return '';
-    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
-      return path;
-    }
-    const baseURL = apiClient.defaults.baseURL || '';
-    if (path.startsWith('/')) {
-      if (baseURL.startsWith('http://') || baseURL.startsWith('https://')) {
-        try {
-          const origin = new URL(baseURL).origin;
-          return `${origin}${path}`;
-        } catch (e) {
-          // ignore invalid URL parsing
-        }
-      }
-      return path;
-    }
-    const tenantCode = localStorage.getItem('tenant_code') || getWorkspaceFromUrl() || 'platform';
-    return `${baseURL}/media/${tenantCode}/${path}`;
-  };
+  const getMediaUrl = (path: string) => resolveMediaUrl(path);
 
   const uploadFile = async (file: File) => {
     const formData = new FormData();
@@ -55,7 +37,8 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
     const res = await apiClient.post('/media/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    const url = res.data?.url || res.data?.uploadId || res.data?.upload_id;
+    const d = res.data?.data || res.data;
+    const url = d?.upload_id || d?.uploadId || d?.media_url || d?.url;
     if (!url) throw new Error('Upload did not return a valid URL or ID');
     return String(url);
   };

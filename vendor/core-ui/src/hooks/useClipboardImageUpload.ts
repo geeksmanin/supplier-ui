@@ -95,7 +95,8 @@ export function useClipboardImageUpload({
         const res = await apiClient.post('/media/upload', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-        const url = res.data?.url || res.data?.uploadId || res.data?.upload_id;
+        const d = res.data?.data || res.data;
+        const url = d?.upload_id || d?.uploadId || d?.media_url || d?.url;
         if (url && onUploaded) {
           onUploaded(String(url));
         }
