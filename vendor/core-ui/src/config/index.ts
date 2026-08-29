@@ -28,9 +28,13 @@ export const getAppConfig = (): AppConfig => {
 
 export const resolveAppConfig = (
   local: AppConfig,
-  testing: AppConfig,
-  prod: AppConfig
+  stagingOrTesting: AppConfig,
+  prod: AppConfig,
+  optionalStaging?: AppConfig
 ): AppConfig => {
+  const staging = optionalStaging || stagingOrTesting;
+  const testing = optionalStaging ? stagingOrTesting : stagingOrTesting;
+
   if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
     const env = (import.meta as any).env;
     const mode = (env.VITE_APP_ENV || env.MODE || 'development').toLowerCase();
@@ -38,13 +42,22 @@ export const resolveAppConfig = (
     if (mode === 'production' || mode === 'prod') {
       return prod;
     }
+    if (mode === 'staging' || mode === 'stage') {
+      return staging;
+    }
     if (mode === 'testing' || mode === 'test') {
       return testing;
     }
   }
 
   if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
+    const host = window.location.hostname.toLowerCase();
+    if (host.includes('staging.') || host.includes('-staging.')) {
+      return staging;
+    }
+    if (host.includes('testing.') || host.includes('-test.')) {
+      return testing;
+    }
     if (host && host !== 'localhost' && host !== '127.0.0.1' && !host.endsWith('.localhost')) {
       return prod;
     }
