@@ -28,12 +28,12 @@ export const getAppConfig = (): AppConfig => {
 
 export const resolveAppConfig = (
   local: AppConfig,
-  stagingOrTesting: AppConfig,
+  staging: AppConfig,
   prod: AppConfig,
-  optionalStaging?: AppConfig
+  testing?: AppConfig
 ): AppConfig => {
-  const staging = optionalStaging || stagingOrTesting;
-  const testing = optionalStaging ? stagingOrTesting : stagingOrTesting;
+  const activeStaging = staging;
+  const activeTesting = testing || staging;
 
   if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
     const env = (import.meta as any).env;
@@ -43,20 +43,20 @@ export const resolveAppConfig = (
       return prod;
     }
     if (mode === 'staging' || mode === 'stage') {
-      return staging;
+      return activeStaging;
     }
     if (mode === 'testing' || mode === 'test') {
-      return testing;
+      return activeTesting;
     }
   }
 
   if (typeof window !== 'undefined') {
     const host = window.location.hostname.toLowerCase();
-    if (host.includes('staging.') || host.includes('-staging.')) {
-      return staging;
+    if (host.includes('staging.') || host.includes('-staging.') || host.includes('.staging')) {
+      return activeStaging;
     }
-    if (host.includes('testing.') || host.includes('-test.')) {
-      return testing;
+    if (host.includes('testing.') || host.includes('-test.') || host.includes('.test.')) {
+      return activeTesting;
     }
     if (host && host !== 'localhost' && host !== '127.0.0.1' && !host.endsWith('.localhost')) {
       return prod;
