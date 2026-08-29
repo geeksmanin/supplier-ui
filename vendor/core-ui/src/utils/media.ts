@@ -1,4 +1,5 @@
 import { apiClient } from '../api/client';
+import { getAppConfig } from '../config';
 
 export interface ResolveMediaOptions {
   download?: boolean;
@@ -25,8 +26,23 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
     return trimmed;
   }
 
-  const baseURL = apiClient.defaults.baseURL || '/api/v1';
-  const cleanBase = baseURL.replace(/\/+$/, '');
+  // Determine the best backend base URL
+  const config = getAppConfig();
+  const rawBase =
+    apiClient.defaults.baseURL ||
+    config?.apiBaseUrl ||
+    (typeof window !== 'undefined' ? (window as any)?.runtimeConfig?.apiBaseUrl : '') ||
+    '/api/v1';
+  const cleanBase = rawBase.replace(/\/+$/, '');
+
+  let origin = '';
+  if (cleanBase.startsWith('http://') || cleanBase.startsWith('https://')) {
+    try {
+      origin = new URL(cleanBase).origin;
+    } catch {
+      origin = '';
+    }
+  }
 
   // Extract query parameters
   const queryParts: string[] = [];
@@ -38,38 +54,37 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
   }
   const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
 
-  // If already prefixed with /api/v1/media/file/ or /media/file/
-  if (trimmed.startsWith('/api/v1/media/file/')) {
-    if (cleanBase.startsWith('http://') || cleanBase.startsWith('https://')) {
-      try {
-        const origin = new URL(cleanBase).origin;
-        return `${origin}${trimmed}${queryString}`;
-      } catch {
-        return `${trimmed}${queryString}`;
-      }
+  // Extract bare upload ID if wrapped in relative path prefixes
+  let uploadId = trimmed.replace(/^\/+/, '');
+  if (uploadId.startsWith('api/v1/media/file/')) {
+    uploadId = uploadId.slice('api/v1/media/file/'.length);
+  } else if (uploadId.startsWith('media/file/')) {
+    uploadId = uploadId.slice('media/file/'.length);
+  } else if (uploadId.startsWith('api/v1/media/')) {
+    const parts = uploadId.slice('api/v1/media/'.length).split('/');
+    // If format is tenant/bucket/key (3 or more parts), strip tenant to get bucket/key
+    if (parts.length >= 3) {
+      uploadId = parts.slice(1).join('/');
+    } else {
+      uploadId = parts.join('/');
     }
-    return `${trimmed}${queryString}`;
-  }
-
-  if (trimmed.startsWith('/media/file/')) {
-    return `${cleanBase}${trimmed}${queryString}`;
-  }
-
-  // If it's a legacy route like /api/v1/media/:tenant/:bucket/:key
-  if (trimmed.startsWith('/api/v1/media/') || trimmed.startsWith('/media/')) {
-    if (cleanBase.startsWith('http://') || cleanBase.startsWith('https://')) {
-      try {
-        const origin = new URL(cleanBase).origin;
-        const normalized = trimmed.startsWith('/api/v1') ? trimmed : `/api/v1${trimmed}`;
-        return `${origin}${normalized}${queryString}`;
-      } catch {
-        return `${trimmed}${queryString}`;
-      }
+  } else if (uploadId.startsWith('media/')) {
+    const parts = uploadId.slice('media/'.length).split('/');
+    if (parts.length >= 3) {
+      uploadId = parts.slice(1).join('/');
+    } else {
+      uploadId = parts.join('/');
     }
-    return `${trimmed}${queryString}`;
   }
 
-  // Bare upload ID (e.g. "grns/invoice_123.png" or "products/item.jpg")
-  const cleanUploadId = trimmed.replace(/^\/+/, '');
-  return `${cleanBase}/media/file/${cleanUploadId}${queryString}`;
+  uploadId = uploadId.replace(/^\/+/, '');
+
+  // If cleanBase has an origin (e.g. https://erpapi-staging.geeksman.co.in/api/v1)
+  if (origin) {
+    const pathPrefix = cleanBase.slice(origin.length) || '/api/v1';
+    return `${origin}${pathPrefix}/media/file/${uploadId}${queryString}`;
+  }
+
+  // Fallback when running relative without absolute host
+  return `${cleanBase}/media/file/${uploadId}${queryString}`;
 }
