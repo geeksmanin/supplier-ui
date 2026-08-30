@@ -57,6 +57,8 @@ export { DraftBanner as DraftBannerComponent } from './components/DraftBanner';
 export { isMobileDevice } from './utils/device';
 export { resolveMediaUrl } from './utils/media';
 export type { ResolveMediaOptions } from './utils/media';
+export { ImageThumbnailWithZoom } from './components/ImageThumbnailWithZoom';
+export type { ImageThumbnailWithZoomProps } from './components/ImageThumbnailWithZoom';
 
 // Mobile Navigation & 3D Tab Switcher System
 export { MobileTabSwitcher3D } from './components/Mobile/MobileTabSwitcher3D';
