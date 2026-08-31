@@ -382,12 +382,56 @@ export const DataTable: React.FC<DataTableProps> = ({
     return result;
   }, [columns, currentPage, pageSize, hideAutoActionColumn, hideSerialNumberColumn]);
 
+  // Detect default Active filters for status columns
+  const defaultStatusFilters = React.useMemo(() => {
+    const defaults: Record<string, string> = {};
+    for (const col of columns) {
+      const keyLower = (col.key || '').toLowerCase();
+      const labelLower = (col.label || '').toLowerCase();
+      const isStatus = keyLower === 'status' || keyLower === 'is_active' || keyLower === 'state' || labelLower === 'status';
+      if (isStatus && col.filterOptions && col.filterOptions.length > 0) {
+        const activeOpt = col.filterOptions.find(opt => {
+          if (!opt) return false;
+          const val = typeof opt === 'string' ? opt : (opt as any).value;
+          const lbl = typeof opt === 'string' ? opt : (opt as any).label;
+          const vStr = String(val).toLowerCase();
+          const lStr = String(lbl).toLowerCase();
+          return vStr === 'active' || lStr === 'active' || vStr === 'true';
+        });
+        if (activeOpt) {
+          const val = typeof activeOpt === 'string' ? activeOpt : (activeOpt as any).value;
+          defaults[col.key] = String(val);
+        }
+      }
+    }
+    return defaults;
+  }, [columns]);
+
   // Lift or declare state for filters
-  const [internalColumnFilters, setInternalColumnFilters] = useState<Record<string, string>>({});
-  const columnFilters = propColumnFilters !== undefined ? propColumnFilters : internalColumnFilters;
+  const [internalColumnFilters, setInternalColumnFilters] = useState<Record<string, string>>(() => ({ ...defaultStatusFilters }));
+
+  const defaultStatusSyncRef = useRef(false);
+  useEffect(() => {
+    if (!defaultStatusSyncRef.current && Object.keys(defaultStatusFilters).length > 0) {
+      setInternalColumnFilters(prev => ({ ...defaultStatusFilters, ...prev }));
+      defaultStatusSyncRef.current = true;
+    }
+  }, [defaultStatusFilters]);
+
+  const columnFilters = React.useMemo(() => {
+    if (propColumnFilters !== undefined) {
+      const merged = { ...propColumnFilters };
+      for (const [k, v] of Object.entries(defaultStatusFilters)) {
+        if (merged[k] === undefined) {
+          merged[k] = v;
+        }
+      }
+      return merged;
+    }
+    return internalColumnFilters;
+  }, [propColumnFilters, internalColumnFilters, defaultStatusFilters]);
+
   const setColumnFilters = propSetColumnFilters !== undefined ? propSetColumnFilters : setInternalColumnFilters;
-
-
 
   // Lift or declare state for sorting
   const [internalSortConfig, setInternalSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'created_at', direction: 'desc' });
@@ -410,6 +454,9 @@ export const DataTable: React.FC<DataTableProps> = ({
         if (rawVal && typeof rawVal === 'object' && rawVal.name) {
           rawVal = rawVal.name;
         }
+        if (typeof rawVal === 'boolean') {
+          rawVal = rawVal ? 'active' : 'inactive';
+        }
         const rowVal = String(rawVal !== undefined && rawVal !== null ? rawVal : '').toLowerCase();
         const searchStr = filterVal.toLowerCase();
 
@@ -418,7 +465,10 @@ export const DataTable: React.FC<DataTableProps> = ({
             return false;
           }
         } else if (col.filterType === 'select') {
-          if (rowVal !== searchStr) {
+          const isMatch = rowVal === searchStr ||
+            (rowVal === 'active' && (searchStr === 'active' || searchStr === 'true')) ||
+            (rowVal === 'inactive' && (searchStr === 'inactive' || searchStr === 'false'));
+          if (!isMatch) {
             return false;
           }
         }
