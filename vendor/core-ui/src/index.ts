@@ -53,6 +53,8 @@ export type { ImportHistoryPageProps } from './components/ImportWizard/ImportHis
 export { downloadFile, isDesktopEnvironment } from './utils/downloader';
 export { Loader } from './components/Loader';
 export type { LoaderProps } from './components/Loader';
+export { GalaxyLoader } from './components/GalaxyLoader';
+export type { GalaxyLoaderProps } from './components/GalaxyLoader';
 export { SwipeableContainer } from './components/SwipeableContainer';
 export type { SwipeableContainerProps } from './components/SwipeableContainer';
 export { PrintPage } from './components/PrintPage';

@@ -1,16 +1,24 @@
 import React from 'react';
+import { GalaxyLoader, GalaxyLoaderProps } from './GalaxyLoader';
 
-export interface LoaderProps {
+export interface LoaderProps extends GalaxyLoaderProps {
   message?: string;
   fullscreen?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  variant?: 'spinner' | 'galaxy';
 }
 
 export const Loader: React.FC<LoaderProps> = ({
   message = 'Loading data...',
   fullscreen = false,
   size = 'md',
+  variant = 'spinner',
+  ...galaxyProps
 }) => {
+  if (variant === 'galaxy') {
+    return <GalaxyLoader fullscreen={fullscreen} statusMessage={message} {...galaxyProps} />;
+  }
+
   const sizeMap = {
     sm: '32px',
     md: '54px',
