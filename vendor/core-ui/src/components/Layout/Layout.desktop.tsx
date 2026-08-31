@@ -1256,7 +1256,7 @@ export const LayoutDesktop: React.FC<any> = ({
                     const theme = getTabColor(tab.path, isActive);
                     return (
                       <div
-                        key={`${tab.path}-${idx}`}
+                        key={tab.path}
                         onClick={() => onSelectTab(tab.path)}
                         style={{
                           display: 'flex',
@@ -1702,24 +1702,26 @@ export const LayoutDesktop: React.FC<any> = ({
           width: '100%',
           position: 'relative',
         }}>
-          {isDashboard ? (
+          {/* Apps Dashboard View */}
+          <div style={{ width: '100%', height: '100%', display: isDashboard ? 'block' : 'none' }}>
             <AppsDashboard navItems={mainNavItems} onNavigate={onNavigate} />
-          ) : (
-            <div style={{ width: '100%', height: '100%' }}>
-              {tabs.map((tab: any, idx: number) => (
-                <div
-                  key={`${tab.path}-${idx}`}
-                  style={{
-                    display: tab.path === activeTabPath ? 'block' : 'none',
-                    width: '100%',
-                    height: '100%',
-                  }}
-                >
-                  <TabContentWrapper tab={tab} isActive={tab.path === activeTabPath} />
-                </div>
-              ))}
-            </div>
-          )}
+          </div>
+
+          {/* Open Tabs Container - preserved in background */}
+          <div style={{ width: '100%', height: '100%', display: isDashboard ? 'none' : 'block' }}>
+            {tabs.map((tab: any) => (
+              <div
+                key={tab.path}
+                style={{
+                  display: !isDashboard && tab.path === activeTabPath ? 'block' : 'none',
+                  width: '100%',
+                  height: '100%',
+                }}
+              >
+                <TabContentWrapper tab={tab} isActive={!isDashboard && tab.path === activeTabPath} />
+              </div>
+            ))}
+          </div>
         </main>
       </div>
       <CommandPalette

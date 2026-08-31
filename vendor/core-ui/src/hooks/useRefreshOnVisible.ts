@@ -33,37 +33,35 @@ export const useRefreshOnVisible = (
     onRefreshRef.current = onRefresh;
   });
 
-  const maybeRefresh = useCallback(() => {
+  const maybeRefresh = useCallback((source: string) => {
     const now = Date.now();
-    if (now - lastRefreshRef.current >= minIntervalMs) {
+    const elapsed = now - lastRefreshRef.current;
+    if (elapsed >= minIntervalMs) {
+      console.debug(`[useRefreshOnVisible] ✅ refresh FIRED via "${source}" (elapsed ${elapsed}ms)`);
       lastRefreshRef.current = now;
       onRefreshRef.current();
+    } else {
+      console.debug(`[useRefreshOnVisible] ⏳ refresh SKIPPED via "${source}" (elapsed ${elapsed}ms < ${minIntervalMs}ms interval)`);
     }
   }, [minIntervalMs]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        maybeRefresh();
+        maybeRefresh('visibilitychange');
       }
     };
 
     const handleFocus = () => {
-      maybeRefresh();
-    };
-
-    const handleCustomTabFocus = () => {
-      maybeRefresh();
+      maybeRefresh('window:focus');
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
-    window.addEventListener('geeksman-tab-focused', handleCustomTabFocus);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('geeksman-tab-focused', handleCustomTabFocus);
     };
   }, [maybeRefresh]);
 };

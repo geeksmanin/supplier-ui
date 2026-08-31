@@ -128,10 +128,22 @@ export const TabContentWrapper: React.FC<{ tab: Tab; isActive: boolean }> = ({ t
   const [localLocation, setLocalLocation] = React.useState(globalLocation);
 
   React.useEffect(() => {
+    console.log(`%c[TabContentWrapper MOUNTED] ${tab.path}`, 'color: #059669; font-weight: bold;');
+    return () => {
+      console.log(`%c[TabContentWrapper UNMOUNTED] ${tab.path}`, 'color: #dc2626; font-weight: bold;');
+    };
+  }, [tab.path]);
+
+  // Always keep localLocation in sync so query params (e.g. ?page=2&limit=50)
+  // reach the tab's inner component without triggering a data refresh.
+  React.useEffect(() => {
     if (isActive) {
+      console.debug(
+        '[TabContentWrapper] localLocation sync →',
+        globalLocation.pathname + globalLocation.search,
+        '| tab:', tab.path
+      );
       setLocalLocation(globalLocation);
-      // Dispatch tab focus event so useRefreshOnVisible registers the navigation switch
-      window.dispatchEvent(new Event('geeksman-tab-focused'));
     }
   }, [isActive, globalLocation]);
 

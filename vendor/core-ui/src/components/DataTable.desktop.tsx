@@ -1179,8 +1179,8 @@ export const DataTable: React.FC<DataTableProps> = ({
               </tr>
             )}
           </thead>
-          <tbody>
-            {loading ? (
+          <tbody style={{ transition: 'opacity 0.15s ease', opacity: loading && displayData.length > 0 ? 0.65 : 1 }}>
+            {loading && displayData.length === 0 ? (
               Array.from({ length: 5 }).map((_, rowIndex) => (
                 <tr key={`skeleton-row-${rowIndex}`}>
                   {processedColumns.map((col, colIndex) => {
