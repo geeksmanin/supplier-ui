@@ -85,14 +85,22 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
       }
 
       // 3. Fetch canonical saved config from backend
-      const res = await apiClient.get(`/form-configurations/${formKey}`);
-      const serverConfig = res.data?.data?.config || {};
-      setFormValues(serverConfig);
-      await saveStoredFormDefaults(formKey, serverConfig);
+      try {
+        const res = await apiClient.get(`/form-configurations/${formKey}`);
+        const serverConfig = res.data?.data?.config || {};
+        if (serverConfig && Object.keys(serverConfig).length > 0) {
+          setFormValues(serverConfig);
+          await saveStoredFormDefaults(formKey, serverConfig);
+        }
+      } catch (err: any) {
+        // 404 is normal for unconfigured forms
+        if (err.response?.status !== 404) {
+          console.warn(`Failed to load form configurations for ${formKey}:`, err);
+        }
+      }
       setIsDirty(false);
     } catch (err) {
-      console.error(`Failed to load form configurations for ${formKey}:`, err);
-      showToast('Failed to load form configurations', 'error');
+      console.error(`Failed to initialize form defaults for ${formKey}:`, err);
     } finally {
       setLoading(false);
     }
