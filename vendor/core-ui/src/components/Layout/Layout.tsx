@@ -256,11 +256,16 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
     return 0;
   });
 
-  // Fallback default items if registry is empty
-  const finalNavItems = sortedNavItems.length > 0 ? sortedNavItems : [
-    { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: '📊', section: 'main' as const },
-    { id: 'tenant-setup', label: 'New Tenant', path: '/tenant-setup', icon: '🏢', section: 'main' as const },
-  ];
+  // Fallback default items if registry is empty.
+  // Memoized so the array reference is stable across renders — prevents the tab
+  // management useEffect below from firing on every render due to a new array ref.
+  const finalNavItems = React.useMemo(() => {
+    return sortedNavItems.length > 0 ? sortedNavItems : [
+      { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: '📊', section: 'main' as const },
+      { id: 'tenant-setup', label: 'New Tenant', path: '/tenant-setup', icon: '🏢', section: 'main' as const },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortedNavItems.length, userPermissions, registryNavItems]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -335,7 +340,12 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
       return prev;
     });
     setActiveTabPath(cleanPath);
-  }, [location.pathname, location.search, routes, finalNavItems]);
+  // NOTE: location.search is intentionally excluded from deps.
+  // Tabs are keyed by pathname only. Including location.search caused the entire
+  // layout to re-render whenever a query param changed (e.g. ?page=2&limit=20),
+  // making pagination feel like a full page reload.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, finalNavItems]);
 
   const handleCloseTab = (pathClose: string) => {
     // Read current tabs from the ref — always up-to-date, no stale closure.
