@@ -5,6 +5,7 @@ import { Select } from '../Select';
 import { useToast } from '../Toast/Toast';
 import { useFormKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { saveStoredFormDefaults, getStoredFormDefaults } from '../../utils/defaultsStore';
+import { QuickMasterModal } from '../QuickMasterModal';
 import { Sliders, RefreshCw, Save, CheckCircle2 } from 'lucide-react';
 
 export interface FormDefaultFieldDefinition {
@@ -15,8 +16,11 @@ export interface FormDefaultFieldDefinition {
   picklistEndpoint?: string;
   optionsLoader?: () => Promise<{ value: string; label: string }[]>;
   options?: { value: string; label: string }[];
-  onCreateOption?: () => void;
-  createOptionText?: string;
+  onCreateOption?: (searchTerm: string) => void;
+  createOptionText?: string | ((searchTerm: string) => string);
+  masterTabUrl?: string;
+  quickMasterEndpoint?: string;
+  quickMasterTitle?: string;
 }
 
 export interface FormDefaultsConfigProps {
@@ -40,6 +44,17 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
   const [isDirty, setIsDirty] = useState<boolean>(false);
+
+  // Quick Master Modal state
+  const [activeModal, setActiveModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    endpoint: string;
+    initialName: string;
+    masterTabUrl?: string;
+    fieldKey: string;
+    field: FormDefaultFieldDefinition;
+  } | null>(null);
 
   // Fetch picklist options for a single field
   const loadOptionsForField = useCallback(async (field: FormDefaultFieldDefinition) => {
@@ -146,7 +161,7 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
           borderRadius: '12px',
           border: '1px solid #e2e8f0',
           boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)',
-          overflow: 'hidden',
+          overflow: 'visible',
         }}
       >
         {/* Header Bar */}
@@ -158,6 +173,8 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
             justifyContent: 'space-between',
             alignItems: 'center',
             backgroundColor: '#ffffff',
+            borderTopLeftRadius: '12px',
+            borderTopRightRadius: '12px',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -176,9 +193,55 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
               <Sliders size={18} />
             </div>
             <div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>
-                {title}
-              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>
+                  {title}
+                </h3>
+                {isDirty ? (
+                  <span
+                    style={{
+                      backgroundColor: '#fef3c7',
+                      color: '#b45309',
+                      border: '1px solid #fde68a',
+                      borderRadius: '9999px',
+                      padding: '0.15rem 0.55rem',
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: '6px',
+                        height: '6px',
+                        borderRadius: '50%',
+                        backgroundColor: '#d97706',
+                      }}
+                    />
+                    Not Saved
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      backgroundColor: '#ecfdf5',
+                      color: '#047857',
+                      border: '1px solid #a7f3d0',
+                      borderRadius: '9999px',
+                      padding: '0.15rem 0.55rem',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                    }}
+                  >
+                    <CheckCircle2 size={12} />
+                    Saved
+                  </span>
+                )}
+              </div>
               <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0.15rem 0 0 0' }}>
                 {description}
               </p>
@@ -187,7 +250,7 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Button
-              variant="secondary"
+              variant="primary"
               onClick={loadAllData}
               disabled={loading || saving}
               style={{ fontSize: '0.825rem', padding: '0.4rem 0.75rem' }}
@@ -200,15 +263,52 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
               variant="primary"
               onClick={handleSave}
               disabled={loading || saving || !isDirty}
-              style={{ fontSize: '0.825rem', padding: '0.4rem 0.9rem', fontWeight: 600 }}
+              style={{
+                fontSize: '0.825rem',
+                padding: '0.4rem 0.9rem',
+                fontWeight: 600,
+                backgroundColor: isDirty ? '#2563eb' : undefined,
+                boxShadow: isDirty ? '0 2px 8px rgba(37, 99, 235, 0.25)' : 'none',
+              }}
             >
               {saving ? 'Saving...' : 'Save Defaults (Ctrl+S)'}
             </Button>
           </div>
         </div>
 
+        {/* Unsaved Changes Banner */}
+        {isDirty && (
+          <div
+            style={{
+              backgroundColor: '#fffbeb',
+              borderBottom: '1px solid #fde68a',
+              padding: '0.65rem 1.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: '0.8rem',
+              color: '#92400e',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span>⚠️</span>
+              <span>
+                You have unsaved changes to default choices. Click <strong>Save Defaults</strong> to apply them across forms.
+              </span>
+            </div>
+            <Button
+              variant="primary"
+              onClick={handleSave}
+              disabled={saving}
+              style={{ fontSize: '0.75rem', padding: '0.25rem 0.65rem', height: '28px' }}
+            >
+              {saving ? 'Saving...' : 'Save Now'}
+            </Button>
+          </div>
+        )}
+
         {/* Content Body */}
-        <div style={{ padding: '1.75rem' }}>
+        <div style={{ padding: '1.75rem 1.75rem 12rem 1.75rem', minHeight: '480px' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b', fontSize: '0.9rem' }}>
               Loading default settings...
@@ -246,10 +346,29 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
                         setIsDirty(true);
                       }}
                       onRefresh={() => loadOptionsForField(field)}
-                      onCreateOption={field.onCreateOption}
-                      createOptionText={field.createOptionText}
+                      onCreateOption={
+                        field.onCreateOption
+                          ? field.onCreateOption
+                          : (field.quickMasterEndpoint || field.picklistEndpoint)
+                          ? (searchTerm) => {
+                              setActiveModal({
+                                isOpen: true,
+                                title: field.quickMasterTitle || `New ${field.label}`,
+                                endpoint: (field.quickMasterEndpoint || field.picklistEndpoint)!,
+                                initialName: searchTerm || '',
+                                masterTabUrl: field.masterTabUrl,
+                                fieldKey: field.fieldKey,
+                                field,
+                              });
+                            }
+                          : undefined
+                      }
+                      createOptionText={
+                        field.createOptionText ||
+                        ((search) => (search ? `+ Create "${search}"` : `+ Create new ${field.label.toLowerCase()}`))
+                      }
                       options={[
-                        { value: '', label: `— None (No Default ${field.label}) —` },
+                        { value: '', label: 'None' },
                         ...options,
                       ]}
                     />
@@ -266,6 +385,26 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
           )}
         </div>
       </div>
+
+      {/* Unified Quick Master Creation Modal */}
+      {activeModal && activeModal.isOpen && (
+        <QuickMasterModal
+          isOpen={activeModal.isOpen}
+          onClose={() => setActiveModal(null)}
+          title={activeModal.title}
+          endpoint={activeModal.endpoint}
+          initialName={activeModal.initialName}
+          masterTabUrl={activeModal.masterTabUrl}
+          onSuccess={async (newItem) => {
+            await loadOptionsForField(activeModal.field);
+            setFormValues(prev => ({
+              ...prev,
+              [activeModal.fieldKey]: newItem.id || newItem.name,
+            }));
+            setIsDirty(true);
+          }}
+        />
+      )}
     </div>
   );
 };

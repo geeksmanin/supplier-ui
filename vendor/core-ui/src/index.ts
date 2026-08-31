@@ -91,4 +91,6 @@ export { useFormDefaults } from './hooks/useFormDefaults';
 export type { UseFormDefaultsOptions, UseFormDefaultsReturn } from './hooks/useFormDefaults';
 export { FormDefaultsConfig } from './components/FormDefaults/FormDefaultsConfig';
 export type { FormDefaultFieldDefinition, FormDefaultsConfigProps } from './components/FormDefaults/FormDefaultsConfig';
+export { QuickMasterModal } from './components/QuickMasterModal';
+export type { QuickMasterModalProps } from './components/QuickMasterModal';
 
