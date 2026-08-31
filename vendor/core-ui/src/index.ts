@@ -84,3 +84,11 @@ export { useMobileBottomNav, setMobileBottomNavVisibility } from './hooks/useMob
 export { MobileBottomBanner } from './components/Mobile/MobileBottomBanner';
 export type { MobileBottomBannerProps } from './components/Mobile/MobileBottomBanner';
 export type { AppTab, AppFolderItem, AppFolderGroup } from './types/MobileTabTypes';
+
+// Form Defaults & Dynamic Configuration System (IndexedDB + API)
+export { saveStoredFormDefaults, getStoredFormDefaults, clearStoredFormDefaults } from './utils/defaultsStore';
+export { useFormDefaults } from './hooks/useFormDefaults';
+export type { UseFormDefaultsOptions, UseFormDefaultsReturn } from './hooks/useFormDefaults';
+export { FormDefaultsConfig } from './components/FormDefaults/FormDefaultsConfig';
+export type { FormDefaultFieldDefinition, FormDefaultsConfigProps } from './components/FormDefaults/FormDefaultsConfig';
+
