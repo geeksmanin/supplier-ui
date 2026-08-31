@@ -3,10 +3,11 @@ import { useLocation, useNavigate, matchPath, UNSAFE_RouteContext, UNSAFE_Locati
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { LayoutDesktop } from './Layout.desktop';
 import { LayoutMobile } from './Layout.mobile';
-import { UIRegistry, NavItemConfig, SearchItemConfig, RouteConfig } from '../../registry/registry';
+import { UIRegistry, SearchItemConfig, RouteConfig } from '../../registry/registry';
 import { apiClient, getWorkspaceFromUrl, getBaseUrl } from '../../api/client';
 import { NotificationProvider, NotificationDrawer, NotificationToastContainer, useNotification } from '@geeksman/notification';
 import { useToast } from '../Toast/Toast';
+import { NativeContainer } from '../../native/NativeContainer';
 
 export interface NavItem {
   id?: string;
@@ -716,7 +717,9 @@ export const Layout: React.FC<CustomLayoutProps> = (props) => {
       tenantCode={tenantCode}
       token={token}
     >
-      <LayoutInner {...props} />
+      <NativeContainer>
+        <LayoutInner {...props} />
+      </NativeContainer>
     </NotificationProvider>
   );
 };

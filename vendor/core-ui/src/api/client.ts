@@ -43,12 +43,77 @@ export const apiClient = axios.create({
   },
 });
 
+export interface TenantMetadata {
+  tenant_code: string;
+  workspace: string;
+  name?: string;
+  logo_url?: string;
+  theme_color?: string;
+  staff_app_name?: string;
+  staff_logo_url?: string;
+  customer_app_name?: string;
+  customer_logo_url?: string;
+  is_active: boolean;
+}
+
 export const getWorkspaceFromUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    const savedTenant = localStorage.getItem('tenant_code') || localStorage.getItem('workspace_code');
+    if (savedTenant) {
+      return savedTenant;
+    }
+  }
   return getAppConfig().tenantCode || 'platform';
+};
+
+export const resolveTenantByCode = async (workspaceCode: string): Promise<TenantMetadata> => {
+  const code = workspaceCode.trim();
+  if (!code) throw new Error('Workspace code is required');
+
+  const response = await axios.get(`${getBaseUrl()}/tenant/resolve`, {
+    params: { code },
+    headers: { 'X-Tenant-Code': 'platform' },
+  });
+
+  const data = response.data?.data as TenantMetadata;
+  if (!data || !data.tenant_code) {
+    throw new Error('Workspace not found');
+  }
+
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('tenant_code', data.tenant_code);
+    localStorage.setItem('workspace_code', data.workspace || code);
+    if (data.name) localStorage.setItem('tenant_name', data.name);
+    if (data.logo_url) localStorage.setItem('tenant_logo_url', data.logo_url);
+    if (data.theme_color) localStorage.setItem('tenant_theme_color', data.theme_color);
+  }
+
+  const config = getAppConfig();
+  config.tenantCode = data.tenant_code;
+  return data;
+};
+
+export const clearActiveWorkspace = (): void => {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('tenant_code');
+    localStorage.removeItem('workspace_code');
+    localStorage.removeItem('tenant_name');
+    localStorage.removeItem('tenant_logo_url');
+    localStorage.removeItem('tenant_theme_color');
+  }
+  const config = getAppConfig();
+  config.tenantCode = config.defaultTenant || 'platform';
 };
 
 export const resolveTenantCodeFromServer = async (): Promise<string> => {
   if (typeof window === 'undefined') return 'platform';
+
+  const savedTenant = localStorage.getItem('tenant_code');
+  if (savedTenant) {
+    const config = getAppConfig();
+    config.tenantCode = savedTenant;
+    return savedTenant;
+  }
 
   const config = getAppConfig();
   if (!config.resolveTenantFromUrl) {

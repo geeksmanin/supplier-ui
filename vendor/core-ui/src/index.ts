@@ -1,7 +1,20 @@
-export { apiClient, getWorkspaceFromUrl, resolveTenantCodeFromServer, createApiClient, getDefaultBackendUrl, getBaseUrl } from './api/client';
+export { apiClient, getWorkspaceFromUrl, resolveTenantCodeFromServer, resolveTenantByCode, clearActiveWorkspace, createApiClient, getDefaultBackendUrl, getBaseUrl } from './api/client';
+export type { TenantMetadata } from './api/client';
 export { useMediaQuery } from './hooks/useMediaQuery';
 export { useRefreshOnVisible } from './hooks/useRefreshOnVisible';
 export { useClipboardImageUpload } from './hooks/useClipboardImageUpload';
+
+// Native Bridge & Push Notifications (Capacitor)
+export { usePushNotifications, isNativePlatform, getNativePlatform, getCapacitor } from './native/usePushNotifications';
+export { useNativeDevice } from './native/useNativeDevice';
+export type { UseNativeDeviceOptions } from './native/useNativeDevice';
+export { useBarcodeScanner } from './native/useBarcodeScanner';
+export type { BarcodeScanResult } from './native/useBarcodeScanner';
+export { useAppUpdater } from './native/useAppUpdater';
+export type { AppVersionInfo } from './native/useAppUpdater';
+export { NativeContainer } from './native/NativeContainer';
+export type { NativeContainerProps } from './native/NativeContainer';
+export type { DeviceRegistrationPayload, PushNotificationData, NativePlatform } from './native/types';
 
 export { Button } from './components/Button';
 export { Input } from './components/Input';

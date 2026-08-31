@@ -7,7 +7,10 @@
     "build": "npm run vendor && tsc && vite build",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "vendor": "rm -rf vendor && mkdir -p vendor/core-ui && rsync -a --exclude=\"node_modules\" --exclude=\".git\" ../core-ui/ vendor/core-ui/ && mkdir -p vendor/notification-ui && rsync -a --exclude=\"node_modules\" --exclude=\".git\" ../notification-ui/ vendor/notification-ui/"
+    "vendor": "rm -rf vendor && mkdir -p vendor/core-ui && rsync -a --exclude=\"node_modules\" --exclude=\".git\" ../core-ui/ vendor/core-ui/ && mkdir -p vendor/notification-ui && rsync -a --exclude=\"node_modules\" --exclude=\".git\" ../notification-ui/ vendor/notification-ui/",
+    "cap:sync": "npm run build && npx cap sync android",
+    "cap:build:apk": "npm run build && npx cap sync android && cd android && ./gradlew assembleDebug",
+    "cap:open": "npx cap open android"
   },
   "dependencies": {
     "@geeksman/core-ui": "file:./vendor/core-ui",
