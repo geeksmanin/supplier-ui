@@ -31,6 +31,13 @@ interface ImportWizardProps {
 	onClose: () => void;
 	entityType: string; // e.g. "contacts", "organisations"
 	onImportComplete?: () => void;
+	/**
+	 * When true, the wizard always uploads the file directly via /import/upload
+	 * (async background job) without locally parsing the Excel or showing the
+	 * column-mapping step (step 2). Use this for entity types whose backend
+	 * handles the proprietary format natively (e.g. "maxx_purchase_orders").
+	 */
+	directUpload?: boolean;
 }
 
 interface ValidationError {
@@ -46,6 +53,7 @@ export const ImportWizard: React.FC<ImportWizardProps> = ({
 	onClose,
 	entityType,
 	onImportComplete,
+	directUpload = false,
 }) => {
 	const { showToast } = useToast();
 	const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -310,7 +318,8 @@ export const ImportWizard: React.FC<ImportWizardProps> = ({
 
 	const handleProceed = () => {
 		if (!file) return;
-		if (imagesZipFile || file.size > 1024 * 1024) {
+		// When directUpload is true, always upload via background job (no local parsing / column-mapping)
+		if (directUpload || imagesZipFile || file.size > 1024 * 1024) {
 			handleUploadBothFiles(file, imagesZipFile);
 		} else {
 			parseSheetLocally(file);
