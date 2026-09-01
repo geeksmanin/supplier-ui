@@ -6,7 +6,24 @@ import { useToast } from '../Toast/Toast';
 import { useFormKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { saveStoredFormDefaults, getStoredFormDefaults } from '../../utils/defaultsStore';
 import { QuickMasterModal } from '../QuickMasterModal';
-import { Sliders, RefreshCw, Save, CheckCircle2 } from 'lucide-react';
+
+const SlidersIcon: React.FC<{ size?: number; className?: string; style?: React.CSSProperties }> = ({ size = 18, className, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+    <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>
+  </svg>
+);
+
+const RefreshIcon: React.FC<{ size?: number; className?: string; style?: React.CSSProperties }> = ({ size = 14, className, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
+  </svg>
+);
+
+const CheckCircleIcon: React.FC<{ size?: number; className?: string; style?: React.CSSProperties }> = ({ size = 12, className, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+  </svg>
+);
 
 export interface FormDefaultFieldDefinition {
   fieldKey: string;
@@ -190,7 +207,7 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
                 color: '#2563eb',
               }}
             >
-              <Sliders size={18} />
+              <SlidersIcon size={18} />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -237,7 +254,7 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
                       gap: '0.25rem',
                     }}
                   >
-                    <CheckCircle2 size={12} />
+                    <CheckCircleIcon size={12} />
                     Saved
                   </span>
                 )}
@@ -256,7 +273,7 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
               style={{ fontSize: '0.825rem', padding: '0.4rem 0.75rem' }}
               title="Refresh form defaults and picklists"
             >
-              <RefreshCw size={14} style={{ marginRight: '0.35rem' }} />
+              <RefreshIcon size={14} style={{ marginRight: '0.35rem' }} />
               Refresh
             </Button>
             <Button
@@ -334,7 +351,7 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
                       </label>
                       {currentValue && (
                         <span style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                          <CheckCircle2 size={12} /> Configured
+                          <CheckCircleIcon size={12} /> Configured
                         </span>
                       )}
                     </div>

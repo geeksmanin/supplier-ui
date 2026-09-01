@@ -34,7 +34,7 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
     'Preparing enterprise dashboard...',
   ],
   logoUrl,
-  theme = 'cosmic',
+  theme = 'light',
   scale = 1,
 }) => {
   const [currentStatusIndex, setCurrentStatusIndex] = useState(0);
@@ -183,11 +183,11 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
     @keyframes galaxy-core-pulse {
       0%, 100% {
         transform: scale(1);
-        box-shadow: 0 0 35px rgba(59, 130, 246, 0.6), 0 0 80px rgba(99, 102, 241, 0.35), inset 0 0 20px rgba(255, 255, 255, 0.3);
+        filter: drop-shadow(0 4px 16px rgba(37, 99, 235, 0.35));
       }
       50% {
-        transform: scale(1.05);
-        box-shadow: 0 0 55px rgba(99, 102, 241, 0.8), 0 0 110px rgba(59, 130, 246, 0.5), inset 0 0 30px rgba(255, 255, 255, 0.5);
+        transform: scale(1.08);
+        filter: drop-shadow(0 8px 24px rgba(37, 99, 235, 0.5));
       }
     }
 
@@ -232,19 +232,14 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
       50% { opacity: 0.95; transform: scale(1.3); }
     }
 
-    @keyframes galaxy-progress-shimmer {
-      0% { background-position: -200% 0; }
-      100% { background-position: 200% 0; }
-    }
-
     @keyframes galaxy-fade-in {
       from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
     }
   `;
 
+  const isDark = theme === 'dark';
   const isCosmic = theme === 'cosmic';
-  const isDark = theme === 'dark' || isCosmic;
 
   const bgStyle: React.CSSProperties = fullscreen
     ? {
@@ -253,12 +248,10 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
         width: '100vw',
         height: '100vh',
         zIndex: 999999,
-        backgroundColor: isCosmic ? '#070b14' : isDark ? '#0f172a' : '#f8fafc',
-        backgroundImage: isCosmic
-          ? 'radial-gradient(circle at 50% 45%, rgba(37, 99, 235, 0.18) 0%, rgba(99, 102, 241, 0.12) 30%, rgba(7, 11, 20, 0.98) 75%)'
-          : isDark
+        backgroundColor: isDark ? '#0f172a' : '#ffffff',
+        backgroundImage: isDark
           ? 'radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 1) 100%)'
-          : 'radial-gradient(circle at 50% 50%, #ffffff 0%, #f1f5f9 100%)',
+          : 'radial-gradient(circle at 50% 50%, #ffffff 0%, #f8fafc 100%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -342,7 +335,9 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
             width: '320px',
             height: '320px',
             borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(59, 130, 246, 0.22) 0%, rgba(99, 102, 241, 0.1) 50%, transparent 70%)',
+            background: isDark
+              ? 'radial-gradient(circle, rgba(59, 130, 246, 0.22) 0%, rgba(99, 102, 241, 0.1) 50%, transparent 70%)'
+              : 'radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, rgba(99, 102, 241, 0.05) 50%, transparent 70%)',
             filter: 'blur(20px)',
             pointerEvents: 'none',
           }}
@@ -356,7 +351,7 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
             height: `${outerOrbitSize}px`,
             borderRadius: '50%',
             border: isDark ? '1.5px dashed rgba(99, 102, 241, 0.28)' : '1.5px dashed rgba(99, 102, 241, 0.35)',
-            boxShadow: isDark ? '0 0 20px rgba(99, 102, 241, 0.08), inset 0 0 20px rgba(99, 102, 241, 0.08)' : 'none',
+            boxShadow: isDark ? '0 0 20px rgba(99, 102, 241, 0.08), inset 0 0 20px rgba(99, 102, 241, 0.08)' : '0 0 20px rgba(99, 102, 241, 0.04), inset 0 0 20px rgba(99, 102, 241, 0.04)',
             animation: 'galaxy-orbit-counter-clockwise 32s linear infinite',
             pointerEvents: 'none',
           }}
@@ -402,7 +397,7 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
             height: `${innerOrbitSize}px`,
             borderRadius: '50%',
             border: isDark ? '1.5px solid rgba(59, 130, 246, 0.35)' : '1.5px solid rgba(59, 130, 246, 0.4)',
-            boxShadow: isDark ? '0 0 25px rgba(59, 130, 246, 0.12), inset 0 0 25px rgba(59, 130, 246, 0.12)' : 'none',
+            boxShadow: isDark ? '0 0 25px rgba(59, 130, 246, 0.12), inset 0 0 25px rgba(59, 130, 246, 0.12)' : '0 0 25px rgba(59, 130, 246, 0.05), inset 0 0 25px rgba(59, 130, 246, 0.05)',
             animation: 'galaxy-orbit-clockwise 20s linear infinite',
             pointerEvents: 'none',
           }}
@@ -440,33 +435,27 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
           })}
         </div>
 
-        {/* 3. CENTER EPIMETHEUS NUCLEUS (The Sun / Geeksman Core) */}
+        {/* 3. CENTER NUCLEUS (Geeksman Core Logo Floating Directly) */}
         <div
           style={{
             position: 'relative',
-            width: '88px',
-            height: '88px',
-            borderRadius: '26px',
-            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(240, 245, 255, 0.94) 100%)',
+            width: '80px',
+            height: '80px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 10,
-            border: '2px solid rgba(255, 255, 255, 0.8)',
-            boxShadow: '0 0 30px rgba(59, 130, 246, 0.7), 0 0 70px rgba(99, 102, 241, 0.4), inset 0 0 15px rgba(255, 255, 255, 0.9)',
             animation: 'galaxy-core-pulse 3.5s ease-in-out infinite',
             cursor: 'default',
-            padding: '10px',
           }}
         >
           <img
             src={logoUrl || '/logo.png'}
             alt={appName || 'Geeksman'}
             style={{
-              width: '64px',
-              height: '64px',
+              width: '80px',
+              height: '80px',
               objectFit: 'contain',
-              filter: 'drop-shadow(0 2px 8px rgba(37, 99, 235, 0.35))',
             }}
             onError={(e) => {
               // Fallback to favicon or alternative logo path if /logo.png fails
@@ -525,30 +514,6 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
               {tagline}
             </p>
           )}
-        </div>
-
-        {/* Shimmering Progress Bar */}
-        <div
-          style={{
-            width: '200px',
-            height: '4px',
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
-            borderRadius: '999px',
-            overflow: 'hidden',
-            position: 'relative',
-            marginTop: '0.25rem',
-          }}
-        >
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              background: 'linear-gradient(90deg, transparent, #3b82f6, #8b5cf6, #ec4899, transparent)',
-              backgroundSize: '200% 100%',
-              borderRadius: '999px',
-              animation: 'galaxy-progress-shimmer 2s linear infinite',
-            }}
-          />
         </div>
 
         {/* Live Phased Status Text */}

@@ -3,7 +3,42 @@ import { apiClient } from '../api/client';
 import { useToast } from './Toast/Toast';
 import { Button } from './Button';
 import { Input } from './Input';
-import { X, ExternalLink, Check, AlertCircle, Loader2, Sparkles } from 'lucide-react';
+const SparklesIcon: React.FC<{ size?: number; className?: string; style?: React.CSSProperties }> = ({ size = 16, className, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+    <path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/>
+  </svg>
+);
+
+const ExternalLinkIcon: React.FC<{ size?: number; className?: string; style?: React.CSSProperties }> = ({ size = 11, className, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+  </svg>
+);
+
+const CloseIcon: React.FC<{ size?: number; className?: string; style?: React.CSSProperties }> = ({ size = 17, className, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+);
+
+const LoaderIcon: React.FC<{ size?: number; className?: string; style?: React.CSSProperties }> = ({ size = 11, className, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+    <line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
+  </svg>
+);
+
+const AlertCircleIcon: React.FC<{ size?: number; className?: string; style?: React.CSSProperties }> = ({ size = 11, className, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+    <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+);
+
+const CheckIcon: React.FC<{ size?: number; className?: string; style?: React.CSSProperties }> = ({ size = 11, className, style }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+);
 
 export interface QuickMasterModalProps {
   isOpen: boolean;
@@ -216,7 +251,7 @@ export const QuickMasterModal: React.FC<QuickMasterModalProps> = ({
                 color: '#2563eb',
               }}
             >
-              <Sparkles size={16} />
+              <SparklesIcon size={16} />
             </div>
             <div>
               <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>
@@ -250,7 +285,7 @@ export const QuickMasterModal: React.FC<QuickMasterModalProps> = ({
                 title="Open full master management in a new tab"
               >
                 <span>Masters</span>
-                <ExternalLink size={11} />
+                <ExternalLinkIcon size={11} />
               </a>
             )}
             <button
@@ -277,7 +312,7 @@ export const QuickMasterModal: React.FC<QuickMasterModalProps> = ({
                 e.currentTarget.style.color = '#94a3af';
               }}
             >
-              <X size={17} />
+              <CloseIcon size={17} />
             </button>
           </div>
         </div>
@@ -380,7 +415,7 @@ export const QuickMasterModal: React.FC<QuickMasterModalProps> = ({
                         gap: '0.2rem',
                       }}
                     >
-                      <Loader2 size={11} className="spin" /> Checking...
+                      <LoaderIcon size={11} className="spin" /> Checking...
                     </span>
                   )}
                   {!autoGenerateCode && hasValidatedCode && !validatingCode && (
@@ -395,7 +430,7 @@ export const QuickMasterModal: React.FC<QuickMasterModalProps> = ({
                           gap: '0.2rem',
                         }}
                       >
-                        <AlertCircle size={11} /> Code in use
+                        <AlertCircleIcon size={11} /> Code in use
                       </span>
                     ) : (
                       <span
@@ -408,7 +443,7 @@ export const QuickMasterModal: React.FC<QuickMasterModalProps> = ({
                           gap: '0.2rem',
                         }}
                       >
-                        <Check size={11} /> Available
+                        <CheckIcon size={11} /> Available
                       </span>
                     )
                   )}
@@ -504,7 +539,7 @@ export const QuickMasterModal: React.FC<QuickMasterModalProps> = ({
               <Button
                 type="submit"
                 variant="primary"
-                disabled={saving || !name.trim() || !code.trim() || codeExists}
+                disabled={saving || !name.trim() || (!autoGenerateCode && !code.trim()) || (!autoGenerateCode && codeExists) || (!autoGenerateCode && validatingCode)}
                 style={{ fontSize: '0.82rem', padding: '0.4rem 1rem', fontWeight: 600 }}
               >
                 {saving ? 'Saving...' : 'Save'}
