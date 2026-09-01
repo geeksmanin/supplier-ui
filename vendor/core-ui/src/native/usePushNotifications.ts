@@ -86,7 +86,7 @@ export const usePushNotifications = (onNavigate?: (route: string) => void) => {
       console.warn('Error requesting native push permissions:', err);
     });
 
-    // 2. Create High-Priority Notification Channels for Android
+    // 2. Create High-Priority Notification Channels for Android with Sound & Vibration
     if (getNativePlatform() === 'android' && PushNotifications.createChannel) {
       PushNotifications.createChannel({
         id: 'geeksman_alerts',
@@ -96,6 +96,8 @@ export const usePushNotifications = (onNavigate?: (route: string) => void) => {
         visibility: 1, // VISIBILITY_PUBLIC
         sound: 'default',
         vibration: true,
+        lights: true,
+        lightColor: '#2563eb',
       }).catch(() => {});
 
       PushNotifications.createChannel({
@@ -106,10 +108,35 @@ export const usePushNotifications = (onNavigate?: (route: string) => void) => {
         visibility: 1,
         sound: 'default',
         vibration: true,
+        lights: true,
+        lightColor: '#10b981',
       }).catch(() => {});
     }
 
-    // 3. Token Registration Listener
+    // 3. Foreground Notification Received Listener (Play Audio Chime)
+    const receivedListener = PushNotifications.addListener?.('pushNotificationReceived', (_notification: any) => {
+      try {
+        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContext) {
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.12);
+          gain.gain.setValueAtTime(0.3, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+          osc.start(ctx.currentTime);
+          osc.stop(ctx.currentTime + 0.35);
+        }
+      } catch (err) {
+        console.warn('Could not play notification audio chime:', err);
+      }
+    });
+
+    // 4. Token Registration Listener
     const regListener = PushNotifications.addListener('registration', (tokenObj: { value: string }) => {
       if (tokenObj?.value) {
         registerDeviceTokenWithBackend(tokenObj.value);
@@ -147,6 +174,7 @@ export const usePushNotifications = (onNavigate?: (route: string) => void) => {
     return () => {
       regListener?.remove?.();
       actionListener?.remove?.();
+      receivedListener?.remove?.();
       window.removeEventListener('app_login_event', handleLoginEvent);
     };
   }, [registerDeviceTokenWithBackend, onNavigate]);
