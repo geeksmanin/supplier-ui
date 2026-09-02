@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { useIsTabActive } from '../context/TabActiveContext';
 
 /**
  * useRefreshOnVisible
@@ -25,6 +26,7 @@ export const useRefreshOnVisible = (
   onRefresh: () => void,
   minIntervalMs = 10_000,
 ): void => {
+  const isTabActive = useIsTabActive();
   const lastRefreshRef = useRef<number>(Date.now());
   const onRefreshRef = useRef(onRefresh);
 
@@ -34,6 +36,10 @@ export const useRefreshOnVisible = (
   });
 
   const maybeRefresh = useCallback((source: string) => {
+    // If the component is in a background tab that is not active, DO NOT REFRESH!
+    if (!isTabActive) {
+      return;
+    }
     const now = Date.now();
     const elapsed = now - lastRefreshRef.current;
     if (elapsed >= minIntervalMs) {
@@ -43,7 +49,7 @@ export const useRefreshOnVisible = (
     } else {
       console.debug(`[useRefreshOnVisible] ⏳ refresh SKIPPED via "${source}" (elapsed ${elapsed}ms < ${minIntervalMs}ms interval)`);
     }
-  }, [minIntervalMs]);
+  }, [minIntervalMs, isTabActive]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {

@@ -1,4 +1,4 @@
-import { apiClient } from '../api/client';
+import { apiClient, getWorkspaceFromUrl } from '../api/client';
 import { getAppConfig } from '../config';
 
 export interface ResolveMediaOptions {
@@ -18,13 +18,15 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
 
   const trimmed = uploadIdOrUrl.trim();
   if (
-    trimmed.startsWith('http://') ||
-    trimmed.startsWith('https://') ||
     trimmed.startsWith('data:') ||
     trimmed.startsWith('blob:')
   ) {
     return trimmed;
   }
+
+  // Extract query parameters and clean raw path
+  const [basePath, existingQuery] = trimmed.split('?');
+  const existingParams = new URLSearchParams(existingQuery || '');
 
   // Determine the best backend base URL
   const config = getAppConfig();
@@ -46,16 +48,33 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
 
   // Extract query parameters
   const queryParts: string[] = [];
-  if (options?.download) {
+  if (options?.download || existingParams.get('download') === 'true') {
     queryParts.push('download=true');
   }
-  if (options?.tenant) {
-    queryParts.push(`tenant=${encodeURIComponent(options.tenant)}`);
+
+  const activeTenant =
+    options?.tenant ||
+    existingParams.get('tenant') ||
+    existingParams.get('tenant_code') ||
+    getWorkspaceFromUrl() ||
+    config?.tenantCode ||
+    'platform';
+
+  if (activeTenant) {
+    queryParts.push(`tenant=${encodeURIComponent(activeTenant)}`);
   }
   const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
 
+  if (basePath.startsWith('http://') || basePath.startsWith('https://')) {
+    // If it's already an absolute URL hitting our media endpoint, ensure tenant is attached
+    if (basePath.includes('/media/file/')) {
+      return `${basePath}${queryString}`;
+    }
+    return trimmed;
+  }
+
   // Extract bare upload ID if wrapped in relative path prefixes
-  let uploadId = trimmed.replace(/^\/+/, '');
+  let uploadId = basePath.replace(/^\/+/, '');
   if (uploadId.startsWith('api/v1/media/file/')) {
     uploadId = uploadId.slice('api/v1/media/file/'.length);
   } else if (uploadId.startsWith('media/file/')) {

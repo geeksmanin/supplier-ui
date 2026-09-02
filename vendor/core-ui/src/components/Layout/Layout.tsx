@@ -124,6 +124,9 @@ const resolveTabTitle = (path: string, navItems: NavItem[], routes: RouteConfig[
   return baseTitle;
 };
 
+export { TabActiveContext, useIsTabActive } from '../../context/TabActiveContext';
+import { TabActiveContext } from '../../context/TabActiveContext';
+
 export const TabContentWrapper: React.FC<{ tab: Tab; isActive: boolean }> = ({ tab, isActive }) => {
   const globalLocation = useLocation();
   const [localLocation, setLocalLocation] = React.useState(globalLocation);
@@ -172,11 +175,13 @@ export const TabContentWrapper: React.FC<{ tab: Tab; isActive: boolean }> = ({ t
   }, [localLocation]);
 
   return (
-    <UNSAFE_LocationContext.Provider value={locationContextValue as any}>
-      <UNSAFE_RouteContext.Provider value={routeContextValue as any}>
-        {tab.element}
-      </UNSAFE_RouteContext.Provider>
-    </UNSAFE_LocationContext.Provider>
+    <TabActiveContext.Provider value={isActive}>
+      <UNSAFE_LocationContext.Provider value={locationContextValue as any}>
+        <UNSAFE_RouteContext.Provider value={routeContextValue as any}>
+          {tab.element}
+        </UNSAFE_RouteContext.Provider>
+      </UNSAFE_LocationContext.Provider>
+    </TabActiveContext.Provider>
   );
 };
 

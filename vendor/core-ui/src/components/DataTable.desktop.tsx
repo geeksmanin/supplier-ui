@@ -725,7 +725,8 @@ export const DataTable: React.FC<DataTableProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           {filterDropdowns}
           <button
-            onClick={() => onRefresh ? onRefresh() : window.location.reload()}
+            type="button"
+            onClick={() => onRefresh && onRefresh()}
             style={{
               display: 'flex',
               alignItems: 'center',

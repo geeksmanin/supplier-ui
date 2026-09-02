@@ -18,7 +18,7 @@ export type { DeviceRegistrationPayload, PushNotificationData, NativePlatform } 
 
 export { Button } from './components/Button';
 export { Input } from './components/Input';
-export { Layout } from './components/Layout/Layout';
+export { Layout, TabActiveContext, useIsTabActive } from './components/Layout/Layout';
 export type { LayoutProps, NavItem } from './components/Layout/Layout';
 export { UIRegistry } from './registry/registry';
 export type { RouteConfig, NavItemConfig, SearchItemConfig } from './registry/registry';
