@@ -73,7 +73,7 @@ export async function getStoredSettings<T = any>(settingKey: string): Promise<T 
  */
 export async function fetchAndCacheWarehouseSettings(): Promise<any> {
   try {
-    const res = await apiClient.get('/api/v1/inventory/settings');
+    const res = await apiClient.get('/inventory/settings');
     const settings = res.data?.data || {};
     await saveStoredSettings('warehouse_settings', settings);
     return settings;
