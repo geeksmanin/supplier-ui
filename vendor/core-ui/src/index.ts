@@ -89,10 +89,12 @@ export type { AppTab, AppFolderItem, AppFolderGroup } from './types/MobileTabTyp
 
 // Form Defaults & Dynamic Configuration System (IndexedDB + API)
 export { saveStoredFormDefaults, getStoredFormDefaults, clearStoredFormDefaults } from './utils/defaultsStore';
+export { saveStoredSettings, getStoredSettings, fetchAndCacheWarehouseSettings } from './utils/settingsStore';
 export { useFormDefaults } from './hooks/useFormDefaults';
 export type { UseFormDefaultsOptions, UseFormDefaultsReturn } from './hooks/useFormDefaults';
 export { FormDefaultsConfig } from './components/FormDefaults/FormDefaultsConfig';
 export type { FormDefaultFieldDefinition, FormDefaultsConfigProps } from './components/FormDefaults/FormDefaultsConfig';
 export { QuickMasterModal } from './components/QuickMasterModal';
 export type { QuickMasterModalProps } from './components/QuickMasterModal';
+
 
