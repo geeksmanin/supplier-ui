@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LayoutProps } from './Layout';
 import { AppsDashboard } from './AppsDashboard';
+import { useAppVersion } from '../../hooks/useAppVersion';
+import { VersionModal } from '../VersionModal';
+import { VersionBadge } from '../VersionBadge';
 
 export const LayoutMobile: React.FC<any> = ({
   navItems,
@@ -23,6 +26,17 @@ export const LayoutMobile: React.FC<any> = ({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    uiVersion,
+    cacheId,
+    backendVersion,
+    updateReady,
+    modalOpen: versionModalOpen,
+    setModalOpen: setVersionModalOpen,
+    checkForUpdates,
+    copySystemInfo,
+  } = useAppVersion();
 
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [connSpeed, setConnSpeed] = useState<string>('4g');
@@ -372,6 +386,13 @@ export const LayoutMobile: React.FC<any> = ({
             }} />
           </div>
         )}
+
+        <VersionBadge
+          version={uiVersion}
+          updateReady={updateReady}
+          onClick={() => setVersionModalOpen(true)}
+          style={{ marginRight: '0.35rem', padding: '0.18rem 0.45rem', fontSize: '0.65rem' }}
+        />
       </header>      {/* Main Content */}
       <main style={{
         ...mainContentStyle,
@@ -605,6 +626,17 @@ export const LayoutMobile: React.FC<any> = ({
           </div>
         </div>
       )}
+
+      <VersionModal
+        isOpen={versionModalOpen}
+        onClose={() => setVersionModalOpen(false)}
+        uiVersion={uiVersion}
+        cacheId={cacheId}
+        backendVersion={backendVersion}
+        onCheckUpdates={checkForUpdates}
+        onCopyInfo={copySystemInfo}
+        updateReady={updateReady}
+      />
     </div>
   );
 };

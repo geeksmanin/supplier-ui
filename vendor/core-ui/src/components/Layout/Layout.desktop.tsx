@@ -3,6 +3,10 @@ import { LayoutProps, NavItem, TabContentWrapper } from './Layout';
 import { SearchItemConfig } from '../../registry/registry';
 import { AppsDashboard } from './AppsDashboard';
 import { CommandPalette } from '../CommandPalette';
+import { useAppVersion } from '../../hooks/useAppVersion';
+import { VersionModal } from '../VersionModal';
+import { VersionBadge } from '../VersionBadge';
+import { getWorkspaceFromUrl } from '../../api/client';
 
 
 export const LayoutDesktop: React.FC<any> = ({
@@ -33,6 +37,19 @@ export const LayoutDesktop: React.FC<any> = ({
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    uiVersion,
+    cacheId,
+    backendVersion,
+    updateReady,
+    modalOpen: versionModalOpen,
+    setModalOpen: setVersionModalOpen,
+    checkForUpdates,
+    copySystemInfo,
+  } = useAppVersion();
+
+  const activeTenant = getWorkspaceFromUrl() || 'geeksman';
 
   const [tabSearchOpen, setTabSearchOpen] = useState(false);
   const [tabSearchQuery, setTabSearchQuery] = useState('');
@@ -740,6 +757,42 @@ export const LayoutDesktop: React.FC<any> = ({
           </div>
         )}
 
+        {/* UI Version Badge & Trigger in Left Sidebar */}
+        <div
+          onClick={() => setVersionModalOpen(true)}
+          style={{
+            cursor: 'pointer',
+            padding: '4px 6px',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: updateReady ? '#fee2e2' : '#f1f5f9',
+            border: updateReady ? '1px solid #fecaca' : '1px solid #e2e8f0',
+            color: updateReady ? '#b91c1c' : '#64748b',
+            fontSize: '0.65rem',
+            fontWeight: 800,
+            fontFamily: 'monospace, sans-serif',
+            marginBottom: '0.6rem',
+            transition: 'all var(--transition-fast)',
+            maxWidth: '54px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = updateReady ? '#fecaca' : '#e2e8f0';
+            e.currentTarget.style.color = '#0f172a';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = updateReady ? '#fee2e2' : '#f1f5f9';
+            e.currentTarget.style.color = updateReady ? '#b91c1c' : '#64748b';
+          }}
+          title={`Active UI Version: ${uiVersion}\nClick for full system diagnostics`}
+        >
+          {uiVersion.replace('geeksman-os-', '').replace('erp-staff-', '')}
+        </div>
+
         {/* Logout Bottom Icon */}
         <div
           onClick={onLogout}
@@ -1109,11 +1162,25 @@ export const LayoutDesktop: React.FC<any> = ({
                   borderRadius: '10px',
                   boxShadow: 'var(--shadow-lg)',
                   zIndex: 100,
-                  width: '180px',
+                  width: '210px',
                   textAlign: 'left',
                   overflow: 'hidden',
                   padding: '4px'
                 }}>
+                  <div style={{ padding: '0.6rem 0.8rem', borderBottom: '1px solid #f1f5f9', backgroundColor: '#f8fafc', borderRadius: '6px 6px 0 0' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Workspace</div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f172a' }}>{activeTenant.toUpperCase()}</div>
+                    <div style={{ marginTop: '0.35rem' }}>
+                      <VersionBadge
+                        version={uiVersion}
+                        updateReady={updateReady}
+                        onClick={() => {
+                          setProfileMenuOpen(false);
+                          setVersionModalOpen(true);
+                        }}
+                      />
+                    </div>
+                  </div>
                   <div
                     onClick={() => { setProfileMenuOpen(false); onNavigate('/settings/profile'); }}
                     style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', cursor: 'pointer', borderRadius: '6px', color: '#374151' }}
@@ -1124,11 +1191,19 @@ export const LayoutDesktop: React.FC<any> = ({
                   </div>
                   <div
                     onClick={() => { setProfileMenuOpen(false); onNavigate('/settings/workspace'); }}
-                    style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', cursor: 'pointer', borderRadius: '6px', color: '#374151', borderBottom: '1px solid #e5e7eb' }}
+                    style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', cursor: 'pointer', borderRadius: '6px', color: '#374151' }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
                     ⚙️ Workspace Settings
+                  </div>
+                  <div
+                    onClick={() => { setProfileMenuOpen(false); setVersionModalOpen(true); }}
+                    style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', cursor: 'pointer', borderRadius: '6px', color: '#0284c7', fontWeight: 600, borderBottom: '1px solid #e5e7eb' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f0f9ff'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    🛡️ System & Version Info
                   </div>
                   <div
                     onClick={() => { setProfileMenuOpen(false); onLogout(); }}
@@ -1729,6 +1804,16 @@ export const LayoutDesktop: React.FC<any> = ({
         onClose={() => setCommandPaletteOpen(false)}
         activePath={currentPath}
         onNavigate={onNavigate}
+      />
+      <VersionModal
+        isOpen={versionModalOpen}
+        onClose={() => setVersionModalOpen(false)}
+        uiVersion={uiVersion}
+        cacheId={cacheId}
+        backendVersion={backendVersion}
+        onCheckUpdates={checkForUpdates}
+        onCopyInfo={copySystemInfo}
+        updateReady={updateReady}
       />
     </div>
   );
