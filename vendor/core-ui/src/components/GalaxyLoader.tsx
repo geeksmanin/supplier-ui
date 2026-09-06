@@ -1,4 +1,26 @@
 import React, { useEffect, useState } from 'react';
+import {
+  Location3DIcon,
+  Contacts3DIcon,
+  Catalogue3DIcon,
+  Sales3DIcon,
+  PurchaseOrder3DIcon,
+  Invoices3DIcon,
+  Accounts3DIcon,
+  Inventory3DIcon,
+  WMS3DIcon,
+  CRM3DIcon,
+  Chat3DIcon,
+  Settings3DIcon,
+  Dashboard3DIcon,
+  Tenant3DIcon,
+  Automations3DIcon,
+  HR3DIcon,
+  Backupsync3DIcon,
+  Pricing3DIcon,
+  Requisition3DIcon,
+  RFQ3DIcon
+} from './icons3d';
 
 export interface GalaxyLoaderProps {
   fullscreen?: boolean;
@@ -11,13 +33,10 @@ export interface GalaxyLoaderProps {
   scale?: number;
 }
 
-interface SatelliteApp {
+interface SatelliteApp3D {
   id: string;
   name: string;
-  code: string;
-  gradient: string;
   glow: string;
-  orbit: 'inner' | 'outer';
   icon: React.ReactNode;
 }
 
@@ -34,7 +53,7 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
     'Preparing enterprise dashboard...',
   ],
   logoUrl,
-  theme = 'light',
+  theme = 'dark',
   scale = 1,
 }) => {
   const [currentStatusIndex, setCurrentStatusIndex] = useState(0);
@@ -50,197 +69,217 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
 
   const activeMessage = statusMessage || (statusList ? statusList[currentStatusIndex] : 'Loading...');
 
-  // 8 Curated Revolving Ecosystem Satellite Apps
-  const innerOrbitApps: SatelliteApp[] = [
+  // -------------------------------------------------------------------------
+  // ALL 20 3D VOLUMETRIC ICONS SPREAD ACROSS 3 CONCENTRIC GALAXY ORBITS
+  // -------------------------------------------------------------------------
+
+  // 1. Inner Orbit (6 Core Master Modules) - Radius: 120px, Size: 44px
+  const innerOrbitApps: SatelliteApp3D[] = [
     {
-      id: 'contacts',
-      name: 'Contacts & CRM',
-      code: 'CRM',
-      gradient: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-      glow: 'rgba(59, 130, 246, 0.65)',
-      orbit: 'inner',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-      ),
+      id: 'locations',
+      name: 'Locations & Warehouses',
+      glow: 'rgba(16, 185, 129, 0.65)',
+      icon: <Location3DIcon size={44} />,
     },
     {
       id: 'catalogue',
-      name: 'Catalogue & Stock',
-      code: 'CAT',
-      gradient: 'linear-gradient(135deg, #10b981, #047857)',
-      glow: 'rgba(16, 185, 129, 0.65)',
-      orbit: 'inner',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-          <path d="m3.3 7 8.7 5 8.7-5" />
-          <path d="M12 22V12" />
-        </svg>
-      ),
+      name: 'Product Catalogue',
+      glow: 'rgba(236, 72, 153, 0.65)',
+      icon: <Catalogue3DIcon size={44} />,
     },
     {
-      id: 'billing',
-      name: 'Billing & Accounts',
-      code: 'ACC',
-      gradient: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
-      glow: 'rgba(139, 92, 246, 0.65)',
-      orbit: 'inner',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <rect width="20" height="14" x="2" y="5" rx="2" />
-          <line x1="2" x2="22" y1="10" y2="10" />
-          <circle cx="7" cy="15" r="1.2" fill="#ffffff" />
-        </svg>
-      ),
+      id: 'accounts',
+      name: 'Financial Accounts & Ledgers',
+      glow: 'rgba(16, 185, 129, 0.65)',
+      icon: <Accounts3DIcon size={44} />,
+    },
+    {
+      id: 'contacts',
+      name: 'Contacts & Parties',
+      glow: 'rgba(245, 158, 11, 0.65)',
+      icon: <Contacts3DIcon size={44} />,
+    },
+    {
+      id: 'invoices',
+      name: 'Invoices & Billing',
+      glow: 'rgba(6, 182, 212, 0.65)',
+      icon: <Invoices3DIcon size={44} />,
+    },
+    {
+      id: 'dashboard',
+      name: 'Dashboard Analytics',
+      glow: 'rgba(59, 130, 246, 0.65)',
+      icon: <Dashboard3DIcon size={44} />,
     },
   ];
 
-  const outerOrbitApps: SatelliteApp[] = [
+  // 2. Middle Orbit (7 Commercial & Ops Modules) - Radius: 195px, Size: 46px
+  const middleOrbitApps: SatelliteApp3D[] = [
     {
       id: 'sales',
-      name: 'Sales & Orders',
-      code: 'SLS',
-      gradient: 'linear-gradient(135deg, #f59e0b, #d97706)',
-      glow: 'rgba(245, 158, 11, 0.65)',
-      orbit: 'outer',
-      icon: (
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
-          <path d="M3 6h18" />
-          <path d="M16 10a4 4 0 0 1-8 0" />
-        </svg>
-      ),
+      name: 'Sales & Quotations',
+      glow: 'rgba(244, 63, 94, 0.65)',
+      icon: <Sales3DIcon size={46} />,
     },
     {
       id: 'purchase',
-      name: 'Purchase & RFQ',
-      code: 'PUR',
-      gradient: 'linear-gradient(135deg, #f43f5e, #be123c)',
+      name: 'Purchase Orders',
+      glow: 'rgba(37, 99, 235, 0.65)',
+      icon: <PurchaseOrder3DIcon size={46} />,
+    },
+    {
+      id: 'inventory',
+      name: 'Inventory & Stock Control',
+      glow: 'rgba(168, 85, 247, 0.65)',
+      icon: <Inventory3DIcon size={46} />,
+    },
+    {
+      id: 'wms',
+      name: 'WMS Logistics',
+      glow: 'rgba(2, 132, 199, 0.65)',
+      icon: <WMS3DIcon size={46} />,
+    },
+    {
+      id: 'crm',
+      name: 'CRM & Pipeline',
+      glow: 'rgba(14, 165, 233, 0.65)',
+      icon: <CRM3DIcon size={46} />,
+    },
+    {
+      id: 'chat',
+      name: 'Staff Chat & Comms',
+      glow: 'rgba(59, 130, 246, 0.65)',
+      icon: <Chat3DIcon size={46} />,
+    },
+    {
+      id: 'pricing',
+      name: 'Pricing & Rules',
       glow: 'rgba(244, 63, 94, 0.65)',
-      orbit: 'outer',
-      icon: (
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-          <line x1="16" y1="13" x2="8" y2="13" />
-          <line x1="16" y1="17" x2="8" y2="17" />
-          <polyline points="10 9 9 9 8 9" />
-        </svg>
-      ),
+      icon: <Pricing3DIcon size={46} />,
+    },
+  ];
+
+  // 3. Outer Orbit (7 Enterprise & Workflow Modules) - Radius: 270px, Size: 48px
+  const outerOrbitApps: SatelliteApp3D[] = [
+    {
+      id: 'automations',
+      name: 'Automations & Rules',
+      glow: 'rgba(56, 189, 248, 0.65)',
+      icon: <Automations3DIcon size={48} />,
     },
     {
-      id: 'support',
-      name: 'Support & Tickets',
-      code: 'TCK',
-      gradient: 'linear-gradient(135deg, #06b6d4, #0891b2)',
-      glow: 'rgba(6, 182, 212, 0.65)',
-      orbit: 'outer',
-      icon: (
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
-          <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
-        </svg>
-      ),
-    },
-    {
-      id: 'hr',
-      name: 'HR & Staff',
-      code: 'HRM',
-      gradient: 'linear-gradient(135deg, #14b8a6, #0d9488)',
-      glow: 'rgba(20, 184, 166, 0.65)',
-      orbit: 'outer',
-      icon: (
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="7" r="4" />
-          <path d="M5.5 21a8.38 8.38 0 0 1 13 0" />
-          <polygon points="12 2 15 8 9 8" fill="#ffffff" opacity="0.3" />
-        </svg>
-      ),
+      id: 'settings',
+      name: 'System Config',
+      glow: 'rgba(148, 163, 184, 0.65)',
+      icon: <Settings3DIcon size={48} />,
     },
     {
       id: 'tenant',
-      name: 'Platform Security',
-      code: 'SEC',
-      gradient: 'linear-gradient(135deg, #6366f1, #4338ca)',
+      name: 'Tenant Onboarding',
+      glow: 'rgba(16, 185, 129, 0.65)',
+      icon: <Tenant3DIcon size={48} />,
+    },
+    {
+      id: 'hr',
+      name: 'HR & People Hierarchy',
       glow: 'rgba(99, 102, 241, 0.65)',
-      orbit: 'outer',
-      icon: (
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          <polyline points="9 12 11 14 15 10" />
-        </svg>
-      ),
+      icon: <HR3DIcon size={48} />,
+    },
+    {
+      id: 'backupsync',
+      name: 'Backupsync & Cloud',
+      glow: 'rgba(168, 85, 247, 0.65)',
+      icon: <Backupsync3DIcon size={48} />,
+    },
+    {
+      id: 'requisitions',
+      name: 'Requisitions & Indents',
+      glow: 'rgba(16, 185, 129, 0.65)',
+      icon: <Requisition3DIcon size={48} />,
+    },
+    {
+      id: 'rfqs',
+      name: 'RFQs & Quotes',
+      glow: 'rgba(139, 92, 246, 0.65)',
+      icon: <RFQ3DIcon size={48} />,
     },
   ];
+
+  const isLight = theme === 'light';
 
   // CSS Animations & Keyframes
   const galaxyStyles = `
     @keyframes galaxy-core-pulse {
       0%, 100% {
         transform: scale(1);
-        filter: drop-shadow(0 4px 16px rgba(37, 99, 235, 0.35));
+        filter: drop-shadow(0 0 28px rgba(59, 130, 246, 0.55));
       }
       50% {
         transform: scale(1.08);
-        filter: drop-shadow(0 8px 24px rgba(37, 99, 235, 0.5));
+        filter: drop-shadow(0 0 42px rgba(99, 102, 241, 0.8));
       }
     }
 
-    @keyframes galaxy-orbit-clockwise {
-      from {
-        transform: rotate(0deg);
+    @keyframes galaxy-energy-ring {
+      0% {
+        transform: scale(0.85);
+        opacity: 0.85;
       }
-      to {
-        transform: rotate(360deg);
+      50% {
+        transform: scale(1.22);
+        opacity: 0.28;
       }
-    }
-
-    @keyframes galaxy-orbit-counter-clockwise {
-      from {
-        transform: rotate(360deg);
-      }
-      to {
-        transform: rotate(0deg);
+      100% {
+        transform: scale(1.5);
+        opacity: 0;
       }
     }
 
-    @keyframes galaxy-counter-rotate-clockwise {
-      from {
-        transform: rotate(0deg);
-      }
-      to {
-        transform: rotate(-360deg);
-      }
+    @keyframes galaxy-orbit-cw {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
     }
 
-    @keyframes galaxy-counter-rotate-counter {
-      from {
-        transform: rotate(-360deg);
-      }
-      to {
-        transform: rotate(0deg);
-      }
+    @keyframes galaxy-orbit-ccw {
+      from { transform: rotate(360deg); }
+      to { transform: rotate(0deg); }
+    }
+
+    @keyframes galaxy-counter-cw {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(-360deg); }
+    }
+
+    @keyframes galaxy-counter-ccw {
+      from { transform: rotate(-360deg); }
+      to { transform: rotate(0deg); }
     }
 
     @keyframes galaxy-star-twinkle {
-      0%, 100% { opacity: 0.25; transform: scale(0.85); }
+      0%, 100% { opacity: 0.2; transform: scale(0.8); }
       50% { opacity: 0.95; transform: scale(1.3); }
     }
 
+    @keyframes galaxy-laser-scan {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(250%); }
+    }
+
     @keyframes galaxy-fade-in {
-      from { opacity: 0; transform: translateY(8px); }
+      from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+
+    .galaxy-free-floating-icon {
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), filter 0.25s ease;
+    }
+    .galaxy-free-floating-icon:hover {
+      transform: scale(1.35) !important;
+      z-index: 99;
     }
   `;
 
-  const isDark = theme === 'dark';
-  const isCosmic = theme === 'cosmic';
-
+  // Cosmic Dark Background Configuration
   const bgStyle: React.CSSProperties = fullscreen
     ? {
         position: 'fixed',
@@ -248,10 +287,10 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
         width: '100vw',
         height: '100vh',
         zIndex: 999999,
-        backgroundColor: isDark ? '#0f172a' : '#ffffff',
-        backgroundImage: isDark
-          ? 'radial-gradient(circle at 50% 50%, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 1) 100%)'
-          : 'radial-gradient(circle at 50% 50%, #ffffff 0%, #f8fafc 100%)',
+        backgroundColor: isLight ? '#f8fafc' : '#070a13',
+        backgroundImage: isLight
+          ? 'radial-gradient(circle at 50% 50%, #ffffff 0%, #f1f5f9 100%)'
+          : 'radial-gradient(circle at 50% 45%, rgba(30, 58, 138, 0.32) 0%, rgba(15, 23, 42, 0.65) 45%, #05070e 85%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -263,7 +302,12 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
     : {
         position: 'relative',
         width: '100%',
-        minHeight: '440px',
+        minHeight: '600px',
+        backgroundColor: isLight ? '#f8fafc' : '#070a13',
+        backgroundImage: isLight
+          ? 'radial-gradient(circle at 50% 50%, #ffffff 0%, #f1f5f9 100%)'
+          : 'radial-gradient(circle at 50% 45%, rgba(30, 58, 138, 0.28) 0%, rgba(15, 23, 42, 0.55) 50%, #05070e 90%)',
+        borderRadius: '24px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -273,31 +317,66 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
         userSelect: 'none',
       };
 
-  // Dimensions
-  const innerRadius = 100; // px
-  const outerRadius = 168; // px
+  // Concentric Orbit Radii (px)
+  const innerRadius = 120;
+  const middleRadius = 195;
+  const outerRadius = 270;
+
   const innerOrbitSize = innerRadius * 2;
+  const middleOrbitSize = middleRadius * 2;
   const outerOrbitSize = outerRadius * 2;
+
+  // Starfield Dust Particles
+  const stars = [
+    { top: '6%', left: '12%', size: 2.5, delay: '0.2s' },
+    { top: '12%', left: '85%', size: 3, delay: '1.4s' },
+    { top: '18%', left: '26%', size: 1.8, delay: '2.1s' },
+    { top: '24%', left: '72%', size: 2.2, delay: '0.8s' },
+    { top: '75%', left: '14%', size: 3.2, delay: '1.9s' },
+    { top: '80%', left: '88%', size: 2.4, delay: '0.5s' },
+    { top: '35%', left: '6%', size: 2, delay: '2.8s' },
+    { top: '65%', left: '94%', size: 2.8, delay: '1.1s' },
+    { top: '88%', left: '30%', size: 2.2, delay: '1.6s' },
+    { top: '92%', left: '68%', size: 3.5, delay: '0.3s' },
+    { top: '10%', left: '50%', size: 2, delay: '2.4s' },
+    { top: '55%', left: '3%', size: 1.5, delay: '1.7s' },
+  ];
 
   return (
     <div style={bgStyle}>
       <style dangerouslySetInnerHTML={{ __html: galaxyStyles }} />
 
-      {/* Ambient Celestial Stars Background */}
-      {isCosmic && (
+      {/* 1. Celestial Ambient Starfield & Nebula Fields */}
+      {!isLight && (
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-          {[
-            { top: '12%', left: '18%', size: 3, delay: '0s' },
-            { top: '22%', left: '78%', size: 2, delay: '1.2s' },
-            { top: '75%', left: '25%', size: 3.5, delay: '0.6s' },
-            { top: '82%', left: '72%', size: 2.5, delay: '1.8s' },
-            { top: '35%', left: '12%', size: 2, delay: '2.4s' },
-            { top: '60%', left: '88%', size: 3, delay: '1s' },
-            { top: '15%', left: '50%', size: 2, delay: '1.5s' },
-            { top: '88%', left: '45%', size: 2.5, delay: '0.3s' },
-          ].map((star, i) => (
+          <div
+            style={{
+              position: 'absolute',
+              top: '20%',
+              left: '30%',
+              width: '520px',
+              height: '520px',
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(99, 102, 241, 0.16) 0%, rgba(59, 130, 246, 0.08) 50%, transparent 72%)',
+              filter: 'blur(55px)',
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              top: '38%',
+              left: '52%',
+              width: '450px',
+              height: '450px',
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, rgba(236, 72, 153, 0.06) 55%, transparent 72%)',
+              filter: 'blur(50px)',
+            }}
+          />
+
+          {stars.map((star, idx) => (
             <div
-              key={i}
+              key={idx}
               style={{
                 position: 'absolute',
                 top: star.top,
@@ -306,8 +385,8 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
                 height: `${star.size}px`,
                 backgroundColor: '#ffffff',
                 borderRadius: '50%',
-                boxShadow: '0 0 8px #93c5fd',
-                animation: `galaxy-star-twinkle 3s ease-in-out infinite`,
+                boxShadow: '0 0 10px #93c5fd, 0 0 4px #ffffff',
+                animation: 'galaxy-star-twinkle 3.2s ease-in-out infinite',
                 animationDelay: star.delay,
               }}
             />
@@ -315,69 +394,76 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
         </div>
       )}
 
-      {/* Main Galaxy System Container */}
+      {/* 2. Main Galaxy Revolution System (3 Concentric Orbits) */}
       <div
         style={{
           position: 'relative',
-          width: `${outerOrbitSize + 60}px`,
-          height: `${outerOrbitSize + 60}px`,
+          width: `${outerOrbitSize + 90}px`,
+          height: `${outerOrbitSize + 90}px`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           transform: `scale(${scale})`,
           transition: 'transform 0.3s ease',
+          maxWidth: '100vw',
+          maxHeight: '75vh',
         }}
       >
-        {/* Deep Galaxy Space Glow Radial Field */}
+        {/* Core Ambient Energy Glow */}
         <div
           style={{
             position: 'absolute',
             width: '320px',
             height: '320px',
             borderRadius: '50%',
-            background: isDark
-              ? 'radial-gradient(circle, rgba(59, 130, 246, 0.22) 0%, rgba(99, 102, 241, 0.1) 50%, transparent 70%)'
-              : 'radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, rgba(99, 102, 241, 0.05) 50%, transparent 70%)',
-            filter: 'blur(20px)',
+            background: isLight
+              ? 'radial-gradient(circle, rgba(59, 130, 246, 0.14) 0%, rgba(99, 102, 241, 0.05) 55%, transparent 70%)'
+              : 'radial-gradient(circle, rgba(59, 130, 246, 0.32) 0%, rgba(99, 102, 241, 0.18) 45%, rgba(147, 51, 234, 0.08) 65%, transparent 75%)',
+            filter: 'blur(32px)',
             pointerEvents: 'none',
           }}
         />
 
-        {/* 1. OUTER ORBIT RING */}
+        {/* ------------------------------------------------------------- */}
+        {/* 2A. OUTER ORBIT (7 Apps, Clockwise 48s, Radius: 270px)        */}
+        {/* ------------------------------------------------------------- */}
         <div
           style={{
             position: 'absolute',
             width: `${outerOrbitSize}px`,
             height: `${outerOrbitSize}px`,
             borderRadius: '50%',
-            border: isDark ? '1.5px dashed rgba(99, 102, 241, 0.28)' : '1.5px dashed rgba(99, 102, 241, 0.35)',
-            boxShadow: isDark ? '0 0 20px rgba(99, 102, 241, 0.08), inset 0 0 20px rgba(99, 102, 241, 0.08)' : '0 0 20px rgba(99, 102, 241, 0.04), inset 0 0 20px rgba(99, 102, 241, 0.04)',
-            animation: 'galaxy-orbit-counter-clockwise 32s linear infinite',
+            border: isLight
+              ? '1.5px dashed rgba(99, 102, 241, 0.28)'
+              : '1.5px dashed rgba(99, 102, 241, 0.32)',
+            boxShadow: isLight
+              ? '0 0 16px rgba(99, 102, 241, 0.04)'
+              : '0 0 32px rgba(99, 102, 241, 0.12), inset 0 0 32px rgba(99, 102, 241, 0.08)',
+            animation: 'galaxy-orbit-cw 48s linear infinite',
             pointerEvents: 'none',
           }}
         >
           {outerOrbitApps.map((app, index) => {
             const angle = (index * 360) / outerOrbitApps.length;
             const rad = (angle * Math.PI) / 180;
-            const x = outerRadius + outerRadius * Math.cos(rad) - 22; // 44px / 2 = 22
-            const y = outerRadius + outerRadius * Math.sin(rad) - 22;
+            const x = outerRadius + outerRadius * Math.cos(rad) - 24; // 48px / 2 = 24
+            const y = outerRadius + outerRadius * Math.sin(rad) - 24;
 
             return (
               <div
                 key={app.id}
+                className="galaxy-free-floating-icon"
                 style={{
                   position: 'absolute',
                   left: `${x}px`,
                   top: `${y}px`,
-                  width: '44px',
-                  height: '44px',
-                  borderRadius: '13px',
-                  background: app.gradient,
-                  boxShadow: `0 4px 14px ${app.glow}, 0 0 0 1.5px rgba(255, 255, 255, 0.35)`,
+                  width: '48px',
+                  height: '48px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  animation: 'galaxy-counter-rotate-counter 32s linear infinite',
+                  animation: 'galaxy-counter-cw 48s linear infinite',
+                  filter: `drop-shadow(0 12px 24px ${app.glow})`,
                   cursor: 'pointer',
                   pointerEvents: 'auto',
                 }}
@@ -389,41 +475,97 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
           })}
         </div>
 
-        {/* 2. INNER ORBIT RING */}
+        {/* ------------------------------------------------------------- */}
+        {/* 2B. MIDDLE ORBIT (7 Apps, Counter-Clockwise 34s, Radius: 195px)*/}
+        {/* ------------------------------------------------------------- */}
+        <div
+          style={{
+            position: 'absolute',
+            width: `${middleOrbitSize}px`,
+            height: `${middleOrbitSize}px`,
+            borderRadius: '50%',
+            border: isLight
+              ? '1.5px solid rgba(139, 92, 246, 0.28)'
+              : '1.5px solid rgba(139, 92, 246, 0.32)',
+            boxShadow: isLight
+              ? '0 0 20px rgba(139, 92, 246, 0.05)'
+              : '0 0 32px rgba(139, 92, 246, 0.16), inset 0 0 32px rgba(139, 92, 246, 0.1)',
+            animation: 'galaxy-orbit-ccw 34s linear infinite',
+            pointerEvents: 'none',
+          }}
+        >
+          {middleOrbitApps.map((app, index) => {
+            const angle = (index * 360) / middleOrbitApps.length;
+            const rad = (angle * Math.PI) / 180;
+            const x = middleRadius + middleRadius * Math.cos(rad) - 23; // 46px / 2 = 23
+            const y = middleRadius + middleRadius * Math.sin(rad) - 23;
+
+            return (
+              <div
+                key={app.id}
+                className="galaxy-free-floating-icon"
+                style={{
+                  position: 'absolute',
+                  left: `${x}px`,
+                  top: `${y}px`,
+                  width: '46px',
+                  height: '46px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  animation: 'galaxy-counter-ccw 34s linear infinite',
+                  filter: `drop-shadow(0 10px 20px ${app.glow})`,
+                  cursor: 'pointer',
+                  pointerEvents: 'auto',
+                }}
+                title={app.name}
+              >
+                {app.icon}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ------------------------------------------------------------- */}
+        {/* 2C. INNER ORBIT (6 Apps, Clockwise 22s, Radius: 120px)        */}
+        {/* ------------------------------------------------------------- */}
         <div
           style={{
             position: 'absolute',
             width: `${innerOrbitSize}px`,
             height: `${innerOrbitSize}px`,
             borderRadius: '50%',
-            border: isDark ? '1.5px solid rgba(59, 130, 246, 0.35)' : '1.5px solid rgba(59, 130, 246, 0.4)',
-            boxShadow: isDark ? '0 0 25px rgba(59, 130, 246, 0.12), inset 0 0 25px rgba(59, 130, 246, 0.12)' : '0 0 25px rgba(59, 130, 246, 0.05), inset 0 0 25px rgba(59, 130, 246, 0.05)',
-            animation: 'galaxy-orbit-clockwise 20s linear infinite',
+            border: isLight
+              ? '1.5px dashed rgba(59, 130, 246, 0.35)'
+              : '1.5px dashed rgba(59, 130, 246, 0.42)',
+            boxShadow: isLight
+              ? '0 0 20px rgba(59, 130, 246, 0.06)'
+              : '0 0 32px rgba(59, 130, 246, 0.2), inset 0 0 32px rgba(59, 130, 246, 0.12)',
+            animation: 'galaxy-orbit-cw 22s linear infinite',
             pointerEvents: 'none',
           }}
         >
           {innerOrbitApps.map((app, index) => {
             const angle = (index * 360) / innerOrbitApps.length;
             const rad = (angle * Math.PI) / 180;
-            const x = innerRadius + innerRadius * Math.cos(rad) - 22;
+            const x = innerRadius + innerRadius * Math.cos(rad) - 22; // 44px / 2 = 22
             const y = innerRadius + innerRadius * Math.sin(rad) - 22;
 
             return (
               <div
                 key={app.id}
+                className="galaxy-free-floating-icon"
                 style={{
                   position: 'absolute',
                   left: `${x}px`,
                   top: `${y}px`,
                   width: '44px',
                   height: '44px',
-                  borderRadius: '13px',
-                  background: app.gradient,
-                  boxShadow: `0 4px 14px ${app.glow}, 0 0 0 1.5px rgba(255, 255, 255, 0.35)`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  animation: 'galaxy-counter-rotate-clockwise 20s linear infinite',
+                  animation: 'galaxy-counter-cw 22s linear infinite',
+                  filter: `drop-shadow(0 8px 18px ${app.glow})`,
                   cursor: 'pointer',
                   pointerEvents: 'auto',
                 }}
@@ -435,17 +577,56 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
           })}
         </div>
 
-        {/* 3. CENTER NUCLEUS (Geeksman Core Logo Floating Directly) */}
+        {/* 2D. EXPANDING NUCLEUS RIPPLES */}
+        {!isLight && (
+          <>
+            <div
+              style={{
+                position: 'absolute',
+                width: '100px',
+                height: '100px',
+                borderRadius: '50%',
+                border: '1.5px solid rgba(56, 189, 248, 0.65)',
+                animation: 'galaxy-energy-ring 3.6s cubic-bezier(0.16, 1, 0.3, 1) infinite',
+                pointerEvents: 'none',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                width: '100px',
+                height: '100px',
+                borderRadius: '50%',
+                border: '1.5px solid rgba(139, 92, 246, 0.55)',
+                animation: 'galaxy-energy-ring 3.6s cubic-bezier(0.16, 1, 0.3, 1) infinite',
+                animationDelay: '1.8s',
+                pointerEvents: 'none',
+              }}
+            />
+          </>
+        )}
+
+        {/* 2E. CENTER NUCLEUS CORE (Geeksman Core Logo Floating in Space) */}
         <div
           style={{
             position: 'relative',
-            width: '80px',
-            height: '80px',
+            width: '94px',
+            height: '94px',
+            borderRadius: '50%',
+            background: isLight
+              ? 'rgba(255, 255, 255, 0.95)'
+              : 'radial-gradient(circle at 35% 35%, #1e293b 0%, #0a0f1d 85%)',
+            border: isLight
+              ? '2px solid rgba(59, 130, 246, 0.25)'
+              : '2px solid rgba(96, 165, 250, 0.45)',
+            boxShadow: isLight
+              ? '0 10px 25px rgba(37, 99, 235, 0.2)'
+              : '0 0 40px rgba(59, 130, 246, 0.5), 0 0 16px rgba(255, 255, 255, 0.1) inset',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 10,
-            animation: 'galaxy-core-pulse 3.5s ease-in-out infinite',
+            zIndex: 20,
+            animation: 'galaxy-core-pulse 3.6s ease-in-out infinite',
             cursor: 'default',
           }}
         >
@@ -453,12 +634,12 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
             src={logoUrl || '/logo.png'}
             alt={appName || 'Geeksman'}
             style={{
-              width: '80px',
-              height: '80px',
+              width: '68px',
+              height: '68px',
               objectFit: 'contain',
+              filter: isLight ? 'none' : 'drop-shadow(0 2px 10px rgba(0, 0, 0, 0.7))',
             }}
             onError={(e) => {
-              // Fallback to favicon or alternative logo path if /logo.png fails
               const target = e.currentTarget;
               if (target.src.indexOf('/favicon.png') === -1) {
                 target.src = '/favicon.png';
@@ -468,34 +649,35 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
         </div>
       </div>
 
-      {/* Brand Identity & Progress Messaging */}
+      {/* 3. Brand Identity & High-Tech Status Telemetry */}
       <div
         style={{
-          marginTop: '2.5rem',
+          marginTop: '1.5rem',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '0.75rem',
+          gap: '0.85rem',
           textAlign: 'center',
-          maxWidth: '420px',
-          padding: '0 1rem',
-          zIndex: 10,
+          maxWidth: '440px',
+          padding: '0 1.25rem',
+          zIndex: 30,
         }}
       >
-        {/* Title with Gradient Polish */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'center' }}>
+        {/* Title with Metallic Sheen */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'center' }}>
           <h1
             style={{
-              fontSize: '1.45rem',
-              fontWeight: 800,
+              fontSize: '1.55rem',
+              fontWeight: 900,
               margin: 0,
-              letterSpacing: '0.04em',
-              background: isDark
-                ? 'linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%)'
-                : 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+              letterSpacing: '0.06em',
+              background: isLight
+                ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)'
+                : 'linear-gradient(135deg, #ffffff 0%, #e2e8f0 45%, #94a3b8 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               textTransform: 'uppercase',
+              textShadow: isLight ? 'none' : '0 2px 12px rgba(255, 255, 255, 0.15)',
             }}
           >
             {appName}
@@ -503,11 +685,11 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
           {tagline && (
             <p
               style={{
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                color: isDark ? '#64748b' : '#64748b',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                color: '#64748b',
                 margin: 0,
-                letterSpacing: '0.08em',
+                letterSpacing: '0.12em',
                 textTransform: 'uppercase',
               }}
             >
@@ -516,30 +698,63 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
           )}
         </div>
 
-        {/* Live Phased Status Text */}
+        {/* Animated Laser Progress Line */}
+        <div
+          style={{
+            width: '180px',
+            height: '3px',
+            backgroundColor: isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.08)',
+            borderRadius: '9999px',
+            overflow: 'hidden',
+            position: 'relative',
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '60px',
+              height: '100%',
+              background: 'linear-gradient(90deg, transparent, #38bdf8, #818cf8, transparent)',
+              borderRadius: '9999px',
+              animation: 'galaxy-laser-scan 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+            }}
+          />
+        </div>
+
+        {/* Live Phased Status Text Pill */}
         <div
           key={activeMessage}
           style={{
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
-            gap: '0.5rem',
-            fontSize: '0.86rem',
+            gap: '0.55rem',
+            padding: '0.35rem 0.95rem',
+            borderRadius: '9999px',
+            backgroundColor: isLight ? 'rgba(241, 245, 249, 0.85)' : 'rgba(15, 23, 42, 0.7)',
+            border: isLight ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            fontSize: '0.84rem',
             fontWeight: 500,
-            color: isDark ? '#94a3b8' : '#475569',
-            animation: 'galaxy-fade-in 0.4s ease',
+            color: isLight ? '#334155' : '#cbd5e1',
+            animation: 'galaxy-fade-in 0.35s ease',
+            boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.04)' : '0 4px 12px rgba(0,0,0,0.35)',
           }}
         >
           <span
             style={{
-              width: '6px',
-              height: '6px',
+              width: '7px',
+              height: '7px',
               borderRadius: '50%',
-              backgroundColor: '#3b82f6',
-              boxShadow: '0 0 8px #3b82f6',
+              backgroundColor: '#38bdf8',
+              boxShadow: '0 0 8px #38bdf8, 0 0 16px #38bdf8',
               display: 'inline-block',
+              flexShrink: 0,
             }}
           />
-          <span>{activeMessage}</span>
+          <span style={{ letterSpacing: '0.01em' }}>{activeMessage}</span>
         </div>
       </div>
     </div>

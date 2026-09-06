@@ -365,6 +365,28 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, finalNavItems]);
 
+  React.useEffect(() => {
+    const handleUpdateTabTitle = (e: any) => {
+      const detail = e.detail;
+      if (!detail || !detail.title) return;
+      const targetPath = detail.path || location.pathname;
+      setTabs(prev => {
+        const next = prev.map(t => {
+          if (t.path === targetPath) {
+            return { ...t, title: detail.title };
+          }
+          return t;
+        });
+        tabsRef.current = next;
+        return next;
+      });
+    };
+    window.addEventListener('update_tab_title', handleUpdateTabTitle);
+    return () => {
+      window.removeEventListener('update_tab_title', handleUpdateTabTitle);
+    };
+  }, [location.pathname]);
+
   const handleCloseTab = (pathClose: string) => {
     // Read current tabs from the ref — always up-to-date, no stale closure.
     const current = tabsRef.current;
@@ -727,4 +749,12 @@ export const Layout: React.FC<CustomLayoutProps> = (props) => {
       </NativeContainer>
     </NotificationProvider>
   );
+};
+
+export const updateTabTitle = (title: string, path?: string) => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('update_tab_title', {
+      detail: { title, path }
+    }));
+  }
 };

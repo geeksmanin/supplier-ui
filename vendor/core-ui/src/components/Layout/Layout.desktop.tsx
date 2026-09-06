@@ -647,21 +647,21 @@ export const LayoutDesktop: React.FC<any> = ({
                 <div style={{
                   width: '32px',
                   height: '32px',
-                  borderRadius: '8px',
+                  borderRadius: (item.bgGradient === 'transparent' || item.bgGradient === 'none') ? '0px' : '8px',
                   background: item.bgGradient || 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: item.iconColor || '#ffffff',
-                  boxShadow: isActive ? '0 2px 4px rgba(0,0,0,0.08)' : 'none',
+                  boxShadow: (isActive && item.bgGradient !== 'transparent' && item.bgGradient !== 'none') ? '0 2px 4px rgba(0,0,0,0.08)' : 'none',
                 }}>
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    width: '20px',
-                    height: '20px',
-                    transform: 'scale(0.85)',
+                    width: (item.bgGradient === 'transparent' || item.bgGradient === 'none') ? '28px' : '20px',
+                    height: (item.bgGradient === 'transparent' || item.bgGradient === 'none') ? '28px' : '20px',
+                    transform: (item.bgGradient === 'transparent' || item.bgGradient === 'none') ? 'none' : 'scale(0.85)',
                     color: '#ffffff',
                   }}>
                     {/* Render raw icon in white since it's on a colored background block */}
@@ -1362,7 +1362,19 @@ export const LayoutDesktop: React.FC<any> = ({
                         <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                           {getTabIcon(tab.path)}
                         </span>
-                        <span>{tab.title}</span>
+                        <span
+                          style={{
+                            maxWidth: '220px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            display: 'inline-block',
+                            verticalAlign: 'middle',
+                          }}
+                          title={tab.title}
+                        >
+                          {tab.title}
+                        </span>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1603,8 +1615,17 @@ export const LayoutDesktop: React.FC<any> = ({
                     boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
                   }}>
                     {activeParentItem.icon && (
-                      <span style={{ display: 'inline-flex', transform: 'scale(0.85)', opacity: 0.85 }}>
-                        {activeParentItem.icon}
+                      <span style={{ display: 'inline-flex', width: '18px', height: '18px', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {React.isValidElement(activeParentItem.icon) ? (
+                          React.cloneElement(activeParentItem.icon as React.ReactElement<any>, {
+                            width: 18,
+                            height: 18,
+                            size: 18,
+                            style: { width: '18px', height: '18px', display: 'block', maxWidth: '100%', maxHeight: '100%' }
+                          })
+                        ) : (
+                          activeParentItem.icon
+                        )}
                       </span>
                     )}
                     <span>{activeParentItem.label}</span>
@@ -1714,11 +1735,23 @@ export const LayoutDesktop: React.FC<any> = ({
                         {item.icon && (
                           <span style={{
                             display: 'inline-flex',
+                            width: '16px',
+                            height: '16px',
                             alignItems: 'center',
+                            justifyContent: 'center',
                             color: isActive ? '#FFFFFF' : '#64748B',
-                            transform: 'scale(0.85)'
+                            flexShrink: 0
                           }}>
-                            {item.icon}
+                            {React.isValidElement(item.icon) ? (
+                              React.cloneElement(item.icon as React.ReactElement<any>, {
+                                width: 16,
+                                height: 16,
+                                size: 16,
+                                style: { width: '16px', height: '16px', display: 'block', maxWidth: '100%', maxHeight: '100%' }
+                              })
+                            ) : (
+                              item.icon
+                            )}
                           </span>
                         )}
                         <span>{item.label}</span>

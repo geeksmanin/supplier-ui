@@ -18,7 +18,7 @@ export type { DeviceRegistrationPayload, PushNotificationData, NativePlatform } 
 
 export { Button } from './components/Button';
 export { Input } from './components/Input';
-export { Layout, TabActiveContext, useIsTabActive } from './components/Layout/Layout';
+export { Layout, TabActiveContext, useIsTabActive, updateTabTitle } from './components/Layout/Layout';
 export type { LayoutProps, NavItem } from './components/Layout/Layout';
 export { UIRegistry } from './registry/registry';
 export type { RouteConfig, NavItemConfig, SearchItemConfig } from './registry/registry';
@@ -102,5 +102,9 @@ export { FormDefaultsConfig } from './components/FormDefaults/FormDefaultsConfig
 export type { FormDefaultFieldDefinition, FormDefaultsConfigProps } from './components/FormDefaults/FormDefaultsConfig';
 export { QuickMasterModal } from './components/QuickMasterModal';
 export type { QuickMasterModalProps } from './components/QuickMasterModal';
+
+// 3D Volumetric Vector Icons Suite
+export * from './components/icons3d';
+
 
 

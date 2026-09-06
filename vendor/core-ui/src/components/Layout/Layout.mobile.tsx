@@ -496,20 +496,22 @@ export const LayoutMobile: React.FC<any> = ({
                 <div style={{
                   width: '26px',
                   height: '26px',
-                  borderRadius: '6px',
+                  borderRadius: (item.bgGradient === 'transparent' || item.bgGradient === 'none') ? '0px' : '6px',
                   background: item.bgGradient || 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: '#ffffff',
                   marginBottom: '2px',
-                  boxShadow: isActive ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
+                  boxShadow: (isActive && item.bgGradient !== 'transparent' && item.bgGradient !== 'none') ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
                 }}>
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    transform: 'scale(0.7)',
+                    width: (item.bgGradient === 'transparent' || item.bgGradient === 'none') ? '24px' : 'auto',
+                    height: (item.bgGradient === 'transparent' || item.bgGradient === 'none') ? '24px' : 'auto',
+                    transform: (item.bgGradient === 'transparent' || item.bgGradient === 'none') ? 'none' : 'scale(0.7)',
                   }}>
                     {React.isValidElement(item.icon) && typeof item.icon.type === 'string' && item.icon.type !== 'svg' ? (
                       item.icon

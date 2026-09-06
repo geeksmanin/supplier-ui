@@ -25,12 +25,13 @@ export const AppsDashboardMobile: React.FC<AppsDashboardMobileProps> = ({ navIte
       }}>
         {navItems.map((item) => {
           const bgGradient = item.bgGradient || 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)';
+          const isTransparentBg = bgGradient === 'transparent' || bgGradient === 'none';
           const iconColor = item.iconColor || '#ffffff';
           const label = item.label;
           const sublabel = item.sublabel || '';
 
           const appIcon = item.icon;
-          const needsBorder = bgGradient.includes('#ffffff') || bgGradient.includes('#f3f4f6');
+          const needsBorder = !isTransparentBg && (bgGradient.includes('#ffffff') || bgGradient.includes('#f3f4f6'));
 
           return (
             <div
@@ -50,8 +51,8 @@ export const AppsDashboardMobile: React.FC<AppsDashboardMobileProps> = ({ navIte
                 style={{
                   width: '64px',
                   height: '64px',
-                  borderRadius: '16px',
-                  background: bgGradient,
+                  borderRadius: isTransparentBg ? '0px' : '16px',
+                  background: isTransparentBg ? 'transparent' : bgGradient,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -65,7 +66,9 @@ export const AppsDashboardMobile: React.FC<AppsDashboardMobileProps> = ({ navIte
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  transform: 'scale(1.1)'
+                  width: isTransparentBg ? '100%' : 'auto',
+                  height: isTransparentBg ? '100%' : 'auto',
+                  transform: isTransparentBg ? 'none' : 'scale(1.1)'
                 }}>
                   {appIcon}
                 </div>
