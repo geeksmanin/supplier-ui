@@ -18,7 +18,7 @@ export type { DeviceRegistrationPayload, PushNotificationData, NativePlatform } 
 
 export { Button } from './components/Button';
 export { Input } from './components/Input';
-export { Layout, TabActiveContext, useIsTabActive, updateTabTitle } from './components/Layout/Layout';
+export { Layout, TabActiveContext, useIsTabActive, updateTabTitle, closeTab, closeAllTabs } from './components/Layout/Layout';
 export type { LayoutProps, NavItem } from './components/Layout/Layout';
 export { UIRegistry } from './registry/registry';
 export type { RouteConfig, NavItemConfig, SearchItemConfig } from './registry/registry';
@@ -52,7 +52,7 @@ export type { VersionBadgeProps } from './components/VersionBadge';
 export { useAppVersion } from './hooks/useAppVersion';
 export type { AppVersionState, BackendVersionData } from './hooks/useAppVersion';
 export { HelpGuide } from './components/HelpGuide';
-export { STATES_MAP, INDIAN_STATES_GST_OPTIONS } from './constants';
+export { STATES_MAP, INDIAN_STATES_GST_OPTIONS, INDIAN_STATES_OPTIONS, findMatchingStateOption } from './constants';
 export { ImportWizard } from './components/ImportWizard/ImportWizard';
 export { ImportHistoryPage } from './components/ImportWizard/ImportHistoryPage';
 export type { ImportHistoryPageProps } from './components/ImportWizard/ImportHistoryPage';
@@ -72,7 +72,7 @@ export type { GstCaptchaModalProps } from './components/GstCaptchaModal';
 export { fetchOfficialGstCaptcha, fetchOfficialGstTaxpayerDetails, fetchQuickGstDetails } from './services/gstService';
 export type { OfficialGstTaxpayerDetails, OfficialGstCaptchaResponse } from './services/gstService';
 export { saveFormDraft, getFormDraft, clearFormDraft } from './utils/draftStore';
-export { useFormDraft, DraftBanner } from './hooks/useFormDraft';
+export { useFormDraft, DraftBanner, discardFormAndCloseTab } from './hooks/useFormDraft';
 export type { UseFormDraftOptions, UseFormDraftReturn, DraftBannerProps } from './hooks/useFormDraft';
 export { DraftBanner as DraftBannerComponent } from './components/DraftBanner';
 export { isMobileDevice } from './utils/device';
@@ -106,5 +106,8 @@ export type { QuickMasterModalProps } from './components/QuickMasterModal';
 // 3D Volumetric Vector Icons Suite
 export * from './components/icons3d';
 
-
-
+// Postal Code & Address Autofill Subsystem
+export { fetchPostalCodeDetails, fetchPostalStates } from './services/postalService';
+export type { PostalCodeDetails, PostalArea, PostalCodeQueryOptions } from './services/postalService';
+export { usePostalCode } from './hooks/usePostalCode';
+export type { UsePostalCodeOptions, UsePostalCodeReturn } from './hooks/usePostalCode';

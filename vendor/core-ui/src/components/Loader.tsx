@@ -12,11 +12,18 @@ export const Loader: React.FC<LoaderProps> = ({
   message = 'Loading data...',
   fullscreen = false,
   size = 'md',
-  variant = 'spinner',
+  variant = 'galaxy',
   ...galaxyProps
 }) => {
   if (variant === 'galaxy') {
-    return <GalaxyLoader fullscreen={fullscreen} statusMessage={message} {...galaxyProps} />;
+    return (
+      <GalaxyLoader
+        fullscreen={fullscreen}
+        statusMessage={message}
+        scale={size === 'sm' ? 0.6 : size === 'md' ? 0.82 : 1}
+        {...galaxyProps}
+      />
+    );
   }
 
   const sizeMap = {

@@ -76,3 +76,42 @@ export const INDIAN_STATES_GST_OPTIONS: Array<{ value: string; label: string }> 
   { value: '38 - Ladakh', label: '38 - Ladakh' },
   { value: '97 - Other Territory', label: '97 - Other Territory' }
 ];
+
+// Clean state names without GST codes for CRM, Leads, standard address forms
+export const INDIAN_STATES_OPTIONS: Array<{ value: string; label: string }> = INDIAN_STATES_GST_OPTIONS.map(opt => {
+  const cleanName = opt.label.replace(/^\d+\s*-\s*/, '').replace(/\s*\((Old|New)\)/i, '').trim();
+  return { value: cleanName, label: cleanName };
+}).filter((opt, index, self) => index === self.findIndex(o => o.value.toLowerCase() === opt.value.toLowerCase()));
+
+/**
+ * Robust helper to match any state string (e.g. "Haryana", "06", "06 - Haryana")
+ * against the provided state options list.
+ */
+export function findMatchingStateOption(
+  input: string,
+  options: Array<{ value: string; label: string }> = INDIAN_STATES_GST_OPTIONS
+): { value: string; label: string } | undefined {
+  if (!input || !input.trim()) return undefined;
+  const cleanInput = input.trim().toLowerCase();
+  
+  // Exact match first
+  let match = options.find(o => o.value.toLowerCase() === cleanInput || o.label.toLowerCase() === cleanInput);
+  if (match) return match;
+
+  // Code match (e.g. "06")
+  const codeMatch = cleanInput.match(/^(\d{2})/);
+  if (codeMatch) {
+    const code = codeMatch[1];
+    match = options.find(o => o.value.startsWith(code) || o.label.startsWith(code));
+    if (match) return match;
+  }
+
+  // Substring / Name match
+  const strippedInput = cleanInput.replace(/^\d+\s*-\s*/, '').replace(/\s*\((old|new)\)/i, '').trim();
+  match = options.find(o => {
+    const optClean = o.label.toLowerCase().replace(/^\d+\s*-\s*/, '').replace(/\s*\((old|new)\)/i, '').trim();
+    return optClean === strippedInput || optClean.includes(strippedInput) || strippedInput.includes(optClean);
+  });
+  return match;
+}
+

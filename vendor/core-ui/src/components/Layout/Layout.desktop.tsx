@@ -25,6 +25,7 @@ export const LayoutDesktop: React.FC<any> = ({
   tabs = [],
   activeTabPath = '/dashboard',
   onCloseTab = () => { },
+  onCloseAllTabs = () => { },
   onSelectTab = () => { },
   unreadCount = 0,
   onOpenNotifications,
@@ -156,12 +157,19 @@ export const LayoutDesktop: React.FC<any> = ({
         </svg>
       );
     }
+    const brandingLogo = localStorage.getItem('tenant_logo_url') || localStorage.getItem('branding_logo') || '/logo.png';
     return (
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#2563eb' }}>
-        <circle cx="12" cy="12" r="10" />
-        <line x1="12" y1="8" x2="12" y2="12" />
-        <line x1="12" y1="16" x2="12.01" y2="16" />
-      </svg>
+      <img
+        src={brandingLogo}
+        alt="Geeksman"
+        style={{ width: '13px', height: '13px', objectFit: 'contain', display: 'block', borderRadius: '2px' }}
+        onError={(e) => {
+          const target = e.currentTarget;
+          if (!target.src.endsWith('/favicon.png')) {
+            target.src = '/favicon.png';
+          }
+        }}
+      />
     );
   };
 
@@ -1236,8 +1244,8 @@ export const LayoutDesktop: React.FC<any> = ({
                 alignItems: 'center',
                 backgroundColor: '#f1f5f9',
                 borderBottom: '1px solid #e2e8f0',
-                padding: '0 8px',
-                height: '32px',
+                padding: '0 6px',
+                height: '28px',
                 width: '100%',
                 boxSizing: 'border-box',
               }}>
@@ -1249,9 +1257,9 @@ export const LayoutDesktop: React.FC<any> = ({
                     border: 'none',
                     background: 'none',
                     cursor: 'pointer',
-                    fontSize: '0.7rem',
+                    fontSize: '0.65rem',
                     color: '#64748b',
-                    padding: '0 8px',
+                    padding: '0 6px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1293,37 +1301,37 @@ export const LayoutDesktop: React.FC<any> = ({
                     const p = path.toLowerCase();
                     if (p.includes('catalogue') || p.includes('products') || p.includes('variants') || p.includes('categories') || p.includes('groups') || p.includes('brands') || p.includes('hsn')) {
                       return isActive 
-                        ? { bg: 'linear-gradient(to bottom, #fdf2f8, #fce7f3)', text: '#be185d', borderTop: '3px solid #db2777' }
-                        : { bg: '#fbcfe8', text: '#9d174d', borderTop: '3px solid transparent' };
+                        ? { bg: 'linear-gradient(to bottom, #fdf2f8, #fce7f3)', text: '#be185d', borderTop: '2.5px solid #db2777' }
+                        : { bg: '#fbcfe8', text: '#9d174d', borderTop: '2.5px solid transparent' };
                     }
                     if (p.includes('inventory') || p.includes('items') || p.includes('locations')) {
                       return isActive 
-                        ? { bg: 'linear-gradient(to bottom, #faf5ff, #f3e8ff)', text: '#6d28d9', borderTop: '3px solid #7c3aed' }
-                        : { bg: '#e9d5ff', text: '#5b21b6', borderTop: '3px solid transparent' };
+                        ? { bg: 'linear-gradient(to bottom, #faf5ff, #f3e8ff)', text: '#6d28d9', borderTop: '2.5px solid #7c3aed' }
+                        : { bg: '#e9d5ff', text: '#5b21b6', borderTop: '2.5px solid transparent' };
                     }
                     if (p.includes('crm') || p.includes('leads')) {
                       return isActive 
-                        ? { bg: 'linear-gradient(to bottom, #f0fdf4, #dcfce7)', text: '#15803d', borderTop: '3px solid #16a34a' }
-                        : { bg: '#bbf7d0', text: '#166534', borderTop: '3px solid transparent' };
+                        ? { bg: 'linear-gradient(to bottom, #f0fdf4, #dcfce7)', text: '#15803d', borderTop: '2.5px solid #16a34a' }
+                        : { bg: '#bbf7d0', text: '#166534', borderTop: '2.5px solid transparent' };
                     }
                     if (p.includes('sales')) {
                       return isActive 
-                        ? { bg: 'linear-gradient(to bottom, #fff1f2, #ffe4e6)', text: '#be123c', borderTop: '3px solid #e11d48' }
-                        : { bg: '#fecdd3', text: '#9f1239', borderTop: '3px solid transparent' };
+                        ? { bg: 'linear-gradient(to bottom, #fff1f2, #ffe4e6)', text: '#be123c', borderTop: '2.5px solid #e11d48' }
+                        : { bg: '#fecdd3', text: '#9f1239', borderTop: '2.5px solid transparent' };
                     }
                     if (p.includes('contact')) {
                       return isActive 
-                        ? { bg: 'linear-gradient(to bottom, #fff7ed, #ffedd5)', text: '#c2410c', borderTop: '3px solid #ea580c' }
-                        : { bg: '#fed7aa', text: '#9a3412', borderTop: '3px solid transparent' };
+                        ? { bg: 'linear-gradient(to bottom, #fff7ed, #ffedd5)', text: '#c2410c', borderTop: '2.5px solid #ea580c' }
+                        : { bg: '#fed7aa', text: '#9a3412', borderTop: '2.5px solid transparent' };
                     }
                     if (p.includes('location')) {
                       return isActive 
-                        ? { bg: 'linear-gradient(to bottom, #f0fdfa, #ccfbf1)', text: '#0f766e', borderTop: '3px solid #0d9488' }
-                        : { bg: '#99f6e4', text: '#115e59', borderTop: '3px solid transparent' };
+                        ? { bg: 'linear-gradient(to bottom, #f0fdfa, #ccfbf1)', text: '#0f766e', borderTop: '2.5px solid #0d9488' }
+                        : { bg: '#99f6e4', text: '#115e59', borderTop: '2.5px solid transparent' };
                     }
                     return isActive 
-                      ? { bg: 'linear-gradient(to bottom, #eff6ff, #dbeafe)', text: '#1d4ed8', borderTop: '3px solid #2563eb' }
-                      : { bg: '#bfdbfe', text: '#1e40af', borderTop: '3px solid transparent' };
+                      ? { bg: 'linear-gradient(to bottom, #eff6ff, #dbeafe)', text: '#1d4ed8', borderTop: '2.5px solid #2563eb' }
+                      : { bg: '#bfdbfe', text: '#1e40af', borderTop: '2.5px solid transparent' };
                   };
 
                   return tabs.map((tab: any, idx: number) => {
@@ -1336,15 +1344,15 @@ export const LayoutDesktop: React.FC<any> = ({
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '8px',
-                          padding: '0 12px',
-                          height: '28px',
+                          gap: '5px',
+                          padding: '0 8px',
+                          height: '24px',
                           borderTop: theme.borderTop,
                           borderLeft: '1px solid rgba(0, 0, 0, 0.08)',
                           borderRight: '1px solid rgba(0, 0, 0, 0.08)',
-                          borderRadius: '6px 6px 0 0',
+                          borderRadius: '5px 5px 0 0',
                           cursor: 'pointer',
-                          fontSize: '0.8rem',
+                          fontSize: '0.74rem',
                           fontWeight: isActive ? 600 : 500,
                           color: theme.text,
                           background: theme.bg,
@@ -1364,7 +1372,7 @@ export const LayoutDesktop: React.FC<any> = ({
                         </span>
                         <span
                           style={{
-                            maxWidth: '220px',
+                            maxWidth: '120px',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
@@ -1394,10 +1402,10 @@ export const LayoutDesktop: React.FC<any> = ({
                             background: 'none',
                             color: theme.text,
                             opacity: 0.7,
-                            fontSize: '11px',
+                            fontSize: '10px',
                             cursor: 'pointer',
-                            width: '20px',
-                            height: '20px',
+                            width: '16px',
+                            height: '16px',
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -1406,7 +1414,7 @@ export const LayoutDesktop: React.FC<any> = ({
                             padding: 0,
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)';
+                            e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.08)';
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.backgroundColor = 'transparent';
@@ -1428,9 +1436,9 @@ export const LayoutDesktop: React.FC<any> = ({
                     border: 'none',
                     background: 'none',
                     cursor: 'pointer',
-                    fontSize: '0.7rem',
+                    fontSize: '0.65rem',
                     color: '#64748b',
-                    padding: '0 8px',
+                    padding: '0 6px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1442,6 +1450,43 @@ export const LayoutDesktop: React.FC<any> = ({
                 >
                   ▶
                 </button>
+
+                {/* Quick Close All Button */}
+                {tabs && tabs.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => onCloseAllTabs()}
+                    style={{
+                      border: '1px solid #fecaca',
+                      background: '#fff1f2',
+                      borderRadius: '4px',
+                      color: '#e11d48',
+                      cursor: 'pointer',
+                      fontSize: '0.68rem',
+                      fontWeight: 600,
+                      padding: '1px 6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                      flexShrink: 0,
+                      height: '20px',
+                      margin: '0 4px',
+                      transition: 'all 0.15s ease',
+                      userSelect: 'none',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#e11d48';
+                      e.currentTarget.style.color = '#ffffff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#fff1f2';
+                      e.currentTarget.style.color = '#e11d48';
+                    }}
+                    title="Close all open tabs"
+                  >
+                    ✕ Close All
+                  </button>
+                )}
 
                 {/* Tab Search Toggle Button */}
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', height: '100%' }}>
@@ -1579,6 +1624,42 @@ export const LayoutDesktop: React.FC<any> = ({
                             );
                           })}
                       </div>
+                      {tabs && tabs.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onCloseAllTabs();
+                            setTabSearchOpen(false);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            width: '100%',
+                            padding: '6px',
+                            backgroundColor: '#fff1f2',
+                            border: '1px solid #fecaca',
+                            borderRadius: '6px',
+                            color: '#e11d48',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            marginTop: '4px',
+                            transition: 'all 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#e11d48';
+                            e.currentTarget.style.color = '#ffffff';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#fff1f2';
+                            e.currentTarget.style.color = '#e11d48';
+                          }}
+                        >
+                          ✕ Close All Tabs ({tabs.length})
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

@@ -30,6 +30,8 @@ export interface UseFormDraftReturn {
   handleDismissDraft: () => void;
   /** Wipe draft from IndexedDB and hide banner (used by Clear Form and on save success) */
   handleClearDraft: () => Promise<void>;
+  /** Wipe draft from IndexedDB, dispatch close_tab event, and navigate back */
+  discardAndCloseTab: (options?: string | { navigateBack?: () => void | Promise<void>; path?: string; destination?: string }) => Promise<void>;
 
   // ── Legacy API aliases (kept for backward compat with contacts-ui, etc.) ──
   /** @deprecated Use hasDraft instead */
@@ -113,9 +115,31 @@ export function useFormDraft<T extends Record<string, any>>({
     if (onClear) onClear();
   }, [formKey, onClear]);
 
-  // Legacy compat aliases (kept so existing call-sites don't break)
-  const discardDraft = handleClearDraft;
-  const clearSavedDraft = handleClearDraft;
+  const discardAndCloseTab = useCallback(async (options?: string | { navigateBack?: () => void | Promise<void>; path?: string; destination?: string }) => {
+    await handleClearDraft();
+    let targetPath = typeof options === 'string' ? options : options?.path;
+    const navBack = typeof options === 'object' ? options?.navigateBack : undefined;
+    const destination = typeof options === 'object' ? options?.destination : undefined;
+
+    // Fallback if targetPath is missing or '/' (common in HashRouter environments)
+    if (!targetPath || targetPath === '/') {
+      if (typeof window !== 'undefined' && window.location.hash) {
+        targetPath = window.location.hash.replace(/^#/, '').split('?')[0];
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('close_tab', {
+        detail: {
+          path: targetPath,
+          destination: destination
+        }
+      }));
+    }
+    if (navBack && !destination) {
+      navBack();
+    }
+  }, [handleClearDraft]);
 
   return {
     hasDraft,
@@ -123,12 +147,33 @@ export function useFormDraft<T extends Record<string, any>>({
     handleRestoreDraft,
     handleDismissDraft,
     handleClearDraft,
+    discardAndCloseTab,
     // Legacy aliases
     draftRestored: hasDraft,
     discardDraft: handleClearDraft,
     clearSavedDraft: handleClearDraft,
   };
 }
+
+export const discardFormAndCloseTab = async (options?: {
+  clearDraft?: () => Promise<void> | void;
+  navigateBack?: () => void;
+  path?: string;
+}) => {
+  if (options?.clearDraft) {
+    try {
+      await options.clearDraft();
+    } catch (_) {}
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('close_tab', {
+      detail: { path: options?.path }
+    }));
+  }
+  if (options?.navigateBack) {
+    options.navigateBack();
+  }
+};
 
 // ─── DraftBanner Component ────────────────────────────────────────────────────
 // Defined in DraftBanner.tsx (requires JSX — cannot live in a .ts file)

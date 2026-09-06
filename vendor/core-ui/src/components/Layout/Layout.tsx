@@ -334,14 +334,17 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
     }
 
     setTabs(prev => {
-      if (prev.some(t => t.path === cleanPath)) {
-        tabsRef.current = prev;
-        return prev;
+      // Use tabsRef.current as the primary source of truth because concurrent actions
+      // (like handleCloseTab) update tabsRef.current immediately.
+      const currentList = tabsRef.current.length > 0 ? tabsRef.current : prev;
+      if (currentList.some(t => t.path === cleanPath)) {
+        tabsRef.current = currentList;
+        return currentList;
       }
 
       if (matchedRoute) {
         const result = [
-          ...prev,
+          ...currentList,
           {
             path: cleanPath,
             title: resolveTabTitle(fullPath, finalNavItems, routes),
@@ -354,8 +357,8 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
         return result;
       }
 
-      tabsRef.current = prev;
-      return prev;
+      tabsRef.current = currentList;
+      return currentList;
     });
     setActiveTabPath(cleanPath);
   // NOTE: location.search is intentionally excluded from deps.
@@ -387,23 +390,77 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
     };
   }, [location.pathname]);
 
-  const handleCloseTab = (pathClose: string) => {
-    // Read current tabs from the ref — always up-to-date, no stale closure.
-    const current = tabsRef.current;
-    const index = current.findIndex(t => t.path === pathClose);
-    if (index === -1) return;
+  const handleCloseTab = (pathClose: string, destinationPath?: string) => {
+    let cleanClose = (pathClose || '').split('?')[0];
+    if (cleanClose.startsWith('#')) cleanClose = cleanClose.replace(/^#/, '');
 
-    const newTabs = current.filter(t => t.path !== pathClose);
+    const current = tabsRef.current;
+    let index = current.findIndex(t => t.path === cleanClose || t.path === pathClose || t.path === `#${cleanClose}`);
+    if (index === -1 && (cleanClose === '/' || !cleanClose)) {
+      const activePath = activeTabPath || location.pathname;
+      index = current.findIndex(t => t.path === activePath);
+      cleanClose = activePath;
+    }
+    if (index === -1) {
+      if (destinationPath) navigate(destinationPath);
+      return;
+    }
+
+    const matchedTab = current[index];
+    const newTabs = current.filter((_, i) => i !== index);
     tabsRef.current = newTabs;
     setTabs(newTabs);
 
-    if (location.pathname === pathClose) {
-      const nextPath = newTabs.length > 0
+    const isCurrentActive = location.pathname === matchedTab.path || activeTabPath === matchedTab.path;
+    if (isCurrentActive || destinationPath) {
+      const nextPath = destinationPath || (newTabs.length > 0
         ? newTabs[Math.min(index, newTabs.length - 1)].path
-        : '/dashboard';
+        : '/dashboard');
       navigate(nextPath);
     }
   };
+
+  const handleCloseAllTabs = () => {
+    const dashTab = tabsRef.current.find(t => t.path === '/dashboard');
+    if (dashTab) {
+      tabsRef.current = [dashTab];
+      setTabs([dashTab]);
+    } else {
+      const dashRoute = routes.find(r => r.path === '/dashboard');
+      const defaultTab: Tab = {
+        path: '/dashboard',
+        title: 'Dashboard',
+        element: dashRoute ? dashRoute.element : null,
+        pattern: '/dashboard',
+        params: {}
+      };
+      tabsRef.current = [defaultTab];
+      setTabs([defaultTab]);
+    }
+    navigate('/dashboard');
+  };
+
+  React.useEffect(() => {
+    const handleCloseTabEvent = (e: any) => {
+      let rawPath = e.detail?.path;
+      if ((!rawPath || rawPath === '/') && typeof window !== 'undefined' && window.location.hash) {
+        const hashPart = window.location.hash.replace(/^#/, '').split('?')[0];
+        if (hashPart) rawPath = hashPart;
+      }
+      const targetPath = (rawPath && rawPath !== '/') ? rawPath : (activeTabPath || location.pathname);
+      const destination = e.detail?.destination || e.detail?.nextPath;
+      handleCloseTab(targetPath, destination);
+    };
+    const handleCloseAllTabsEvent = () => {
+      handleCloseAllTabs();
+    };
+    window.addEventListener('close_tab', handleCloseTabEvent);
+    window.addEventListener('close_all_tabs', handleCloseAllTabsEvent);
+    return () => {
+      window.removeEventListener('close_tab', handleCloseTabEvent);
+      window.removeEventListener('close_all_tabs', handleCloseAllTabsEvent);
+    };
+  }, [location.pathname, activeTabPath]);
 
   React.useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -532,6 +589,7 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
     tabs,
     activeTabPath,
     onCloseTab: handleCloseTab,
+    onCloseAllTabs: handleCloseAllTabs,
     onSelectTab: (path: string) => navigate(path),
     unreadCount,
     onOpenNotifications: () => setDrawerOpen(true),
@@ -758,3 +816,18 @@ export const updateTabTitle = (title: string, path?: string) => {
     }));
   }
 };
+
+export const closeTab = (path?: string) => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('close_tab', {
+      detail: { path }
+    }));
+  }
+};
+
+export const closeAllTabs = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('close_all_tabs'));
+  }
+};
+
