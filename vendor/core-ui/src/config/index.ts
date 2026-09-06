@@ -3,6 +3,9 @@ import { isNativePlatform } from '../native/usePushNotifications';
 
 export const initializeConfig = (config: AppConfig) => {
   if (typeof window !== 'undefined') {
+    if (!config.tenantCode && config.defaultTenant) {
+      config.tenantCode = config.defaultTenant;
+    }
     (window as any).__geeksmanActiveConfig = config;
   }
 };

@@ -58,12 +58,48 @@ export interface TenantMetadata {
 
 export const getWorkspaceFromUrl = (): string => {
   if (typeof window !== 'undefined') {
+    // 1. Check URL query parameters (both standard query and hash query, e.g. ?workspace=synchx)
+    const searchParams = new URLSearchParams(window.location.search);
+    let queryWs = searchParams.get('workspace') || searchParams.get('tenant') || searchParams.get('tenant_code');
+
+    if (!queryWs && window.location.hash.includes('?')) {
+      const hashQuery = window.location.hash.split('?')[1];
+      const hashParams = new URLSearchParams(hashQuery);
+      queryWs = hashParams.get('workspace') || hashParams.get('tenant') || hashParams.get('tenant_code');
+    }
+
+    if (queryWs) {
+      const ws = queryWs.trim();
+      localStorage.setItem('tenant_code', ws);
+      localStorage.setItem('workspace_code', ws);
+      return ws;
+    }
+
+    // 2. Check Hostname subdomain (e.g. synchx.geeksman.co.in)
+    const host = window.location.hostname.toLowerCase();
+    if (host && host !== 'localhost' && host !== '127.0.0.1' && !host.endsWith('.localhost')) {
+      const parts = host.split('.');
+      if (parts.length > 1 && parts[0] !== 'admin' && parts[0] !== 'platform' && parts[0] !== 'www') {
+        return parts[0];
+      }
+    }
+
+    // 3. If local development and resolveTenantFromUrl is false, defaultTenant should always take precedence
+    const appConfig = getAppConfig();
+    if (appConfig.defaultTenant && !appConfig.resolveTenantFromUrl) {
+      const defaultTenant = appConfig.defaultTenant;
+      localStorage.setItem('tenant_code', defaultTenant);
+      localStorage.setItem('workspace_code', defaultTenant);
+      return defaultTenant;
+    }
+
     const savedTenant = localStorage.getItem('tenant_code') || localStorage.getItem('workspace_code');
     if (savedTenant) {
       return savedTenant;
     }
   }
-  return getAppConfig().tenantCode || 'platform';
+  const appConfig = getAppConfig();
+  return appConfig.tenantCode || appConfig.defaultTenant || 'platform';
 };
 
 export const resolveTenantByCode = async (workspaceCode: string): Promise<TenantMetadata> => {
@@ -97,6 +133,7 @@ export const clearActiveWorkspace = (): void => {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('tenant_code');
     localStorage.removeItem('workspace_code');
+    localStorage.removeItem('current_tenant_code');
     localStorage.removeItem('tenant_name');
     localStorage.removeItem('tenant_logo_url');
     localStorage.removeItem('tenant_theme_color');
@@ -108,14 +145,29 @@ export const clearActiveWorkspace = (): void => {
 export const resolveTenantCodeFromServer = async (): Promise<string> => {
   if (typeof window === 'undefined') return 'platform';
 
+  const config = getAppConfig();
+
+  // If local development with a configured defaultTenant and URL resolution is disabled,
+  // honor config.defaultTenant unless a non-platform tenant is explicitly stored
+  if (config.defaultTenant && !config.resolveTenantFromUrl) {
+    const savedTenant = localStorage.getItem('tenant_code');
+    if (savedTenant && savedTenant !== 'platform') {
+      config.tenantCode = savedTenant;
+      return savedTenant;
+    }
+    const defaultTenant = config.defaultTenant;
+    config.tenantCode = defaultTenant;
+    localStorage.setItem('tenant_code', defaultTenant);
+    localStorage.setItem('workspace_code', defaultTenant);
+    return defaultTenant;
+  }
+
   const savedTenant = localStorage.getItem('tenant_code');
   if (savedTenant) {
-    const config = getAppConfig();
     config.tenantCode = savedTenant;
     return savedTenant;
   }
 
-  const config = getAppConfig();
   if (!config.resolveTenantFromUrl) {
     const defaultTenant = config.defaultTenant || 'platform';
     config.tenantCode = defaultTenant;
