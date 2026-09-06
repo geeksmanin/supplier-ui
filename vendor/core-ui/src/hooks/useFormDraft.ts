@@ -86,20 +86,38 @@ export function useFormDraft<T extends Record<string, any>>({
     if (!isDraftChecked.current) {
       return;
     }
+    // CRITICAL: If an existing draft is detected and awaiting user action,
+    // NEVER overwrite it with initial/unrestored form state and NEVER dismiss the banner.
+    if (hasDraft) {
+      return;
+    }
     if (skipNextSave.current) {
       skipNextSave.current = false;
       return;
     }
+
+    // Check if there is actual non-empty content in formData before saving
+    const hasAnyValue = Object.entries(formData).some(([key, v]) => {
+      if (key === 'status' || key === 'regType' || key === 'autoGenerateCode') return false;
+      if (typeof v === 'string') return v.trim().length > 0;
+      if (typeof v === 'number') return v > 0;
+      if (Array.isArray(v)) return v.length > 0;
+      if (v && typeof v === 'object') return Object.keys(v).length > 0;
+      return false;
+    });
+
+    if (!hasAnyValue) {
+      return;
+    }
+
     const timer = setTimeout(async () => {
       await saveFormDraft(formKey, formData);
       setDraftTime(new Date().toLocaleTimeString());
       setPendingDraft(formData);
-      // If user started typing without clicking restore or dismiss, dismiss the obsolete initial restore prompt
-      setHasDraft(false);
     }, 500);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formKey, formData, isEdit, enabled]);
+  }, [formKey, formData, isEdit, enabled, hasDraft]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
