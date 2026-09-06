@@ -28,6 +28,9 @@ const CheckCircleIcon: React.FC<{ size?: number; className?: string; style?: Rea
 export interface FormDefaultFieldDefinition {
   fieldKey: string;
   label: string;
+  type?: 'select' | 'boolean' | 'toggle';
+  defaultValue?: any;
+  toggleLabels?: { on: string; off: string };
   placeholder?: string;
   description?: string;
   picklistEndpoint?: string;
@@ -356,39 +359,107 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
                       )}
                     </div>
 
-                    <Select
-                      value={currentValue}
-                      onChange={val => {
-                        setFormValues(prev => ({ ...prev, [field.fieldKey]: val as string }));
+                    {field.type === 'boolean' || field.type === 'toggle' ? (() => {
+                      const isConfigured = currentValue !== undefined && currentValue !== null && currentValue !== '';
+                      const isChecked = isConfigured
+                        ? (currentValue === true || currentValue === 'true' || currentValue === 1 || currentValue === '1')
+                        : (field.defaultValue !== undefined ? Boolean(field.defaultValue) : true);
+
+                      const onLabel = field.toggleLabels?.on || (field.fieldKey === 'auto_create_default_contact' ? 'ON (Auto-create Contact)' : 'Enabled');
+                      const offLabel = field.toggleLabels?.off || (field.fieldKey === 'auto_create_default_contact' ? 'OFF (Do Not Auto-create)' : 'Disabled');
+
+                      const toggleValue = () => {
+                        const nextVal = isChecked ? 'false' : 'true';
+                        setFormValues(prev => ({ ...prev, [field.fieldKey]: nextVal }));
                         setIsDirty(true);
-                      }}
-                      onRefresh={() => loadOptionsForField(field)}
-                      onCreateOption={
-                        field.onCreateOption
-                          ? field.onCreateOption
-                          : (field.quickMasterEndpoint || field.picklistEndpoint)
-                          ? (searchTerm) => {
-                              setActiveModal({
-                                isOpen: true,
-                                title: field.quickMasterTitle || `New ${field.label}`,
-                                endpoint: (field.quickMasterEndpoint || field.picklistEndpoint)!,
-                                initialName: searchTerm || '',
-                                masterTabUrl: field.masterTabUrl,
-                                fieldKey: field.fieldKey,
-                                field,
-                              });
-                            }
-                          : undefined
-                      }
-                      createOptionText={
-                        field.createOptionText ||
-                        ((search) => (search ? `+ Create "${search}"` : `+ Create new ${field.label.toLowerCase()}`))
-                      }
-                      options={[
-                        { value: '', label: 'None' },
-                        ...options,
-                      ]}
-                    />
+                      };
+
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', height: '38px' }}>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={isChecked}
+                            onClick={toggleValue}
+                            style={{
+                              position: 'relative',
+                              width: '46px',
+                              height: '24px',
+                              borderRadius: '9999px',
+                              backgroundColor: isChecked ? '#2563eb' : '#cbd5e1',
+                              border: 'none',
+                              cursor: 'pointer',
+                              transition: 'background-color 0.2s ease',
+                              padding: 0,
+                              outline: 'none',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <span
+                              style={{
+                                position: 'absolute',
+                                top: '2px',
+                                left: isChecked ? '24px' : '2px',
+                                width: '20px',
+                                height: '20px',
+                                borderRadius: '50%',
+                                backgroundColor: '#ffffff',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                                transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                              }}
+                            />
+                          </button>
+                          <span
+                            onClick={toggleValue}
+                            style={{
+                              fontSize: '0.825rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              userSelect: 'none',
+                              color: isChecked ? '#1d4ed8' : '#64748b',
+                            }}
+                          >
+                            {isChecked ? onLabel : offLabel}
+                          </span>
+                        </div>
+                      );
+                    })() : (
+                      <Select
+                        value={currentValue}
+                        onChange={val => {
+                          setFormValues(prev => ({ ...prev, [field.fieldKey]: val as string }));
+                          setIsDirty(true);
+                        }}
+                        onRefresh={() => loadOptionsForField(field)}
+                        onCreateOption={
+                          field.onCreateOption
+                            ? field.onCreateOption
+                            : (field.quickMasterEndpoint || field.picklistEndpoint)
+                            ? (searchTerm) => {
+                                setActiveModal({
+                                  isOpen: true,
+                                  title: field.quickMasterTitle || `New ${field.label}`,
+                                  endpoint: (field.quickMasterEndpoint || field.picklistEndpoint)!,
+                                  initialName: searchTerm || '',
+                                  masterTabUrl: field.masterTabUrl,
+                                  fieldKey: field.fieldKey,
+                                  field,
+                                });
+                              }
+                            : undefined
+                        }
+                        createOptionText={
+                          field.createOptionText ||
+                          ((search) => (search ? `+ Create "${search}"` : `+ Create new ${field.label.toLowerCase()}`))
+                        }
+                        options={[
+                          { value: '', label: 'None' },
+                          ...options,
+                        ]}
+                      />
+                    )}
 
                     {field.description && (
                       <p style={{ fontSize: '0.725rem', color: '#64748b', margin: '0.35rem 0 0 0' }}>

@@ -57,18 +57,21 @@ export function useFormDraft<T extends Record<string, any>>({
   const [draftTime, setDraftTime] = useState<string | null>(null);
   // Prevent auto-save from firing on the very first render
   const isInitialMount = useRef(true);
-  // Prevent triggering auto-save immediately after restoring draft
   const skipNextSave = useRef(false);
+  const isDraftChecked = useRef(false);
 
   // ── Detect draft on mount (create mode only) ──────────────────────────────
   useEffect(() => {
     if (!enabled || isEdit) return;
     getFormDraft<T>(formKey).then(saved => {
+      isDraftChecked.current = true;
       if (saved?.data) {
         setPendingDraft(saved.data);
         setHasDraft(true);
         setDraftTime(new Date(saved.updatedAt).toLocaleTimeString());
       }
+    }).catch(() => {
+      isDraftChecked.current = true;
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formKey, isEdit, enabled]);
@@ -80,12 +83,19 @@ export function useFormDraft<T extends Record<string, any>>({
       isInitialMount.current = false;
       return;
     }
+    if (!isDraftChecked.current) {
+      return;
+    }
     if (skipNextSave.current) {
       skipNextSave.current = false;
       return;
     }
-    const timer = setTimeout(() => {
-      saveFormDraft(formKey, formData);
+    const timer = setTimeout(async () => {
+      await saveFormDraft(formKey, formData);
+      setDraftTime(new Date().toLocaleTimeString());
+      setPendingDraft(formData);
+      // If user started typing without clicking restore or dismiss, dismiss the obsolete initial restore prompt
+      setHasDraft(false);
     }, 500);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps

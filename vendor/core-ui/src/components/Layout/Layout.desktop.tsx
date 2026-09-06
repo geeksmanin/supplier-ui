@@ -7,6 +7,28 @@ import { useAppVersion } from '../../hooks/useAppVersion';
 import { VersionModal } from '../VersionModal';
 import { VersionBadge } from '../VersionBadge';
 import { getWorkspaceFromUrl } from '../../api/client';
+import {
+  Location3DIcon,
+  Contacts3DIcon,
+  Catalogue3DIcon,
+  Sales3DIcon,
+  PurchaseOrder3DIcon,
+  Invoices3DIcon,
+  Accounts3DIcon,
+  Inventory3DIcon,
+  WMS3DIcon,
+  CRM3DIcon,
+  Chat3DIcon,
+  Settings3DIcon,
+  Dashboard3DIcon,
+  Tenant3DIcon,
+  Automations3DIcon,
+  HR3DIcon,
+  Backupsync3DIcon,
+  Pricing3DIcon,
+  Requisition3DIcon,
+  RFQ3DIcon,
+} from '../icons3d';
 
 
 export const LayoutDesktop: React.FC<any> = ({
@@ -95,74 +117,72 @@ export const LayoutDesktop: React.FC<any> = ({
 
   const getTabIcon = (path: string) => {
     const p = path.toLowerCase();
-    if (p.includes('catalogue') || p.includes('products') || p.includes('variants') || p.includes('categories') || p.includes('groups') || p.includes('brands') || p.includes('hsn')) {
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#db2777' }}>
-          <path d="M12 2L2 7l10 5 10-5-10-5z" />
-          <path d="M2 17l10 5 10-5" />
-          <path d="M2 12l10 5 10-5" />
-        </svg>
-      );
+    if (p.includes('dashboard') || p === '/' || p === '/home' || p.includes('/dashboard')) {
+      return <Dashboard3DIcon size={16} />;
     }
-    if (p.includes('warehouse') || p.includes('gateentry') || p.includes('grn')) {
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#0284c7' }}>
-          <path d="m7.5 4.27 9 5.15" />
-          <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-          <path d="m3.3 7 8.7 5 8.7-5" />
-          <path d="M12 22V12" />
-        </svg>
-      );
+    if (p.includes('contact') || p.includes('customer') || p.includes('supplier') || p.includes('vendor')) {
+      return <Contacts3DIcon size={16} />;
     }
-    if (p.includes('inventory') || p.includes('items')) {
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#7c3aed' }}>
-          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-          <line x1="12" y1="22.08" x2="12" y2="12" />
-        </svg>
-      );
+    if (p.includes('crm') || p.includes('lead')) {
+      return <CRM3DIcon size={16} />;
     }
-    if (p.includes('crm') || p.includes('leads')) {
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#16a34a' }}>
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-        </svg>
-      );
+    if (p.includes('sales') || p.includes('quote') || p.includes('challan') || p.includes('quotation')) {
+      return <Sales3DIcon size={16} />;
     }
-    if (p.includes('sales')) {
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#e11d48' }}>
-          <circle cx="9" cy="21" r="1" />
-          <circle cx="20" cy="21" r="1" />
-          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-        </svg>
-      );
+    if (p.includes('purchaseorder') || p.includes('purchase-order') || p.includes('po/')) {
+      return <PurchaseOrder3DIcon size={16} />;
     }
-    if (p.includes('contact')) {
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#ea580c' }}>
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-        </svg>
-      );
+    if (p.includes('invoice') || p.includes('billing')) {
+      return <Invoices3DIcon size={16} />;
+    }
+    if (p.includes('account') || p.includes('payment') || p.includes('ledger') || p.includes('voucher') || p.includes('journal')) {
+      return <Accounts3DIcon size={16} />;
+    }
+    if (p.includes('catalogue') || p.includes('product') || p.includes('variant') || p.includes('category') || p.includes('brand') || p.includes('hsn')) {
+      return <Catalogue3DIcon size={16} />;
+    }
+    if (p.includes('inventory') || p.includes('item') || p.includes('stock')) {
+      return <Inventory3DIcon size={16} />;
+    }
+    if (p.includes('warehouse') || p.includes('wms') || p.includes('gateentry') || p.includes('grn') || p.includes('batch')) {
+      return <WMS3DIcon size={16} />;
     }
     if (p.includes('location')) {
-      return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#0d9488' }}>
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-          <circle cx="12" cy="10" r="3" />
-        </svg>
-      );
+      return <Location3DIcon size={16} />;
+    }
+    if (p.includes('chat') || p.includes('ticket') || p.includes('support')) {
+      return <Chat3DIcon size={16} />;
+    }
+    if (p.includes('tenant') || p.includes('onboard')) {
+      return <Tenant3DIcon size={16} />;
+    }
+    if (p.includes('hr') || p.includes('staff') || p.includes('employee') || p.includes('designation')) {
+      return <HR3DIcon size={16} />;
+    }
+    if (p.includes('backup') || p.includes('sync')) {
+      return <Backupsync3DIcon size={16} />;
+    }
+    if (p.includes('automation') || p.includes('rule')) {
+      return <Automations3DIcon size={16} />;
+    }
+    if (p.includes('pricing') || p.includes('price')) {
+      return <Pricing3DIcon size={16} />;
+    }
+    if (p.includes('rfq')) {
+      return <RFQ3DIcon size={16} />;
+    }
+    if (p.includes('requisition')) {
+      return <Requisition3DIcon size={16} />;
+    }
+    if (p.includes('setting') || p.includes('config')) {
+      return <Settings3DIcon size={16} />;
     }
     const brandingLogo = localStorage.getItem('tenant_logo_url') || localStorage.getItem('branding_logo') || '/logo.png';
     return (
       <img
         src={brandingLogo}
         alt="Geeksman"
-        style={{ width: '13px', height: '13px', objectFit: 'contain', display: 'block', borderRadius: '2px' }}
+        style={{ width: '15px', height: '15px', objectFit: 'contain', display: 'block', borderRadius: '2px' }}
         onError={(e) => {
           const target = e.currentTarget;
           if (!target.src.endsWith('/favicon.png')) {
