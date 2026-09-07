@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
+import { UIRegistry } from '@geeksman/core-ui';
 import { Notification } from './types';
 
 interface Toast {
@@ -71,11 +72,16 @@ export const NotificationToastContainer: React.FC<{ onNavigate?: (link: string) 
 
   const handleToastClick = (toast: Toast) => {
     setToasts((prev) => prev.filter((t) => t.id !== toast.id));
-    const link = toast.notification.link;
-    if (link && onNavigate) {
-      onNavigate(link);
-    } else if (link) {
-      window.location.href = link;
+    const notif = toast.notification;
+    const navFn = onNavigate || ((path: string) => { window.location.href = path; });
+    const handled = UIRegistry.openNotification(notif, navFn);
+    if (!handled) {
+      const link = notif.link;
+      if (link && onNavigate) {
+        onNavigate(link);
+      } else if (link) {
+        window.location.href = link;
+      }
     }
   };
 

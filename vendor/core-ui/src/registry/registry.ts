@@ -31,12 +31,35 @@ export interface SearchItemConfig {
   visible?: () => boolean;
 }
 
+export interface NotificationOpenerConfig {
+  id: string;
+  name?: string;
+  priority?: number; // Higher numbers run first (e.g. 100 > 10 > 0)
+  canHandle: (notification: {
+    id?: string;
+    link?: string;
+    title?: string;
+    body?: string;
+    message?: string;
+    type?: string;
+    entity_name?: string;
+    entity_id?: string;
+    metadata?: Record<string, any> | string;
+    [key: string]: any;
+  }) => boolean;
+  open: (
+    notification: any,
+    navigate: (path: string) => void
+  ) => void | boolean | Promise<void | boolean>;
+}
+
 type RegistryListener = () => void;
 
 class UIRegistryClass {
   private routes: RouteConfig[] = [];
   private navItems: NavItemConfig[] = [];
   private searchItems: SearchItemConfig[] = [];
+  private notificationOpeners: NotificationOpenerConfig[] = [];
   private listeners: Set<RegistryListener> = new Set();
 
   subscribe(listener: RegistryListener) {
@@ -95,6 +118,39 @@ class UIRegistryClass {
 
   getSearchItems(): SearchItemConfig[] {
     return this.searchItems.filter(item => !item.visible || item.visible());
+  }
+
+  registerNotificationOpener(opener: NotificationOpenerConfig) {
+    this.notificationOpeners = this.notificationOpeners.filter(o => o.id !== opener.id);
+    this.notificationOpeners.push(opener);
+    this.notificationOpeners.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    this.notify();
+  }
+
+  unregisterNotificationOpener(id: string) {
+    this.notificationOpeners = this.notificationOpeners.filter(o => o.id !== id);
+    this.notify();
+  }
+
+  getNotificationOpeners(): NotificationOpenerConfig[] {
+    return [...this.notificationOpeners];
+  }
+
+  openNotification(notification: any, navigate: (path: string) => void): boolean {
+    if (!notification) return false;
+    for (const opener of this.notificationOpeners) {
+      try {
+        if (opener.canHandle(notification)) {
+          const res = opener.open(notification, navigate);
+          if (res !== false) {
+            return true;
+          }
+        }
+      } catch (err) {
+        console.error(`[UIRegistry] Notification opener "${opener.id}" failed:`, err);
+      }
+    }
+    return false;
   }
 }
 

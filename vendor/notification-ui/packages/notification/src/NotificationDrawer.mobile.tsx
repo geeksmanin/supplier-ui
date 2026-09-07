@@ -1,4 +1,5 @@
 import React from 'react';
+import { UIRegistry } from '@geeksman/core-ui';
 import { Notification } from './types';
 
 interface NotificationDrawerMobileProps {
@@ -38,10 +39,14 @@ export const NotificationDrawerMobile: React.FC<NotificationDrawerMobileProps> =
 
   const handleItemClick = (item: Notification) => {
     markAsRead(item.id);
-    if (item.link && onNavigate) {
-      onNavigate(item.link);
-    } else if (item.link) {
-      window.location.href = item.link;
+    const navFn = onNavigate || ((path: string) => { window.location.href = path; });
+    const handled = UIRegistry.openNotification(item, navFn);
+    if (!handled) {
+      if (item.link && onNavigate) {
+        onNavigate(item.link);
+      } else if (item.link) {
+        window.location.href = item.link;
+      }
     }
   };
 

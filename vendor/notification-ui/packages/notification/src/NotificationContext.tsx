@@ -1,5 +1,21 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
-import { createApiClient } from '@geeksman/core-ui';
+import {
+  createApiClient,
+  getStreamEvents,
+  saveStreamEvents,
+  saveChatMessage,
+  saveCachedConversations,
+  upsertCachedConversation,
+  getWatermark,
+  saveWatermark,
+  markStreamEventsRead,
+  markAllStreamEventsRead,
+  syncCatchUp,
+  rebuildFromBootstrap,
+  syncReadStatesToBackend,
+  subscribeBroadcast,
+  broadcastEvent,
+} from '@geeksman/core-ui';
 import { Notification } from './types';
 
 interface NotificationContextType {
@@ -11,6 +27,8 @@ interface NotificationContextType {
   fetchNotifications: () => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  rebuildDatabase: () => Promise<void>;
+  syncCatchUp: () => Promise<void>;
   unsubscribePush: () => Promise<void>;
   reconnectSSE: () => void;
   pushPermission: 'default' | 'granted' | 'denied';
@@ -189,6 +207,33 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   const fetchNotifications = async () => {
     setLoading(true);
     try {
+      // 1. Instant load from IndexedDB (0ms latency!)
+      if (tenantCode && userId) {
+        const cached = await getStreamEvents({ tenant_code: tenantCode, user_id: userId });
+        if (cached && cached.length > 0) {
+          setNotifications(cached as any);
+          setUnreadCount(cached.filter((n) => !n.is_read).length);
+          lastEventIdRef.current = cached[0].id;
+        }
+      }
+
+      // 2. Perform sequential catch-up or bootstrap sync
+      if (tenantCode && userId) {
+        try {
+          await syncCatchUp(api, tenantCode, userId);
+          const fresh = await getStreamEvents({ tenant_code: tenantCode, user_id: userId });
+          if (fresh && fresh.length > 0) {
+            setNotifications(fresh as any);
+            setUnreadCount(fresh.filter((n) => !n.is_read).length);
+            lastEventIdRef.current = fresh[0].id;
+            return;
+          }
+        } catch (streamErr) {
+          console.warn('[Notification] Stream sync fallback to standard endpoint:', streamErr);
+        }
+      }
+
+      // 3. Fallback to standard endpoint
       const res = await api.get('');
       const rawItems = res.data?.data || [];
       const items = rawItems.map((n: Notification) => {
@@ -207,6 +252,24 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         lastEventIdRef.current = items[0].id;
       }
       setUnreadCount(items.filter((n: Notification) => !n.is_read).length);
+
+      // Save into IndexedDB
+      if (tenantCode && userId && items.length > 0) {
+        const records = items.map((i: any, idx: number) => ({
+          id: i.id,
+          seq: idx + 1,
+          tenant_code: tenantCode,
+          user_id: userId,
+          type: i.type || 'notification',
+          title: i.title,
+          message: i.message || i.body || '',
+          link: i.link,
+          metadata: i.metadata,
+          is_read: Boolean(i.is_read),
+          created_at: i.created_at || new Date().toISOString(),
+        }));
+        saveStreamEvents(records).catch(() => {});
+      }
     } catch (err) {
       console.error('Failed to fetch notifications:', err);
     } finally {
@@ -221,6 +284,18 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     );
     setUnreadCount((prev) => Math.max(0, prev - 1));
 
+    // Persist to IndexedDB and flush to BadgerDB stream
+    markStreamEventsRead([id]).then(() => {
+      syncReadStatesToBackend(api).catch(() => {});
+    }).catch(() => {});
+
+    // Broadcast across open tabs
+    broadcastEvent('READ_STATE_CHANGED', {
+      tenant_code: tenantCode,
+      user_id: userId,
+      payload: { id },
+    });
+
     try {
       await api.post(`/${id}/read`);
     } catch (err) {
@@ -233,10 +308,48 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     setUnreadCount(0);
 
+    // Persist to IndexedDB
+    markAllStreamEventsRead(tenantCode, userId).catch(() => {});
+
+    // Broadcast across open tabs
+    broadcastEvent('READ_ALL_STATE_CHANGED', {
+      tenant_code: tenantCode,
+      user_id: userId,
+    });
+
     try {
       await api.post('/read-all');
     } catch (err) {
       console.error('Failed to mark all as read on server:', err);
+    }
+  };
+
+  const rebuildDatabase = async () => {
+    if (!userId || !tenantCode) return;
+    setLoading(true);
+    try {
+      const res = await rebuildFromBootstrap(api, tenantCode, userId);
+      const cached = await getStreamEvents({ tenant_code: tenantCode, user_id: userId });
+      setNotifications(cached as any);
+      setUnreadCount(res.unreadCount);
+    } catch (err) {
+      console.error('Failed to rebuild database from bootstrap:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSyncCatchUp = async () => {
+    if (!userId || !tenantCode) return;
+    try {
+      await syncCatchUp(api, tenantCode, userId);
+      const cached = await getStreamEvents({ tenant_code: tenantCode, user_id: userId });
+      if (cached && cached.length > 0) {
+        setNotifications(cached as any);
+        setUnreadCount(cached.filter((n) => !n.is_read).length);
+      }
+    } catch (err) {
+      console.warn('Catch-up sync error:', err);
     }
   };
 
@@ -334,7 +447,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     }
   };
 
-  const connectSSE = () => {
+  const connectSSE = async () => {
     if (eventSourceRef.current) return;
 
     const tokenVal = token || localStorage.getItem('token') || '';
@@ -359,8 +472,19 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     if (tokenVal) {
       streamUrl += `&token=${tokenVal}`;
     }
-    if (lastEventIdRef.current) {
-      streamUrl += `&lastEventId=${lastEventIdRef.current}`;
+
+    // Pass sequence watermark for BadgerDB catch-up scan, or fallback to lastEventId
+    try {
+      const watermark = tenantCode && userId ? await getWatermark(tenantCode, userId) : 0;
+      if (watermark > 0) {
+        streamUrl += `&since_seq=${watermark}`;
+      } else if (lastEventIdRef.current) {
+        streamUrl += `&lastEventId=${lastEventIdRef.current}`;
+      }
+    } catch (e) {
+      if (lastEventIdRef.current) {
+        streamUrl += `&lastEventId=${lastEventIdRef.current}`;
+      }
     }
 
     const es = new EventSource(streamUrl);
@@ -422,15 +546,125 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         window.dispatchEvent(customEvent);
 
         const activeTicketId = (window as any).activeTicketId;
+        const activeReferenceId = (window as any).activeReferenceId;
+        const activeConversationId = (window as any).activeConversationId;
         const activeChatId = (window as any).activeChatId;
+
+        let parsedMeta: any = notif.metadata;
+        if (typeof parsedMeta === 'string') {
+          try {
+            parsedMeta = JSON.parse(parsedMeta);
+          } catch (e) {}
+        }
+
+        const notifLink = (notif.link || '').toLowerCase();
+        const notifEntityId = String(notif.entity_id || '').toLowerCase();
+        const metaEntityId = String(parsedMeta?.entity_id || '').toLowerCase();
+        const metaTicketId = String(parsedMeta?.ticket_id || '').toLowerCase();
+        const metaRefId = String(parsedMeta?.reference_id || '').toLowerCase();
+        const metaConvId = String(parsedMeta?.conversation_id || '').toLowerCase();
+
         const isViewingActiveEntity = 
-          (activeTicketId && notif.link && notif.link.toLowerCase().includes(activeTicketId.toLowerCase())) ||
-          (activeChatId && notif.link && notif.link.toLowerCase().includes(activeChatId.toLowerCase())) ||
-          (activeChatId && notif.entity_id && String(activeChatId).toLowerCase() === String(notif.entity_id).toLowerCase());
+          // Ticket UUID match
+          (activeTicketId && (
+            notifLink.includes(String(activeTicketId).toLowerCase()) ||
+            notifEntityId === String(activeTicketId).toLowerCase() ||
+            metaEntityId === String(activeTicketId).toLowerCase() ||
+            metaTicketId === String(activeTicketId).toLowerCase()
+          )) ||
+          // Ticket / Order Reference match (e.g. BC/588)
+          (activeReferenceId && (
+            notifLink.includes(String(activeReferenceId).toLowerCase()) ||
+            notifEntityId === String(activeReferenceId).toLowerCase() ||
+            metaRefId === String(activeReferenceId).toLowerCase()
+          )) ||
+          // Conversation UUID match
+          (activeConversationId && (
+            notifEntityId === String(activeConversationId).toLowerCase() ||
+            metaConvId === String(activeConversationId).toLowerCase()
+          )) ||
+          // Direct / Group Chat match
+          (activeChatId && (
+            notifLink.includes(String(activeChatId).toLowerCase()) ||
+            notifEntityId === String(activeChatId).toLowerCase() ||
+            metaConvId === String(activeChatId).toLowerCase()
+          ));
 
         if (isViewingActiveEntity) {
           notif.is_read = true;
           api.post(`/${notif.id}/read`).catch(() => {});
+        }
+
+        const eventSeq = Number((envelope as any).seq || (envelope.payload as any)?.seq || (e as any).lastEventId || 0);
+        if (eventSeq > 0 && tenantCode && userId) {
+          saveWatermark(tenantCode, userId, eventSeq).catch(() => {});
+        }
+
+        // Save incoming notification directly to IndexedDB local store
+        if (tenantCode && userId) {
+          saveStreamEvents([
+            {
+              id: notif.id,
+              seq: eventSeq || Date.now(),
+              tenant_code: tenantCode,
+              user_id: userId,
+              type: notif.type || 'notification',
+              title: notif.title,
+              message: notif.message || notif.body || '',
+              link: notif.link,
+              metadata: notif.metadata,
+              is_read: Boolean(notif.is_read),
+              created_at: notif.created_at || new Date().toISOString(),
+            },
+          ]).catch(() => {});
+
+          // Extract complete chat message if present in metadata and populate chat_messages independently
+          let parsedMeta: any = notif.metadata;
+          if (typeof parsedMeta === 'string') {
+            try {
+              parsedMeta = JSON.parse(parsedMeta);
+            } catch (e) {}
+          }
+
+          // Directly hydrate and create ticket entity in conversations store if ticket object is embedded
+          if (parsedMeta?.ticket && parsedMeta.ticket.id) {
+            upsertCachedConversation(parsedMeta.ticket).catch(() => {});
+            broadcastEvent('CONVERSATION_MUTATION', {
+              payload: {
+                type: 'UPSERT',
+                ticket: parsedMeta.ticket,
+              },
+            });
+          }
+
+          const convId = parsedMeta?.conversation_id || (parsedMeta?.entity_name === 'ticket' ? parsedMeta?.entity_id : undefined) || notif.entity_id;
+          const msgContent = parsedMeta?.content || notif.message || notif.body || '';
+
+          if (convId && msgContent) {
+            const senderId = parsedMeta?.created_by?.id || parsedMeta?.sender_id || 'unknown';
+            const senderName = parsedMeta?.created_by?.name || parsedMeta?.sender_name || 'User';
+            const msgId = parsedMeta?.id || notif.id;
+
+            saveChatMessage({
+              id: msgId,
+              conversation_id: convId,
+              sender_id: senderId,
+              sender_name: senderName,
+              content: msgContent,
+              images: parsedMeta?.images,
+              attachments: parsedMeta?.attachments,
+              status: 'sent',
+              timestamp: notif.created_at || new Date().toISOString(),
+              metadata: parsedMeta,
+            }).catch(() => {});
+
+            broadcastEvent('MESSAGE_STATUS_CHANGED', {
+              payload: {
+                conversationId: convId,
+                message: { id: msgId, content: msgContent },
+              },
+            });
+          }
         }
 
         // Trigger any matching registered listeners
@@ -532,6 +766,30 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
 
     fetchNotifications();
 
+    // Subscribe to cross-tab broadcast events for instant multi-tab sync
+    const unsubBroadcast = subscribeBroadcast((msg) => {
+      if (msg.type === 'READ_STATE_CHANGED' && msg.payload?.id) {
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === msg.payload.id ? { ...n, is_read: true } : n))
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } else if (msg.type === 'READ_ALL_STATE_CHANGED') {
+        setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+        setUnreadCount(0);
+      } else if (msg.type === 'BOOTSTRAP_RELOAD' || msg.type === 'EVENT_APPENDED') {
+        if (tenantCode && userId) {
+          getStreamEvents({ tenant_code: tenantCode, user_id: userId })
+            .then((cached) => {
+              if (cached && cached.length > 0) {
+                setNotifications(cached as any);
+                setUnreadCount(cached.filter((n) => !n.is_read).length);
+              }
+            })
+            .catch(() => {});
+        }
+      }
+    });
+
     const initialAllowed = runTabChecks();
     if (initialAllowed) {
       connectSSE();
@@ -580,6 +838,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      unsubBroadcast();
       cleanupSSE();
       stopFallbackPolling();
       if (tabHeartbeatIntervalRef.current) {
@@ -629,6 +888,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         fetchNotifications,
         markAsRead,
         markAllAsRead,
+        rebuildDatabase,
+        syncCatchUp: handleSyncCatchUp,
         unsubscribePush,
         reconnectSSE,
         pushPermission,

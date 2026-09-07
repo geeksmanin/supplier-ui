@@ -111,3 +111,6 @@ export { fetchPostalCodeDetails, fetchPostalStates } from './services/postalServ
 export type { PostalCodeDetails, PostalArea, PostalCodeQueryOptions } from './services/postalService';
 export { usePostalCode } from './hooks/usePostalCode';
 export type { UsePostalCodeOptions, UsePostalCodeReturn } from './hooks/usePostalCode';
+
+// Local-First Event Stream, IndexedDB Store & Offline Outbox Engine
+export * from './eventstream';
