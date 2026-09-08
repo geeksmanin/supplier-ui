@@ -75,12 +75,12 @@ interface DataTableProps<T = any> {
   hideSearch?: boolean;
   searchPlaceholder?: string;
   searchShortcutLabel?: string;
-  pageSize: number;
-  setPageSize: (size: number) => void;
+  pageSize?: number;
+  setPageSize?: (size: number) => void;
   pageSizeOptions?: number[];
-  currentPage: number;
-  setCurrentPage: (page: number) => void;
-  totalItems: number;
+  currentPage?: number;
+  setCurrentPage?: (page: number) => void;
+  totalItems?: number;
   onRefresh?: () => void;
   actionButton?: React.ReactNode;
   filterDropdowns?: React.ReactNode;
@@ -96,7 +96,16 @@ interface DataTableProps<T = any> {
   hideSerialNumberColumn?: boolean;
   hideAutoActionColumn?: boolean;
   hideFilterRow?: boolean;
+  hideTableHeader?: boolean;
+  hideItemCountMetadata?: boolean;
+  infiniteScroll?: boolean;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  hidePagination?: boolean;
   onExportAll?: () => Promise<any[]>;
+  subToolbar?: React.ReactNode;
+  seamless?: boolean;
+  selectedRowId?: any;
 
   // Row selection (opt-in)
   selectable?: boolean;
@@ -133,7 +142,16 @@ export const DataTable: React.FC<DataTableProps> = ({
   hideSerialNumberColumn = false,
   hideAutoActionColumn = false,
   hideFilterRow = false,
+  hideTableHeader = false,
+  hideItemCountMetadata = false,
+  infiniteScroll = false,
+  onLoadMore,
+  hasMore = false,
+  hidePagination = false,
   onExportAll,
+  subToolbar,
+  seamless = false,
+  selectedRowId,
   selectable = false,
   selectedIds: controlledSelectedIds,
   onSelectChange,
@@ -349,14 +367,16 @@ export const DataTable: React.FC<DataTableProps> = ({
     if (!hasSNo && !hideSerialNumberColumn) {
       result.unshift({
         key: 's_no',
-        label: 'S. No',
-        width: '60px',
+        label: 'S.No',
+        width: '38px',
+        align: 'center' as const,
         sortable: false,
-        textTransformNone: false,
+        textTransformNone: true,
         filterType: 'none' as const,
         filterPlaceholder: '',
         filterOptions: [],
         render: (_val: any, _row: any, idx: number) => {
+          if (infiniteScroll) return idx + 1;
           const currentPageNum = Math.max(1, Number(currentPage) || 1);
           const pageSizeNum = Math.max(1, Number(pageSize) || 10);
           return (currentPageNum - 1) * pageSizeNum + idx + 1;
@@ -550,20 +570,23 @@ export const DataTable: React.FC<DataTableProps> = ({
     || (totalItems !== undefined && data.length <= pageSize && totalItems > pageSize);
 
   const activeTotalItems = totalItems !== undefined ? totalItems : sortedData.length;
-  const safePageSize = pageSize > 0 ? pageSize : 10;
+  const safePageSize = (pageSize && pageSize > 0) ? pageSize : 10;
   const totalPages = Math.max(1, Math.ceil(activeTotalItems / safePageSize));
   // Clamp currentPage within valid range without firing side-effects
-  const safePage = Math.max(1, Math.min(currentPage, totalPages));
+  const safePage = Math.max(1, Math.min(currentPage || 1, totalPages));
 
   const startIdx = (safePage - 1) * safePageSize;
   const endIdx = Math.min(startIdx + safePageSize, sortedData.length);
 
   const displayData = React.useMemo(() => {
+    if (infiniteScroll) {
+      return sortedData;
+    }
     if (isServerPaged) {
       return sortedData; // backend already returned the correct page slice
     }
     return sortedData.slice(startIdx, endIdx);
-  }, [sortedData, startIdx, endIdx, isServerPaged]);
+  }, [sortedData, startIdx, endIdx, isServerPaged, infiniteScroll]);
 
 
   // Select-all helpers — defined after displayData so they can reference it
@@ -642,123 +665,183 @@ export const DataTable: React.FC<DataTableProps> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', minHeight: 0 }}>
-      {/* Search and Action Row */}
-      {!hideSearch && (
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem', width: '100%' }}>
-        <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
-          <svg
-            style={{ position: 'absolute', left: '12px', width: '14px', height: '14px', color: '#9ca3af', pointerEvents: 'none' }}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2.5}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            ref={localSearchInputRef}
-            type="text"
-            placeholder={searchPlaceholder}
-            value={localSearchVal}
-            onChange={(e) => {
-              setLocalSearchVal(e.target.value);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                e.stopPropagation();
-                commitSearch(localSearchVal);
-              }
-            }}
-            style={{
-              padding: '0.5rem 5.5rem 0.5rem 2.25rem', // increase right padding to accommodate both shortcut and reset button
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              fontSize: '0.85rem',
-              width: '100%',
-              outline: 'none',
-              backgroundColor: '#ffffff',
-              boxSizing: 'border-box'
-            }}
-          />
-          {/* Reset Filters / Clear Search button */}
-          {(localSearchVal || searchVal || Object.values(columnFilters).some(v => v !== '') || sortConfig) && (
-            <button
-              onClick={handleResetAll}
-              style={{
-                position: 'absolute',
-                right: activeShortcutLabel ? '56px' : '12px',
-                fontSize: '0.75rem',
-                color: '#ef4444',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontWeight: 600,
-                padding: '2px 6px',
-                borderRadius: '4px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '2px'
-              }}
-              title="Reset all filters and search"
-            >
-              Clear
-            </button>
-          )}
-          {activeShortcutLabel && (
-            <span style={{
-              position: 'absolute',
-              right: '12px',
-              fontSize: '0.7rem',
-              color: '#9ca3af',
-              fontWeight: 600,
-              border: '1px solid #e5e7eb',
-              borderRadius: '4px',
-              padding: '0.1rem 0.3rem',
-              backgroundColor: '#f9fafb'
-            }}>
-              {activeShortcutLabel}
-            </span>
-          )}
-        </div>
+      {/* Search, Actions & SubToolbar Header */}
+      {(!hideSearch || filterDropdowns || actionButton || onRefresh || subToolbar) && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: seamless ? '0.45rem' : undefined,
+          padding: seamless ? '0.75rem 0.75rem 0.6rem 0.75rem' : undefined,
+          borderBottom: seamless ? '1px solid #e2e8f0' : undefined,
+          backgroundColor: '#ffffff',
+          flexShrink: 0
+        }}>
+          {(!hideSearch || filterDropdowns || actionButton || onRefresh) && (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: seamless ? 0 : '0.75rem', width: '100%', justifyContent: hideSearch ? 'flex-end' : 'space-between' }}>
+              {!hideSearch && (
+                <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
+                  <svg
+                    style={{ position: 'absolute', left: '12px', width: '14px', height: '14px', color: '#9ca3af', pointerEvents: 'none' }}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    ref={localSearchInputRef}
+                    type="text"
+                    placeholder={searchPlaceholder}
+                    value={localSearchVal}
+                    onChange={(e) => {
+                      setLocalSearchVal(e.target.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        commitSearch(localSearchVal);
+                      }
+                    }}
+                    style={{
+                      padding: '0.5rem 5.5rem 0.5rem 2.25rem', // increase right padding to accommodate both shortcut and reset button
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      fontSize: '0.85rem',
+                      width: '100%',
+                      outline: 'none',
+                      backgroundColor: seamless ? '#f8fafc' : '#ffffff',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                  {/* Reset Filters / Clear Search button */}
+                  {(localSearchVal || searchVal || Object.values(columnFilters).some(v => v !== '') || sortConfig) && (
+                    <button
+                      onClick={handleResetAll}
+                      style={{
+                        position: 'absolute',
+                        right: activeShortcutLabel ? '56px' : '12px',
+                        color: '#94a3b8',
+                        backgroundColor: '#f1f5f9',
+                        border: 'none',
+                        cursor: 'pointer',
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 0,
+                        transition: 'all 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#e2e8f0';
+                        e.currentTarget.style.color = '#475569';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#f1f5f9';
+                        e.currentTarget.style.color = '#94a3b8';
+                      }}
+                      title="Clear search and filters"
+                      aria-label="Clear search"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  )}
+                  {activeShortcutLabel && (
+                    <span style={{
+                      position: 'absolute',
+                      right: '12px',
+                      fontSize: '0.7rem',
+                      color: '#9ca3af',
+                      fontWeight: 600,
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '4px',
+                      padding: '0.1rem 0.3rem',
+                      backgroundColor: '#f9fafb'
+                    }}>
+                      {activeShortcutLabel}
+                    </span>
+                  )}
+                </div>
+              )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          {filterDropdowns}
-          <button
-            type="button"
-            onClick={() => onRefresh && onRefresh()}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              border: '1px solid #bfdbfe',
-              width: '36px',
-              height: '36px',
-              borderRadius: '8px',
-              backgroundColor: '#eff6ff',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              color: '#2563eb'
-            }}
-            title="Refresh"
-            disabled={loading}
-          >
-            ↻
-          </button>
-          {actionButton}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: hideSearch ? '100%' : 'auto' }}>
+                {filterDropdowns}
+                {onRefresh && (
+                  <button
+                    type="button"
+                    onClick={() => onRefresh && onRefresh()}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1px solid #bfdbfe',
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '8px',
+                      backgroundColor: '#eff6ff',
+                      cursor: 'pointer',
+                      fontSize: '1rem',
+                      color: '#2563eb',
+                      flexShrink: 0
+                    }}
+                    title="Refresh"
+                    disabled={loading}
+                  >
+                    ↻
+                  </button>
+                )}
+                {actionButton}
+              </div>
+            </div>
+          )}
+
+          {/* SubToolbar (e.g. Filter Chips below search bar) */}
+          {subToolbar && (
+            <div style={{ marginBottom: seamless ? 0 : '0.65rem', width: '100%', flexShrink: 0 }}>
+              {subToolbar}
+            </div>
+          )}
         </div>
-      </div>
       )}
 
       {/* Items count metadata */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#6b7280', marginBottom: '1rem', fontWeight: 500 }}>
-        <span>Showing {activeTotalItems === 0 ? 0 : startIdx + 1}-{endIdx} of {activeTotalItems} Items</span>
-        <span style={{ cursor: 'pointer' }}>Showing {processedColumns.length} of {processedColumns.length} columns ▾</span>
-      </div>
+      {!hideItemCountMetadata && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#6b7280', marginBottom: '1rem', fontWeight: 500 }}>
+          <span>Showing {activeTotalItems === 0 ? 0 : startIdx + 1}-{endIdx} of {activeTotalItems} Items</span>
+          <span style={{ cursor: 'pointer' }}>Showing {processedColumns.length} of {processedColumns.length} columns ▾</span>
+        </div>
+      )}
 
       {/* Table Container */}
-      <div style={{ overflow: 'auto', flex: 1, minHeight: 0, maxHeight: '600px', border: '1px solid #e5e7eb', borderRadius: '14px' }}>
+      <div
+        onScroll={(e) => {
+          if (!infiniteScroll) return;
+          const target = e.currentTarget;
+          if (target.scrollHeight - target.scrollTop - target.clientHeight < 120) {
+            if (onLoadMore && hasMore && !loading) {
+              onLoadMore();
+            }
+          }
+        }}
+        style={{
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          flex: 1,
+          minHeight: 0,
+          maxHeight: infiniteScroll ? 'none' : '600px',
+          border: seamless ? 'none' : '1px solid #e5e7eb',
+          borderRadius: seamless ? '0' : '14px',
+          backgroundColor: '#ffffff'
+        }}
+      >
         <table className="erp-table erp-table-sticky-header" style={{ margin: 0, border: 'none' }}>
+          {!hideTableHeader && (
           <thead>
             <tr>
               {processedColumns.map((col) => {
@@ -769,8 +852,12 @@ export const DataTable: React.FC<DataTableProps> = ({
                     className={isAction ? 'sticky-action-header' : undefined}
                     style={{
                       width: col.width,
+                      minWidth: col.width,
+                      maxWidth: col.width,
+                      boxSizing: 'border-box',
                       textTransform: col.textTransformNone ? 'none' : 'capitalize',
                       textAlign: col.align || 'left',
+                      padding: (col.key === 's_no' || col.key === 'sno' || col.key === 'index') ? '6px 2px' : undefined,
                       userSelect: 'none'
                     }}
                   >
@@ -816,8 +903,11 @@ export const DataTable: React.FC<DataTableProps> = ({
                       key={`filter-${col.key}`}
                       className={isAction ? 'sticky-action-header' : undefined}
                       style={{
-                        padding: '6px 12px',
+                        padding: (col.key === 's_no' || col.key === 'sno' || col.key === 'index') ? '6px 2px' : '6px 12px',
                         width: col.width,
+                        minWidth: col.width,
+                        maxWidth: col.width,
+                        boxSizing: 'border-box',
                         textAlign: col.align || 'left',
                         verticalAlign: 'middle',
                         backgroundColor: '#f1f5f9',
@@ -854,11 +944,10 @@ export const DataTable: React.FC<DataTableProps> = ({
                               )}
                             </label>
                           ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#4b5563', fontWeight: 600, fontSize: '0.7rem' }}>
-                              <svg style={{ width: '12px', height: '12px', color: '#4b5563' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', color: '#94a3b8' }} title="Filters">
+                              <svg style={{ width: '12px', height: '12px', color: '#94a3b8' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                               </svg>
-                              <span>Filters</span>
                             </div>
                           )
                         )}
@@ -1230,6 +1319,7 @@ export const DataTable: React.FC<DataTableProps> = ({
               </tr>
             )}
           </thead>
+          )}
           <tbody style={{ transition: 'opacity 0.15s ease', opacity: loading && displayData.length > 0 ? 0.65 : 1 }}>
             {loading && displayData.length === 0 ? (
               Array.from({ length: 5 }).map((_, rowIndex) => (
@@ -1292,13 +1382,18 @@ export const DataTable: React.FC<DataTableProps> = ({
                         if (prevRow) prevRow.focus();
                       }
                     }}
-                   style={{
+                    style={{
                       cursor: onRowClick ? 'pointer' : 'default',
                       outline: 'none',
-                      backgroundColor: selectable && selectedIds.has(rowId(row))
+                      backgroundColor: selectedRowId !== undefined && rowId(row) === selectedRowId
+                        ? '#eff6ff'
+                        : selectable && selectedIds.has(rowId(row))
                         ? '#f0f4ff'
                         : rIdx === highlightedIndex ? '#f1f5f9' : undefined,
-                      boxShadow: rIdx === highlightedIndex ? 'inset 4px 0 0 0 #2563eb' : undefined
+                      boxShadow: selectedRowId !== undefined && rowId(row) === selectedRowId
+                        ? 'inset 3px 0 0 0 #2563eb'
+                        : rIdx === highlightedIndex ? 'inset 4px 0 0 0 #2563eb' : undefined,
+                      transition: 'background-color 0.15s ease'
                     }}
                   >
                     {processedColumns.map((col) => {
@@ -1307,7 +1402,14 @@ export const DataTable: React.FC<DataTableProps> = ({
                         <td
                           key={col.key}
                           className={col.key === 'action' ? 'sticky-action-col' : undefined}
-                          style={{ textAlign: col.align || 'left' }}
+                          style={{
+                            textAlign: col.align || 'left',
+                            width: col.width,
+                            minWidth: col.width,
+                            maxWidth: col.width,
+                            boxSizing: 'border-box',
+                            padding: (col.key === 's_no' || col.key === 'sno' || col.key === 'index') ? '6px 2px' : undefined
+                          }}
                         >
                           {selectable && (col.key === 'index' || col.key === 'sno' || col.key === 's_no') ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
@@ -1328,7 +1430,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                     })}
                   </tr>
                 ))}
-                {Array.from({ length: Math.max(0, 5 - displayData.length) }).map((_, idx) => (
+                {!infiniteScroll && Array.from({ length: Math.max(0, 5 - displayData.length) }).map((_, idx) => (
                   <tr key={`empty-${idx}`} style={{ height: '40px', cursor: 'default' }}>
                     {processedColumns.map((col) => (
                       <td
@@ -1346,200 +1448,198 @@ export const DataTable: React.FC<DataTableProps> = ({
           </tbody>
         </table>
       </div>
-
-      {/* Pagination Footer */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#4b5563', position: 'relative' }}>
-          <span>Rows per page:</span>
-          <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-block' }}>
-            <button
-              onClick={() => setDropdownOpen(!dropdownOpen)}
-              style={{
-                padding: '0.35rem 1.75rem 0.35rem 0.65rem',
-                border: '1px solid #e5e7eb',
-                borderRadius: '6px',
-                outline: 'none',
-                backgroundColor: '#ffffff',
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-                fontWeight: 500,
-                color: '#374151',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                minWidth: '60px',
-                textAlign: 'left',
-                justifyContent: 'space-between',
-                transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
-                boxShadow: dropdownOpen ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : 'none',
-                borderColor: dropdownOpen ? '#3b82f6' : '#e5e7eb'
-              }}
-            >
-              <span>{safePageSize}</span>
-              <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>▼</span>
-            </button>
-            {dropdownOpen && (
-              <div
+      {!infiniteScroll && !hidePagination && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#4b5563', position: 'relative' }}>
+            <span>Rows per page:</span>
+            <div ref={dropdownRef} style={{ position: 'relative', display: 'inline-block' }}>
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
                 style={{
-                  position: 'absolute',
-                  bottom: '100%',
-                  left: 0,
-                  marginBottom: '4px',
-                  backgroundColor: '#ffffff',
+                  padding: '0.35rem 1.75rem 0.35rem 0.65rem',
                   border: '1px solid #e5e7eb',
                   borderRadius: '6px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-                  zIndex: 1000,
+                  outline: 'none',
+                  backgroundColor: '#ffffff',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  fontWeight: 500,
+                  color: '#374151',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
                   minWidth: '60px',
-                  overflow: 'hidden'
+                  textAlign: 'left',
+                  justifyContent: 'space-between',
+                  transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                  boxShadow: dropdownOpen ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : 'none',
+                  borderColor: dropdownOpen ? '#3b82f6' : '#e5e7eb'
                 }}
               >
-                {pageSizeOptions.map((option) => (
-                  <div
-                    key={option}
-                    onClick={() => {
-                      handleSetPageSize(option);
-                      setDropdownOpen(false);
-                    }}
-                    style={{
-                      padding: '0.5rem 0.75rem',
-                      cursor: 'pointer',
-                      fontSize: '0.85rem',
-                      color: safePageSize === option ? '#2563eb' : '#374151',
-                      backgroundColor: safePageSize === option ? '#eff6ff' : '#ffffff',
-                      transition: 'background-color 0.15s ease',
-                      fontWeight: safePageSize === option ? 600 : 400
-                    }}
-                    onMouseEnter={(e) => {
-                      if (safePageSize !== option) {
-                        e.currentTarget.style.backgroundColor = '#f3f4f6';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (safePageSize !== option) {
-                        e.currentTarget.style.backgroundColor = '#ffffff';
-                      }
-                    }}
-                  >
-                    {option}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', fontSize: '0.85rem', color: '#4b5563' }}>
-          <span>Page {safePage} of {totalPages} ({activeTotalItems === 0 ? 0 : startIdx + 1}-{endIdx} of {activeTotalItems} Items)</span>
-          <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-            <button
-              disabled={safePage === 1}
-              onClick={() => handleSetCurrentPage(Math.max(safePage - 1, 1))}
-              style={{
-                padding: '0.35rem 0.6rem',
-                border: '1px solid #e5e7eb',
-                borderRadius: '6px',
-                background: safePage === 1 ? '#f9fafb' : '#ffffff',
-                cursor: safePage === 1 ? 'not-allowed' : 'pointer',
-                color: safePage === 1 ? '#d1d5db' : '#4b5563',
-                fontSize: '0.85rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: '32px',
-                height: '32px',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              ‹
-            </button>
-
-            {(() => {
-              const pages: (number | string)[] = [];
-              const maxVisible = 5;
-              if (totalPages <= maxVisible) {
-                for (let i = 1; i <= totalPages; i++) pages.push(i);
-              } else {
-                if (safePage <= 3) {
-                  pages.push(1, 2, 3, '...', totalPages);
-                } else if (safePage >= totalPages - 2) {
-                  pages.push(1, '...', totalPages - 2, totalPages - 1, totalPages);
-                } else {
-                  pages.push(1, '...', safePage, '...', totalPages);
-                }
-              }
-
-              return pages.map((page, idx) => {
-                if (page === '...') {
-                  return (
-                    <span
-                      key={`ellipsis-${idx}`}
+                <span>{safePageSize}</span>
+                <span style={{ fontSize: '0.65rem', color: '#6b7280' }}>▼</span>
+              </button>
+              {dropdownOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '100%',
+                    left: 0,
+                    marginBottom: '4px',
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '6px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                    zIndex: 1000,
+                    minWidth: '60px',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {pageSizeOptions.map((option) => (
+                    <div
+                      key={option}
+                      onClick={() => {
+                        handleSetPageSize(option);
+                        setDropdownOpen(false);
+                      }}
                       style={{
+                        padding: '0.5rem 0.75rem',
+                        cursor: 'pointer',
+                        fontSize: '0.85rem',
+                        color: safePageSize === option ? '#2563eb' : '#374151',
+                        backgroundColor: safePageSize === option ? '#eff6ff' : '#ffffff',
+                        transition: 'background-color 0.15s ease',
+                        fontWeight: safePageSize === option ? 600 : 400
+                      }}
+                      onMouseEnter={(e) => {
+                        if (safePageSize !== option) {
+                          e.currentTarget.style.backgroundColor = '#f3f4f6';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (safePageSize !== option) {
+                          e.currentTarget.style.backgroundColor = '#ffffff';
+                        }
+                      }}
+                    >
+                      {option}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <span style={{ fontSize: '0.85rem', color: '#6b7280', fontWeight: 500 }}>
+              Page {safePage} of {totalPages} ({activeTotalItems === 0 ? 0 : startIdx + 1}-{endIdx} of {activeTotalItems} Items)
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+              <button
+                disabled={safePage <= 1}
+                onClick={() => handleSetCurrentPage(safePage - 1)}
+                style={{
+                  padding: '0.35rem 0.6rem',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  background: safePage <= 1 ? '#f9fafb' : '#ffffff',
+                  cursor: safePage <= 1 ? 'not-allowed' : 'pointer',
+                  color: safePage <= 1 ? '#d1d5db' : '#4b5563',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: '32px',
+                  height: '32px',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                ‹
+              </button>
+              {(() => {
+                const pages: (number | string)[] = [];
+                if (totalPages <= 7) {
+                  for (let i = 1; i <= totalPages; i++) pages.push(i);
+                } else {
+                  pages.push(1);
+                  if (safePage > 3) pages.push('...');
+                  const start = Math.max(2, safePage - 1);
+                  const end = Math.min(totalPages - 1, safePage + 1);
+                  for (let i = start; i <= end; i++) pages.push(i);
+                  if (safePage < totalPages - 2) pages.push('...');
+                  pages.push(totalPages);
+                }
+                return pages.map((page, index) => {
+                  if (page === '...') {
+                    return (
+                      <span
+                        key={`ellipsis-${index}`}
+                        style={{
+                          padding: '0.35rem 0.5rem',
+                          color: '#9ca3af',
+                          fontSize: '0.85rem'
+                        }}
+                      >
+                        ...
+                      </span>
+                    );
+                  }
+                  const isCurrent = page === safePage;
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => handleSetCurrentPage(page as number)}
+                      style={{
+                        padding: '0.35rem 0.6rem',
+                        border: isCurrent ? '1px solid #2563eb' : '1px solid #e5e7eb',
+                        borderRadius: '6px',
+                        background: isCurrent ? '#2563eb' : '#ffffff',
+                        color: isCurrent ? '#ffffff' : '#4b5563',
+                        cursor: 'pointer',
+                        fontSize: '0.85rem',
+                        fontWeight: isCurrent ? '600' : '400',
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         minWidth: '32px',
                         height: '32px',
-                        fontSize: '0.85rem',
-                        color: '#9ca3af'
+                        transition: 'all 0.15s ease'
                       }}
                     >
-                      ...
-                    </span>
+                      {page}
+                    </button>
                   );
-                }
-
-                const isCurrent = safePage === page;
-                return (
-                  <button
-                    key={page}
-                    onClick={() => handleSetCurrentPage(page as number)}
-                    style={{
-                      padding: '0.35rem 0.6rem',
-                      border: isCurrent ? '1px solid #2563eb' : '1px solid #e5e7eb',
-                      borderRadius: '6px',
-                      background: isCurrent ? '#2563eb' : '#ffffff',
-                      color: isCurrent ? '#ffffff' : '#4b5563',
-                      cursor: 'pointer',
-                      fontSize: '0.85rem',
-                      fontWeight: isCurrent ? '600' : '400',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minWidth: '32px',
-                      height: '32px',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    {page}
-                  </button>
-                );
-              });
-            })()}
-
-            <button
-              disabled={safePage >= totalPages}
-              onClick={() => handleSetCurrentPage(safePage + 1)}
-              style={{
-                padding: '0.35rem 0.6rem',
-                border: '1px solid #e5e7eb',
-                borderRadius: '6px',
-                background: safePage >= totalPages ? '#f9fafb' : '#ffffff',
-                cursor: safePage >= totalPages ? 'not-allowed' : 'pointer',
-                color: safePage >= totalPages ? '#d1d5db' : '#4b5563',
-                fontSize: '0.85rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: '32px',
-                height: '32px',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              ›
-            </button>
+                });
+              })()}
+              <button
+                disabled={safePage >= totalPages}
+                onClick={() => handleSetCurrentPage(safePage + 1)}
+                style={{
+                  padding: '0.35rem 0.6rem',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  background: safePage >= totalPages ? '#f9fafb' : '#ffffff',
+                  cursor: safePage >= totalPages ? 'not-allowed' : 'pointer',
+                  color: safePage >= totalPages ? '#d1d5db' : '#4b5563',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: '32px',
+                  height: '32px',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                ›
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+      {infiniteScroll && hasMore && loading && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '0.65rem', gap: '0.5rem', color: '#64748b', fontSize: '0.75rem' }}>
+          <span>Loading more items...</span>
+        </div>
+      )}
     </div>
   );
 };
