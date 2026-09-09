@@ -7,6 +7,7 @@ interface AppsDashboardMobileProps {
 }
 
 export const AppsDashboardMobile: React.FC<AppsDashboardMobileProps> = ({ navItems, onNavigate }) => {
+  const displayItems = navItems.filter((item: any) => !item.parentId);
   return (
     <div style={{
       maxWidth: '1200px',
@@ -23,7 +24,7 @@ export const AppsDashboardMobile: React.FC<AppsDashboardMobileProps> = ({ navIte
         width: '100%',
         justifyContent: 'center'
       }}>
-        {navItems.map((item) => {
+        {displayItems.map((item) => {
           const bgGradient = item.bgGradient || 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)';
           const isTransparentBg = bgGradient === 'transparent' || bgGradient === 'none';
           const iconColor = item.iconColor || '#ffffff';

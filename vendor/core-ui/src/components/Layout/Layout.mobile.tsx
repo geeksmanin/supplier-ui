@@ -19,8 +19,35 @@ export const LayoutMobile: React.FC<any> = ({
   onUpdate,
 }) => {
   const isDashboard = currentPath === '/dashboard' || currentPath === '/';
-  const activeChild = navItems.find(item => item.path === currentPath);
-  const activeParentId = activeChild?.parentId;
+  const mainNavItems = navItems.filter(item => !item.parentId);
+
+  const getActiveParentId = (path: string, items: any[]) => {
+    if (path === '/' || path === '/dashboard') return null;
+
+    // 1. Exact match for child item with parentId
+    const exactChild = items.find(item => item.path === path && item.parentId);
+    if (exactChild) return exactChild.parentId;
+
+    // 2. Exact match for parent item (with no parentId) that has children
+    const exactParent = items.find(item => item.path === path && !item.parentId);
+    if (exactParent && items.some(child => child.parentId === exactParent.id)) {
+      return exactParent.id;
+    }
+
+    // 3. Prefix match for child items (e.g. /products/123 matches /products)
+    const prefixChild = items.find(item => item.path !== '/' && item.path !== '/dashboard' && (path.startsWith(item.path + '/') || path.startsWith(item.path + '?')));
+    if (prefixChild && prefixChild.parentId) return prefixChild.parentId;
+
+    // 4. Prefix match for parent items that have children
+    const prefixParent = items.find(item => item.path !== '/' && item.path !== '/dashboard' && (path.startsWith(item.path + '/') || path.startsWith(item.path + '?')));
+    if (prefixParent && items.some(child => child.parentId === prefixParent.id)) {
+      return prefixParent.id;
+    }
+
+    return null;
+  };
+
+  const activeParentId = getActiveParentId(currentPath, navItems);
   const activeSubNavs = activeParentId ? navItems.filter(item => item.parentId === activeParentId) : [];
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -402,7 +429,7 @@ export const LayoutMobile: React.FC<any> = ({
         paddingBottom: '80px',
       }}>
         {isDashboard ? (
-          <AppsDashboard navItems={navItems} onNavigate={onNavigate} />
+          <AppsDashboard navItems={mainNavItems} onNavigate={onNavigate} />
         ) : (
           children
         )}
@@ -421,57 +448,107 @@ export const LayoutMobile: React.FC<any> = ({
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
         zIndex: 20,
         display: 'flex',
-        overflowX: 'hidden',
+        overflowX: 'auto',
         overflowY: 'hidden',
-        justifyContent: 'space-around',
+        justifyContent: (activeSubNavs.length > 0 ? (activeSubNavs.length > 3 ? 'flex-start' : 'space-around') : (mainNavItems.length > 4 ? 'flex-start' : 'space-around')),
         alignItems: 'center',
-        padding: '0 1rem',
+        padding: '0 0.85rem',
+        gap: '0.65rem',
         whiteSpace: 'nowrap',
         scrollbarWidth: 'none',
       }}>
         {activeSubNavs.length > 0 ? (
-          activeSubNavs.map((sub, idx) => {
-            const isActive = currentPath === sub.path;
-            return (
-              <div
-                key={`${sub.id || sub.path}-${idx}`}
-                onClick={() => onNavigate(sub.path)}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                  minWidth: '60px',
-                  height: '100%',
-                  opacity: isActive ? 1 : 0.65,
-                  transition: 'opacity var(--transition-fast)',
-                }}
-              >
-                <div style={{
-                  color: isActive ? '#3b82f6' : '#64748b',
-                  marginBottom: '2px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transform: 'scale(1.1)',
-                }}>
-                  {sub.icon}
-                </div>
-                <span style={{ 
-                  fontSize: '0.6rem', 
-                  fontWeight: isActive ? 600 : 500,
-                  lineHeight: '1.2',
-                  color: isActive ? '#1f2937' : '#64748b'
-                }}>
-                  {sub.label}
-                </span>
+          <>
+            {/* Apps / Dashboard Home button */}
+            <div
+              onClick={() => onNavigate('/dashboard')}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                flexShrink: 0,
+                minWidth: '48px',
+                height: '100%',
+                opacity: isDashboard ? 1 : 0.7,
+                transition: 'opacity var(--transition-fast)',
+              }}
+              title="All Applications"
+            >
+              <div style={{
+                color: isDashboard ? '#3b82f6' : '#64748b',
+                marginBottom: '2px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="4" y="4" width="4" height="4" rx="1" />
+                  <rect x="10" y="4" width="4" height="4" rx="1" />
+                  <rect x="16" y="4" width="4" height="4" rx="1" />
+                  <rect x="4" y="10" width="4" height="4" rx="1" />
+                  <rect x="10" y="10" width="4" height="4" rx="1" />
+                  <rect x="16" y="10" width="4" height="4" rx="1" />
+                  <rect x="4" y="16" width="4" height="4" rx="1" />
+                  <rect x="10" y="16" width="4" height="4" rx="1" />
+                  <rect x="16" y="16" width="4" height="4" rx="1" />
+                </svg>
               </div>
-            );
-          })
+              <span style={{ 
+                fontSize: '0.6rem', 
+                fontWeight: 500,
+                lineHeight: '1.2',
+                color: isDashboard ? '#3b82f6' : '#64748b'
+              }}>
+                Apps
+              </span>
+            </div>
+
+            {/* App Subnavigation Tabs */}
+            {activeSubNavs.map((sub, idx) => {
+              const isActive = currentPath === sub.path || (sub.path !== '/' && (currentPath.startsWith(sub.path + '/') || currentPath.startsWith(sub.path + '?')));
+              return (
+                <div
+                  key={`${sub.id || sub.path}-${idx}`}
+                  onClick={() => onNavigate(sub.path)}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    minWidth: '54px',
+                    height: '100%',
+                    opacity: isActive ? 1 : 0.65,
+                    transition: 'opacity var(--transition-fast)',
+                  }}
+                >
+                  <div style={{
+                    color: isActive ? '#3b82f6' : '#64748b',
+                    marginBottom: '2px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transform: 'scale(1.1)',
+                  }}>
+                    {sub.icon}
+                  </div>
+                  <span style={{ 
+                    fontSize: '0.6rem', 
+                    fontWeight: isActive ? 600 : 500,
+                    lineHeight: '1.2',
+                    color: isActive ? '#1f2937' : '#64748b'
+                  }}>
+                    {sub.label}
+                  </span>
+                </div>
+              );
+            })}
+          </>
         ) : (
-          navItems.filter(item => !item.parentId).map((item, idx) => {
+          mainNavItems.map((item, idx) => {
             const isActive = currentPath === item.path || (item.path === '/dashboard' && isDashboard);
             return (
               <div
