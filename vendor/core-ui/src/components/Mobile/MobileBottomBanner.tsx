@@ -37,6 +37,7 @@ export const MobileBottomBanner: React.FC<MobileBottomBannerProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      window.dispatchEvent(new CustomEvent('geeksman:hide-bottom-nav', { detail: { hide: true } }));
       setMounted(true);
       const timer = setTimeout(() => setAnimateIn(true), 15);
       // Lock background scrolling
@@ -44,8 +45,10 @@ export const MobileBottomBanner: React.FC<MobileBottomBannerProps> = ({
       return () => {
         clearTimeout(timer);
         document.body.style.overflow = '';
+        window.dispatchEvent(new CustomEvent('geeksman:hide-bottom-nav', { detail: { hide: false } }));
       };
     } else {
+      window.dispatchEvent(new CustomEvent('geeksman:hide-bottom-nav', { detail: { hide: false } }));
       setAnimateIn(false);
       const timer = setTimeout(() => setMounted(false), 280);
       document.body.style.overflow = '';
@@ -212,7 +215,11 @@ export const MobileBottomBanner: React.FC<MobileBottomBannerProps> = ({
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
+            overflowX: 'hidden',
             position: 'relative',
+            width: '100%',
+            maxWidth: '100%',
+            boxSizing: 'border-box',
           }}
         >
           {children}

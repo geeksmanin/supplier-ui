@@ -671,34 +671,30 @@ export const LayoutDesktop: React.FC<any> = ({
                 }}
                 title={item.label}
               >
-                {/* Colored background icon wrapper block matching dashboard */}
+                {/* Icon wrapper block */}
                 <div style={{
                   width: '32px',
                   height: '32px',
-                  borderRadius: (item.bgGradient === 'transparent' || item.bgGradient === 'none') ? '0px' : '8px',
-                  background: item.bgGradient || 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                  borderRadius: (item.bgGradient && item.bgGradient !== 'transparent' && item.bgGradient !== 'none') ? '8px' : '0px',
+                  background: (item.bgGradient && item.bgGradient !== 'transparent' && item.bgGradient !== 'none') ? item.bgGradient : 'transparent',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: item.iconColor || '#ffffff',
-                  boxShadow: (isActive && item.bgGradient !== 'transparent' && item.bgGradient !== 'none') ? '0 2px 4px rgba(0,0,0,0.08)' : 'none',
+                  color: (item.bgGradient && item.bgGradient !== 'transparent' && item.bgGradient !== 'none') ? (item.iconColor || '#ffffff') : (isActive ? '#2563eb' : '#64748b'),
+                  boxShadow: (isActive && item.bgGradient && item.bgGradient !== 'transparent' && item.bgGradient !== 'none') ? '0 2px 4px rgba(0,0,0,0.08)' : 'none',
                 }}>
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    width: (item.bgGradient === 'transparent' || item.bgGradient === 'none') ? '28px' : '20px',
-                    height: (item.bgGradient === 'transparent' || item.bgGradient === 'none') ? '28px' : '20px',
-                    transform: (item.bgGradient === 'transparent' || item.bgGradient === 'none') ? 'none' : 'scale(0.85)',
-                    color: '#ffffff',
+                    width: '28px',
+                    height: '28px',
                   }}>
-                    {/* Render raw icon in white since it's on a colored background block */}
                     {React.isValidElement(item.icon) && typeof item.icon.type === 'string' && item.icon.type !== 'svg' ? (
                       item.icon
                     ) : React.isValidElement(item.icon) ? (
                       React.cloneElement(item.icon as React.ReactElement<any>, {
                         style: {
-                          color: '#ffffff',
                           width: '100%',
                           height: '100%',
                           display: 'block'

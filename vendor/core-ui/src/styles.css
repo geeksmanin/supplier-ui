@@ -226,11 +226,35 @@ h1, h2, h3, h4, h5, h6 {
   background-color: #eff6ff; /* Premium soft blue header background */
 }
 
-.sticky-action-header {
-  position: sticky !important;
-  right: 0 !important;
-  z-index: 12 !important;
+.erp-table-sticky-header thead tr:nth-child(1) th {
+  position: sticky;
+  top: 0;
+  z-index: 12;
   background-color: #eff6ff;
+}
+
+.erp-table-sticky-header thead tr:nth-child(2) th {
+  position: sticky;
+  top: 38px;
+  z-index: 11;
+  background-color: #f8fafc !important;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.erp-table-sticky-header thead tr:nth-child(1) th.sticky-action-header {
+  position: sticky !important;
+  top: 0;
+  right: 0 !important;
+  z-index: 14 !important;
+  background-color: #eff6ff;
+}
+
+.erp-table-sticky-header thead tr:nth-child(2) th.sticky-action-header {
+  position: sticky !important;
+  top: 38px;
+  right: 0 !important;
+  z-index: 13 !important;
+  background-color: #f8fafc !important;
 }
 
 .sticky-action-col {
@@ -248,12 +272,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .erp-table tr:hover .sticky-action-col {
-  background-color: #f1f5f9 !important;
-}
-
-/* Explicit color distinction for the filter row (second row in table header) */
-.erp-table-sticky-header thead tr:nth-child(2) th,
-.erp-table-sticky-header thead tr:nth-child(2) th.sticky-action-header {
   background-color: #f1f5f9 !important;
 }
 

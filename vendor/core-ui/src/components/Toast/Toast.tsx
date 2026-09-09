@@ -1,15 +1,23 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 
-export type ToastType = 'success' | 'error' | 'warning' | 'info';
+export type ToastType = 'success' | 'error' | 'warning' | 'info' | 'danger';
+
+export interface ToastOptions {
+  title?: string;
+  message: string;
+  variant?: ToastType;
+  type?: ToastType;
+}
 
 interface Toast {
   id: string;
   message: string;
+  title?: string;
   type: ToastType;
 }
 
 interface ToastContextType {
-  showToast: (message: string, type?: ToastType) => void;
+  showToast: (messageOrOptions: string | ToastOptions, type?: ToastType) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -25,9 +33,26 @@ export const useToast = () => {
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const showToast = useCallback((message: string, type: ToastType = 'info') => {
+  const showToast = useCallback((messageOrOptions: string | ToastOptions, typeParam: ToastType = 'info') => {
     const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, message, type }]);
+    let message = '';
+    let title: string | undefined;
+    let type: ToastType = typeParam;
+
+    if (typeof messageOrOptions === 'string') {
+      message = messageOrOptions;
+      type = typeParam;
+    } else if (messageOrOptions && typeof messageOrOptions === 'object') {
+      message = messageOrOptions.message;
+      title = messageOrOptions.title;
+      type = messageOrOptions.variant || messageOrOptions.type || 'info';
+    }
+
+    if (type === 'danger') {
+      type = 'error';
+    }
+
+    setToasts((prev) => [...prev, { id, message, title, type }]);
 
     // Auto-remove after 3 seconds
     setTimeout(() => {
@@ -95,7 +120,14 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 {t.type === 'warning' && '⚠️'}
                 {t.type === 'info' && 'ℹ'}
               </span>
-              <span>{t.message}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {t.title && (
+                  <span style={{ fontWeight: 700, fontSize: '0.88rem', color: colors.text }}>
+                    {t.title}
+                  </span>
+                )}
+                <span style={{ fontSize: t.title ? '0.8rem' : '0.85rem' }}>{t.message}</span>
+              </div>
             </div>
           );
         })}

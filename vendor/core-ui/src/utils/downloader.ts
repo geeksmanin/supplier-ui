@@ -48,7 +48,7 @@ export const downloadFile = async (url: string, filename: string): Promise<void>
 						return;
 					}
 					const path = res.data?.data?.path || res.data?.path || '';
-					alert(`File saved successfully:\n${path}`);
+					console.log(`File saved successfully: ${path}`);
 				} catch (err: any) {
 					console.warn('Native save failed, falling back to browser write:', err);
 					triggerBrowserDownload(blob, filename);

@@ -61,7 +61,7 @@ export interface Column<T = any> {
   textTransformNone?: boolean;
   align?: 'left' | 'center' | 'right';
   render?: (val: any, row: T, idx: number) => React.ReactNode;
-  filterType?: 'text' | 'select' | 'none';
+  filterType?: 'text' | 'select' | 'date' | 'none';
   filterOptions?: (string | { label: string; value: string })[];
   filterPlaceholder?: string;
   filterRender?: (columnFilters: Record<string, string>, setColumnFilters: (filters: Record<string, string>) => void) => React.ReactNode;
@@ -247,15 +247,14 @@ export const DataTable: React.FC<DataTableProps> = ({
             return;
           }
           const path = res.data?.data?.path || res.data?.path || '';
-          alert(`File exported successfully:\n${path}`);
+          console.info(`File exported successfully: ${path}`);
         })
         .catch((err) => {
-          alert('Error during backend save: ' + (err.message || err));
           console.warn('Native save failed, falling back to browser write:', err);
           XLSX.writeFile(workbook, filename);
         });
     } catch (err: any) {
-      alert('Failed to export: ' + (err.message || err));
+      console.error('Failed to export:', err);
     }
   };
 
@@ -270,7 +269,7 @@ export const DataTable: React.FC<DataTableProps> = ({
       const allData = await onExportAll();
       await exportDataList(allData);
     } catch (err: any) {
-      alert('Failed to fetch all data for export: ' + (err.message || err));
+      console.error('Failed to fetch all data for export:', err);
     } finally {
       setExportingAll(false);
     }
@@ -668,6 +667,9 @@ export const DataTable: React.FC<DataTableProps> = ({
       {/* Search, Actions & SubToolbar Header */}
       {(!hideSearch || filterDropdowns || actionButton || onRefresh || subToolbar) && (
         <div style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 20,
           display: 'flex',
           flexDirection: 'column',
           gap: seamless ? '0.45rem' : undefined,
@@ -975,6 +977,56 @@ export const DataTable: React.FC<DataTableProps> = ({
                           </div>
                         ))
                         }
+
+                        {col.filterType === 'date' && (
+                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1 }}>
+                            <input
+                              type="date"
+                              value={columnFilters[col.key] || ''}
+                              onChange={(e) => {
+                                setColumnFilters({
+                                  ...columnFilters,
+                                  [col.key]: e.target.value
+                                });
+                              }}
+                              style={{
+                                width: '100%',
+                                padding: '4px 6px',
+                                fontSize: '0.75rem',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '6px',
+                                outline: 'none',
+                                backgroundColor: '#ffffff',
+                                color: '#374151',
+                                boxSizing: 'border-box',
+                                minHeight: '28px'
+                              }}
+                            />
+                            {columnFilters[col.key] && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = { ...columnFilters };
+                                  delete next[col.key];
+                                  setColumnFilters(next);
+                                }}
+                                style={{
+                                  position: 'absolute',
+                                  right: '6px',
+                                  border: 'none',
+                                  background: 'transparent',
+                                  color: '#94a3b8',
+                                  cursor: 'pointer',
+                                  fontSize: '0.75rem',
+                                  padding: 0
+                                }}
+                                title="Clear date"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        )}
 
                         {col.filterType === 'select' && (
                           <div className="select-dropdown-container" style={{ position: 'relative', flex: 1 }}>

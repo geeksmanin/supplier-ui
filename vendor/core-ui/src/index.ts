@@ -81,7 +81,7 @@ export type { ResolveMediaOptions } from './utils/media';
 export { ImageThumbnailWithZoom } from './components/ImageThumbnailWithZoom';
 export type { ImageThumbnailWithZoomProps } from './components/ImageThumbnailWithZoom';
 
-// Mobile Navigation & 3D Tab Switcher System
+// Mobile Navigation, DataList & 3D Tab Switcher System
 export { MobileTabSwitcher3D } from './components/Mobile/MobileTabSwitcher3D';
 export type { MobileTabSwitcher3DProps } from './components/Mobile/MobileTabSwitcher3D';
 export { MobileAppFolderModal } from './components/Mobile/MobileAppFolderModal';
@@ -91,6 +91,8 @@ export type { MobileBottomNavWithTabsProps, MobileNavItemConfig } from './compon
 export { useMobileBottomNav, setMobileBottomNavVisibility } from './hooks/useMobileBottomNav';
 export { MobileBottomBanner } from './components/Mobile/MobileBottomBanner';
 export type { MobileBottomBannerProps } from './components/Mobile/MobileBottomBanner';
+export { DataListMobile } from './components/DataList/DataListMobile';
+export type { DataListMobileProps, DataListFilterOption, DataListCardProps, DataListDetailSection, DataListDetailConfig } from './components/DataList/DataListMobile';
 export type { AppTab, AppFolderItem, AppFolderGroup } from './types/MobileTabTypes';
 
 // Form Defaults & Dynamic Configuration System (IndexedDB + API)

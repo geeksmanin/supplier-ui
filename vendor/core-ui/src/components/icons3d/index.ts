@@ -18,3 +18,7 @@ export * from './Backupsync3DIcon';
 export * from './Pricing3DIcon';
 export * from './Requisition3DIcon';
 export * from './RFQ3DIcon';
+export * from './Quotation3DIcon';
+export * from './Orders3DIcon';
+export * from './Challan3DIcon';
+export * from './Subscription3DIcon';

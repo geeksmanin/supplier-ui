@@ -154,16 +154,16 @@ export const Select: React.FC<SelectProps> = ({
   const listRef = useRef<HTMLDivElement>(null);
 
   // ── Filtered options (async & local modes) ──────────────────────────────
-  const basePool = isAsync
-    ? (asyncOptions.length > 0 ? asyncOptions : staticOptions)
-    : staticOptions;
-
-  const displayOptions: SelectOption[] = searchTerm.trim()
-    ? basePool.filter((opt) =>
-        String(opt?.label || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        String(opt?.value || '').toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : basePool;
+  const displayOptions: SelectOption[] = isAsync
+    ? (searchTerm.trim()
+        ? asyncOptions
+        : (asyncOptions.length > 0 ? asyncOptions : staticOptions))
+    : (searchTerm.trim()
+        ? staticOptions.filter((opt) =>
+            String(opt?.label || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            String(opt?.value || '').toLowerCase().includes(searchTerm.toLowerCase())
+          )
+        : staticOptions);
 
   // Reset highlighted index when options length, search term, or dropdown state changes
   useEffect(() => {
@@ -745,19 +745,23 @@ export const Select: React.FC<SelectProps> = ({
             ×
           </button>
         )}
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#4b5563"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{ flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s ease' }}
-        >
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
+        {isLoading ? (
+          <Spinner />
+        ) : (
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#4b5563"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s ease' }}
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        )}
       </div>
 
       {/* Dropdown */}

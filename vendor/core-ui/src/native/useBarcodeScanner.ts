@@ -34,7 +34,7 @@ export const useBarcodeScanner = () => {
       if (status.camera !== 'granted') {
         const req = await BarcodeScanner.requestPermissions();
         if (req.camera !== 'granted') {
-          alert('Camera permission is required to scan barcodes.');
+          console.warn('Camera permission is required to scan barcodes.');
           setIsScanning(false);
           return { hasContent: false, content: '' };
         }

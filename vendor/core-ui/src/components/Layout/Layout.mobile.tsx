@@ -4,6 +4,7 @@ import { AppsDashboard } from './AppsDashboard';
 import { useAppVersion } from '../../hooks/useAppVersion';
 import { VersionModal } from '../VersionModal';
 import { VersionBadge } from '../VersionBadge';
+import { Dashboard3DIcon } from '../icons3d';
 
 export const LayoutMobile: React.FC<any> = ({
   navItems,
@@ -147,19 +148,17 @@ export const LayoutMobile: React.FC<any> = ({
   }, []);
 
   useEffect(() => {
-    if (searchOpen && searchInputRef.current) {
-      setTimeout(() => searchInputRef.current?.focus(), 100);
-    } else {
-      setSearchQuery('');
-    }
-  }, [searchOpen]);
+    setSearchOpen(false);
+    setSearchQuery('');
+    searchInputRef.current?.blur();
+  }, [currentPath]);
 
-  const filteredSearchItems = searchItems.filter(item => {
-    const query = searchQuery.toLowerCase();
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+  const filteredSearchItems = trimmedQuery.length === 0 ? [] : searchItems.filter(item => {
     return (
-      item.title.toLowerCase().includes(query) ||
-      (item.description && item.description.toLowerCase().includes(query)) ||
-      (item.keywords && item.keywords.some(kw => kw.toLowerCase().includes(query)))
+      item.title.toLowerCase().includes(trimmedQuery) ||
+      (item.description && item.description.toLowerCase().includes(trimmedQuery)) ||
+      (item.keywords && item.keywords.some(kw => kw.toLowerCase().includes(trimmedQuery)))
     );
   });
 
@@ -242,6 +241,32 @@ export const LayoutMobile: React.FC<any> = ({
   // Display top priority items in bottom bar, others via drawer
   const bottomItems = navItems.slice(0, 4);
 
+  const isFormRoute = currentPath.endsWith('/new') || currentPath.includes('/create') || currentPath.endsWith('/edit') || currentPath.includes('/new?') || currentPath.includes('/edit?');
+  const [isNavHiddenByEvent, setIsNavHiddenByEvent] = useState(false);
+
+  useEffect(() => {
+    const handleToggleNav = (e: any) => {
+      setIsNavHiddenByEvent(Boolean(e.detail?.hide));
+    };
+    window.addEventListener('geeksman:hide-bottom-nav', handleToggleNav as EventListener);
+    return () => {
+      window.removeEventListener('geeksman:hide-bottom-nav', handleToggleNav as EventListener);
+    };
+  }, []);
+
+  const shouldHideNavbar = isNavHiddenByEvent || isFormRoute;
+
+  const SUBNAV_GRADIENTS = [
+    'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', // Blue
+    'linear-gradient(135deg, #10b981 0%, #059669 100%)', // Emerald
+    'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)', // Purple
+    'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', // Amber
+    'linear-gradient(135deg, #ec4899 0%, #db2777 100%)', // Pink
+    'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', // Cyan
+    'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', // Indigo
+    'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)', // Rose
+  ];
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <style dangerouslySetInnerHTML={{__html: `
@@ -258,175 +283,187 @@ export const LayoutMobile: React.FC<any> = ({
           scrollbar-width: none;
         }
       `}} />
-      {/* Top Header Bar */}
-      <header className="glass" style={topBarStyle}>
-        <div
-          style={{
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            flex: 1,
-            marginRight: '0.5rem',
-            maxWidth: 'calc(100% - 72px)',
-            boxSizing: 'border-box',
-          }}
-        >
+      {/* Top Header Bar - Only rendered on the main Apps Dashboard, hidden inside individual apps */}
+      {isDashboard && (
+        <header className="glass" style={topBarStyle}>
           <div
             style={{
+              position: 'relative',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.4rem 0.8rem',
-              border: '1px solid var(--border-color)',
-              borderRadius: '8px',
-              backgroundColor: 'var(--bg-secondary)',
-              color: 'var(--text-secondary)',
-              fontSize: '0.8rem',
-              width: '100%',
+              flex: 1,
+              marginRight: '0.5rem',
+              maxWidth: 'calc(100% - 72px)',
               boxSizing: 'border-box',
             }}
           >
-            <svg
-              style={{ width: '13px', height: '13px', color: 'var(--text-secondary)' }}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setSearchOpen(true);
-              }}
-              onFocus={() => setSearchOpen(true)}
+            <div
               style={{
-                flex: 1,
-                border: 'none',
-                backgroundColor: 'transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.4rem 0.8rem',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                backgroundColor: 'var(--bg-secondary)',
+                color: 'var(--text-secondary)',
                 fontSize: '0.8rem',
-                outline: 'none',
-                color: 'var(--text-primary)',
-                padding: 0,
                 width: '100%',
+                boxSizing: 'border-box',
               }}
-            />
-            {searchQuery && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSearchQuery('');
-                  setSearchOpen(false);
+            >
+              <svg
+                style={{ width: '13px', height: '13px', color: 'var(--text-secondary)' }}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSearchQuery(val);
+                  setSearchOpen(val.trim().length > 0);
+                }}
+                onFocus={() => {
+                  if (searchQuery.trim().length > 0) {
+                    setSearchOpen(true);
+                  }
                 }}
                 style={{
-                  background: 'none',
+                  flex: 1,
                   border: 'none',
-                  color: 'var(--text-secondary)',
-                  fontSize: '0.75rem',
-                  cursor: 'pointer',
+                  backgroundColor: 'transparent',
+                  fontSize: '0.8rem',
+                  outline: 'none',
+                  color: 'var(--text-primary)',
                   padding: 0,
+                  width: '100%',
                 }}
-              >
-                ✕
-              </button>
-            )}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSearchQuery('');
+                    setSearchOpen(false);
+                    searchInputRef.current?.blur();
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-secondary)',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* PWA Update Action Icon */}
-        {showUpdateBanner && (
-          <div
-            onClick={onUpdate}
-            style={{
-              cursor: 'pointer',
-              width: '28px',
-              height: '28px',
-              borderRadius: '8px',
+          {/* PWA Update Action Icon */}
+          {showUpdateBanner && (
+            <div
+              onClick={onUpdate}
+              style={{
+                cursor: 'pointer',
+                width: '28px',
+                height: '28px',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ffffff',
+                backgroundColor: '#3b82f6',
+                boxShadow: '0 0 8px #3b82f6',
+                marginRight: '0.5rem',
+                animation: 'pulse-dot 1.5s infinite ease-in-out',
+              }}
+              title="Update Available! Click to reload."
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+              </svg>
+            </div>
+          )}
+
+          {/* PWA Install Action Icon */}
+          {showInstallBanner && (
+            <div
+              onClick={onInstall}
+              style={{
+                cursor: 'pointer',
+                width: '28px',
+                height: '28px',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ffffff',
+                backgroundColor: '#e15b13',
+                boxShadow: '0 0 8px #e15b13',
+                marginRight: '0.5rem',
+                animation: 'pulse-dot 2s infinite ease-in-out',
+              }}
+              title="Install App"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+            </div>
+          )}
+
+          {/* Network Strength status Indicator - Mobile (only blinking color-coded dot) */}
+          {localStorage.getItem('disable_network_status') !== 'true' && (
+            <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#ffffff',
-              backgroundColor: '#3b82f6',
-              boxShadow: '0 0 8px #3b82f6',
-              marginRight: '0.5rem',
-              animation: 'pulse-dot 1.5s infinite ease-in-out',
-            }}
-            title="Update Available! Click to reload."
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="23 4 23 10 17 10"></polyline>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-            </svg>
-          </div>
-        )}
+              width: '24px',
+              height: '24px',
+              marginRight: '0.25rem',
+            }} title={`Network: ${netInfo.statusText} (${netInfo.speedText})`}>
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: netInfo.color,
+                animation: 'pulse-dot 1.5s infinite ease-in-out',
+                boxShadow: `0 0 8px ${netInfo.color}`,
+              }} />
+            </div>
+          )}
 
-        {/* PWA Install Action Icon */}
-        {showInstallBanner && (
-          <div
-            onClick={onInstall}
-            style={{
-              cursor: 'pointer',
-              width: '28px',
-              height: '28px',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              backgroundColor: '#e15b13',
-              boxShadow: '0 0 8px #e15b13',
-              marginRight: '0.5rem',
-              animation: 'pulse-dot 2s infinite ease-in-out',
-            }}
-            title="Install App"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-          </div>
-        )}
+          <VersionBadge
+            version={uiVersion}
+            updateReady={updateReady}
+            onClick={() => setVersionModalOpen(true)}
+            style={{ marginRight: '0.35rem', padding: '0.18rem 0.45rem', fontSize: '0.65rem' }}
+          />
+        </header>
+      )}
 
-        {/* Network Strength status Indicator - Mobile (only blinking color-coded dot) */}
-        {localStorage.getItem('disable_network_status') !== 'true' && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '24px',
-            height: '24px',
-            marginRight: '0.25rem',
-          }} title={`Network: ${netInfo.statusText} (${netInfo.speedText})`}>
-            <span style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              backgroundColor: netInfo.color,
-              animation: 'pulse-dot 1.5s infinite ease-in-out',
-              boxShadow: `0 0 8px ${netInfo.color}`,
-            }} />
-          </div>
-        )}
-
-        <VersionBadge
-          version={uiVersion}
-          updateReady={updateReady}
-          onClick={() => setVersionModalOpen(true)}
-          style={{ marginRight: '0.35rem', padding: '0.18rem 0.45rem', fontSize: '0.65rem' }}
-        />
-      </header>      {/* Main Content */}
+      {/* Main Content */}
       <main style={{
         ...mainContentStyle,
         paddingLeft: isDashboard ? '0' : mainContentStyle.paddingLeft,
         paddingRight: isDashboard ? '0' : mainContentStyle.paddingRight,
-        paddingTop: isDashboard ? '80px' : mainContentStyle.paddingTop,
-        paddingBottom: '80px',
+        paddingTop: isDashboard ? '80px' : '0.5rem',
+        paddingBottom: shouldHideNavbar ? '16px' : '80px',
+        transition: 'padding-bottom 0.25s ease, padding-top 0.25s ease',
       }}>
         {isDashboard ? (
           <AppsDashboard navItems={mainNavItems} onNavigate={onNavigate} />
@@ -435,27 +472,32 @@ export const LayoutMobile: React.FC<any> = ({
         )}
       </main>
 
-      {/* Scrollable Floating Persistent Bottom Tab Bar (Custom Capsule style) */}
+      {/* Scrollable Floating Persistent Bottom Tab Bar (5 items visible, rest scrollable) */}
       <footer className="glass hide-scrollbar" style={{
         position: 'fixed',
-        bottom: '16px',
-        left: '12px',
-        right: '12px',
-        height: '56px',
+        bottom: '10px',
+        left: '6px',
+        right: '6px',
+        height: '48px',
         backgroundColor: '#ffffff',
-        borderRadius: '32px',
+        borderRadius: '24px',
         border: '1px solid #e2e8f0',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+        boxShadow: '0 4px 14px rgba(0, 0, 0, 0.09)',
         zIndex: 20,
         display: 'flex',
         overflowX: 'auto',
         overflowY: 'hidden',
-        justifyContent: (activeSubNavs.length > 0 ? (activeSubNavs.length > 3 ? 'flex-start' : 'space-around') : (mainNavItems.length > 4 ? 'flex-start' : 'space-around')),
+        justifyContent: 'flex-start',
         alignItems: 'center',
-        padding: '0 0.85rem',
-        gap: '0.65rem',
+        padding: '0 6px',
+        gap: '2px',
         whiteSpace: 'nowrap',
         scrollbarWidth: 'none',
+        WebkitOverflowScrolling: 'touch',
+        transform: shouldHideNavbar ? 'translateY(120px)' : 'translateY(0)',
+        opacity: shouldHideNavbar ? 0 : 1,
+        pointerEvents: shouldHideNavbar ? 'none' : 'auto',
+        transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease',
       }}>
         {activeSubNavs.length > 0 ? (
           <>
@@ -468,38 +510,39 @@ export const LayoutMobile: React.FC<any> = ({
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                flexShrink: 0,
-                minWidth: '48px',
+                flex: '0 0 58px',
+                minWidth: '58px',
+                maxWidth: '64px',
                 height: '100%',
-                opacity: isDashboard ? 1 : 0.7,
+                padding: '2px 0',
+                opacity: isDashboard ? 1 : 0.8,
                 transition: 'opacity var(--transition-fast)',
               }}
               title="All Applications"
             >
               <div style={{
-                color: isDashboard ? '#3b82f6' : '#64748b',
-                marginBottom: '2px',
+                width: '22px',
+                height: '22px',
+                borderRadius: '5px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                marginBottom: '1px',
+                boxShadow: isDashboard ? '0 2px 5px rgba(0,0,0,0.18)' : 'none',
+                transform: isDashboard ? 'scale(1.05)' : 'scale(1)',
+                transition: 'transform 0.15s ease',
               }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <rect x="4" y="4" width="4" height="4" rx="1" />
-                  <rect x="10" y="4" width="4" height="4" rx="1" />
-                  <rect x="16" y="4" width="4" height="4" rx="1" />
-                  <rect x="4" y="10" width="4" height="4" rx="1" />
-                  <rect x="10" y="10" width="4" height="4" rx="1" />
-                  <rect x="16" y="10" width="4" height="4" rx="1" />
-                  <rect x="4" y="16" width="4" height="4" rx="1" />
-                  <rect x="10" y="16" width="4" height="4" rx="1" />
-                  <rect x="16" y="16" width="4" height="4" rx="1" />
-                </svg>
+                <Dashboard3DIcon size={19} />
               </div>
               <span style={{ 
-                fontSize: '0.6rem', 
-                fontWeight: 500,
-                lineHeight: '1.2',
-                color: isDashboard ? '#3b82f6' : '#64748b'
+                fontSize: '0.58rem', 
+                fontWeight: isDashboard ? 700 : 500,
+                lineHeight: '1.1',
+                maxWidth: '56px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                textAlign: 'center',
+                color: isDashboard ? '#1f2937' : '#64748b'
               }}>
                 Apps
               </span>
@@ -508,9 +551,19 @@ export const LayoutMobile: React.FC<any> = ({
             {/* App Subnavigation Tabs */}
             {activeSubNavs.map((sub, idx) => {
               const isActive = currentPath === sub.path || (sub.path !== '/' && (currentPath.startsWith(sub.path + '/') || currentPath.startsWith(sub.path + '?')));
+              const bgGradient = (sub.bgGradient && sub.bgGradient !== 'transparent' && sub.bgGradient !== 'none')
+                ? sub.bgGradient
+                : SUBNAV_GRADIENTS[idx % SUBNAV_GRADIENTS.length];
+              const isTransparent = sub.bgGradient === 'transparent' || sub.bgGradient === 'none';
+
               return (
                 <div
                   key={`${sub.id || sub.path}-${idx}`}
+                  ref={(el) => {
+                    if (isActive && el) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    }
+                  }}
                   onClick={() => onNavigate(sub.path)}
                   style={{
                     display: 'flex',
@@ -518,27 +571,61 @@ export const LayoutMobile: React.FC<any> = ({
                     alignItems: 'center',
                     justifyContent: 'center',
                     cursor: 'pointer',
-                    flexShrink: 0,
-                    minWidth: '54px',
+                    flex: '0 0 58px',
+                    minWidth: '58px',
+                    maxWidth: '64px',
                     height: '100%',
-                    opacity: isActive ? 1 : 0.65,
-                    transition: 'opacity var(--transition-fast)',
+                    padding: '2px 0',
+                    opacity: isActive ? 1 : 0.75,
+                    transition: 'all var(--transition-fast)',
                   }}
                 >
                   <div style={{
-                    color: isActive ? '#3b82f6' : '#64748b',
-                    marginBottom: '2px',
+                    width: '22px',
+                    height: '22px',
+                    borderRadius: isTransparent ? '0px' : '5px',
+                    background: isTransparent ? 'transparent' : bgGradient,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    transform: 'scale(1.1)',
+                    color: '#ffffff',
+                    marginBottom: '1px',
+                    boxShadow: (isActive && !isTransparent) ? '0 2px 4px rgba(0,0,0,0.18)' : 'none',
+                    transform: isActive ? 'scale(1.05)' : 'scale(1)',
+                    transition: 'transform 0.15s ease',
                   }}>
-                    {sub.icon}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: isTransparent ? '20px' : '100%',
+                      height: isTransparent ? '20px' : '100%',
+                      transform: isTransparent ? 'none' : 'scale(0.72)',
+                    }}>
+                      {React.isValidElement(sub.icon) && typeof sub.icon.type === 'string' && sub.icon.type !== 'svg' ? (
+                        sub.icon
+                      ) : React.isValidElement(sub.icon) ? (
+                        React.cloneElement(sub.icon as React.ReactElement<any>, { 
+                          style: { 
+                            color: isTransparent ? (isActive ? '#3b82f6' : '#64748b') : '#ffffff',
+                            width: '100%',
+                            height: '100%',
+                            display: 'block'
+                          } 
+                        })
+                      ) : (
+                        sub.icon
+                      )}
+                    </div>
                   </div>
                   <span style={{ 
-                    fontSize: '0.6rem', 
-                    fontWeight: isActive ? 600 : 500,
-                    lineHeight: '1.2',
+                    fontSize: '0.58rem', 
+                    fontWeight: isActive ? 700 : 500,
+                    lineHeight: '1.1',
+                    maxWidth: '56px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    textAlign: 'center',
                     color: isActive ? '#1f2937' : '#64748b'
                   }}>
                     {sub.label}
@@ -553,6 +640,11 @@ export const LayoutMobile: React.FC<any> = ({
             return (
               <div
                 key={`${item.id || item.path}-${idx}`}
+                ref={(el) => {
+                  if (isActive && el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                  }
+                }}
                 onClick={() => {
                   onNavigate(item.path);
                 }}
@@ -562,40 +654,40 @@ export const LayoutMobile: React.FC<any> = ({
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  flexShrink: 0,
-                  minWidth: '50px',
+                  flex: '0 0 58px',
+                  minWidth: '58px',
+                  maxWidth: '64px',
                   height: '100%',
+                  padding: '2px 0',
                   opacity: isActive ? 1 : 0.75,
                   transition: 'opacity var(--transition-fast)',
                 }}
               >
-                {/* Colored background icon block matching dashboard */}
+                {/* Icon block */}
                 <div style={{
-                  width: '26px',
-                  height: '26px',
-                  borderRadius: (item.bgGradient === 'transparent' || item.bgGradient === 'none') ? '0px' : '6px',
-                  background: item.bgGradient || 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                  width: '22px',
+                  height: '22px',
+                  borderRadius: (item.bgGradient && item.bgGradient !== 'transparent' && item.bgGradient !== 'none') ? '5px' : '0px',
+                  background: (item.bgGradient && item.bgGradient !== 'transparent' && item.bgGradient !== 'none') ? item.bgGradient : 'transparent',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#ffffff',
-                  marginBottom: '2px',
-                  boxShadow: (isActive && item.bgGradient !== 'transparent' && item.bgGradient !== 'none') ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
+                  color: (item.bgGradient && item.bgGradient !== 'transparent' && item.bgGradient !== 'none') ? '#ffffff' : (isActive ? '#2563eb' : '#64748b'),
+                  marginBottom: '1px',
+                  boxShadow: (isActive && item.bgGradient && item.bgGradient !== 'transparent' && item.bgGradient !== 'none') ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
                 }}>
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    width: (item.bgGradient === 'transparent' || item.bgGradient === 'none') ? '24px' : 'auto',
-                    height: (item.bgGradient === 'transparent' || item.bgGradient === 'none') ? '24px' : 'auto',
-                    transform: (item.bgGradient === 'transparent' || item.bgGradient === 'none') ? 'none' : 'scale(0.7)',
+                    width: '20px',
+                    height: '20px',
                   }}>
                     {React.isValidElement(item.icon) && typeof item.icon.type === 'string' && item.icon.type !== 'svg' ? (
                       item.icon
                     ) : React.isValidElement(item.icon) ? (
                       React.cloneElement(item.icon as React.ReactElement<any>, { 
                         style: { 
-                          color: '#ffffff',
                           width: '100%',
                           height: '100%',
                           display: 'block'
@@ -607,9 +699,13 @@ export const LayoutMobile: React.FC<any> = ({
                   </div>
                 </div>
                 <span style={{ 
-                  fontSize: '0.6rem', 
-                  fontWeight: isActive ? 600 : 500,
-                  lineHeight: '1.2',
+                  fontSize: '0.58rem', 
+                  fontWeight: isActive ? 700 : 500,
+                  lineHeight: '1.1',
+                  maxWidth: '56px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  textAlign: 'center',
                   color: isActive ? '#1f2937' : '#64748b'
                 }}>
                   {item.label}
@@ -621,18 +717,22 @@ export const LayoutMobile: React.FC<any> = ({
       </footer>
 
       {/* Inline Search Dropdown Overlay */}
-      {searchOpen && (
+      {searchOpen && searchQuery.trim().length > 0 && (
         <div style={{
           position: 'fixed',
           top: '60px',
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.1)',
-          backdropFilter: 'blur(1px)',
+          backgroundColor: 'rgba(15, 23, 42, 0.35)',
+          backdropFilter: 'blur(2px)',
           zIndex: 18,
         }}
-        onClick={() => setSearchOpen(false)}
+        onClick={() => {
+          setSearchOpen(false);
+          setSearchQuery('');
+          searchInputRef.current?.blur();
+        }}
         >
           <div style={{
             position: 'absolute',
