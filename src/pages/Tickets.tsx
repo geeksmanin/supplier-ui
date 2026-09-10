@@ -363,6 +363,7 @@ export const Tickets: React.FC = () => {
       if (!Array.isArray(list)) return;
       for (const c of list) {
         if (!c) continue;
+        if (c.is_discarded || c.metadata?.is_discarded) continue;
         result.push(c);
         if (c.replies && c.replies.length > 0) {
           recurse(c.replies);
