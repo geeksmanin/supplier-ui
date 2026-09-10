@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef, useMemo } from 'react';
+import axios from 'axios';
 import {
   createApiClient,
+  getWorkspaceFromUrl,
   getStreamEvents,
   saveStreamEvents,
   saveChatMessage,
@@ -113,10 +115,39 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
 
   const fallbackPollingIntervalRef = useRef<number | null>(null);
 
-  const api = createApiClient({ 
-    suffix: '/notification',
-    runtimeConfigKey: 'notificationApiBaseUrl'
-  });
+  const api = useMemo(() => {
+    if (baseUrl) {
+      const cleanBase = baseUrl.replace(/\/$/, '');
+      const notificationBase = cleanBase.endsWith('/notification') || cleanBase.endsWith('/notifications')
+        ? cleanBase
+        : `${cleanBase}/notification`;
+
+      const client = axios.create({
+        baseURL: notificationBase,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      client.interceptors.request.use((config) => {
+        const t = token || localStorage.getItem('token') || localStorage.getItem('staff_token') || localStorage.getItem('erp_user_token');
+        if (t && config.headers) {
+          config.headers.Authorization = `Bearer ${t}`;
+        }
+        if (config.headers) {
+          config.headers['X-Tenant-Code'] = tenantCode || getWorkspaceFromUrl();
+        }
+        return config;
+      }, (error) => Promise.reject(error));
+
+      return client;
+    }
+
+    return createApiClient({ 
+      suffix: '/notification',
+      runtimeConfigKey: 'notificationApiBaseUrl'
+    });
+  }, [baseUrl, tenantCode, token]);
 
   const originalTitleRef = useRef(document.title);
 
