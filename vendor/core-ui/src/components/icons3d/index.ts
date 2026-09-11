@@ -22,3 +22,4 @@ export * from './Quotation3DIcon';
 export * from './Orders3DIcon';
 export * from './Challan3DIcon';
 export * from './Subscription3DIcon';
+export * from './Rewards3DIcon';
