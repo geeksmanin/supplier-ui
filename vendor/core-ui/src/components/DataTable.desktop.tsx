@@ -1119,7 +1119,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                                   </svg>
                                 </div>
 
-                                <div style={{ maxHeight: '140px', overflowY: 'auto' }}>
+                                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
                                   {(!selectQuery || `all ${col.label}`.toLowerCase().includes(selectQuery.toLowerCase())) && (
                                     <div
                                       onClick={() => {
