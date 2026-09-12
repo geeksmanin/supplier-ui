@@ -54,6 +54,7 @@ interface NotificationProviderProps {
   userId: string;
   tenantCode: string;
   token?: string;
+  shouldAlert?: (item: Notification | any) => boolean;
 }
 
 interface TabRegistry {
@@ -81,13 +82,20 @@ const isNotificationStreamPaused = (): boolean => {
   return NOTIFICATION_STREAM_TEMPORARILY_PAUSED;
 };
 
+const defaultShouldAlert = (item: Notification | any): boolean => {
+  if (!item) return false;
+  return item.type !== 'silent_sync' && item.type !== 'read_state_changed' && item.type !== 'read_all_state_changed';
+};
+
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   children,
   baseUrl,
   userId,
   tenantCode,
   token,
+  shouldAlert,
 }) => {
+  const alertCheck = shouldAlert || defaultShouldAlert;
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -243,7 +251,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         const cached = await getStreamEvents({ tenant_code: tenantCode, user_id: userId });
         if (cached && cached.length > 0) {
           setNotifications(cached as any);
-          setUnreadCount(cached.filter((n) => !n.is_read).length);
+          setUnreadCount(cached.filter((n: any) => !n.is_read && alertCheck(n)).length);
           lastEventIdRef.current = cached[0].id;
         }
       }
@@ -255,7 +263,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
           const fresh = await getStreamEvents({ tenant_code: tenantCode, user_id: userId });
           if (fresh && fresh.length > 0) {
             setNotifications(fresh as any);
-            setUnreadCount(fresh.filter((n) => !n.is_read).length);
+            setUnreadCount(fresh.filter((n: any) => !n.is_read && alertCheck(n)).length);
             lastEventIdRef.current = fresh[0].id;
             return;
           }
@@ -282,7 +290,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
       if (items.length > 0) {
         lastEventIdRef.current = items[0].id;
       }
-      setUnreadCount(items.filter((n: Notification) => !n.is_read).length);
+      setUnreadCount(items.filter((n: Notification) => !n.is_read && alertCheck(n)).length);
 
       // Save into IndexedDB
       if (tenantCode && userId && items.length > 0) {
@@ -727,7 +735,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
               return [...filtered.reverse(), ...prev];
             });
 
-            setUnreadCount((prev) => prev + batch.filter((item) => !item.is_read).length);
+            const actionableBatch = batch.filter((item) => !item.is_read && alertCheck(item));
+            if (actionableBatch.length > 0) {
+              setUnreadCount((prev) => prev + actionableBatch.length);
+            }
 
             const playNotificationSound = () => {
               try {
@@ -746,7 +757,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
               } catch (e) {}
             };
 
-            if (batch.length > 0) {
+            if (actionableBatch.length > 0) {
               playNotificationSound();
             }
           }, 100);
@@ -793,7 +804,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   };
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
 
     fetchNotifications();
 
