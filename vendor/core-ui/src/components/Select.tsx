@@ -82,6 +82,8 @@ export interface SelectProps {
   hideDropdownSearch?: boolean;
   /** Show a clear (×) button when a value is selected. */
   clearable?: boolean;
+  /** Custom styles for the dropdown popover menu (e.g. zIndex, minWidth). */
+  dropdownStyle?: React.CSSProperties;
 }
 
 // ─── Spinner helper ──────────────────────────────────────────────────────────
@@ -130,6 +132,7 @@ export const Select: React.FC<SelectProps> = ({
   onScanClick,
   hideDropdownSearch = false,
   clearable = false,
+  dropdownStyle,
 }) => {
   const isAsync = Boolean(asyncConfig);
   const hasRefresh = isAsync || Boolean(onRefresh);
@@ -779,10 +782,11 @@ export const Select: React.FC<SelectProps> = ({
             border: '1px solid #e5e7eb',
             borderRadius: '10px',
             boxShadow: '0 12px 32px rgba(0,0,0,0.15)',
-            zIndex: 9999,
+            zIndex: 99999,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
+            ...dropdownStyle,
           }}
         >
           {/* Search input (only in multi-chip mode where input is not in the top bar) */}
