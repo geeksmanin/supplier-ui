@@ -28,6 +28,8 @@ import {
   Pricing3DIcon,
   Requisition3DIcon,
   RFQ3DIcon,
+  Product3DIcon,
+  Variant3DIcon,
 } from '../icons3d';
 
 
@@ -138,7 +140,13 @@ export const LayoutDesktop: React.FC<any> = ({
     if (p.includes('account') || p.includes('payment') || p.includes('ledger') || p.includes('voucher') || p.includes('journal')) {
       return <Accounts3DIcon size={16} />;
     }
-    if (p.includes('catalogue') || p.includes('product') || p.includes('variant') || p.includes('category') || p.includes('brand') || p.includes('hsn')) {
+    if (p.includes('product')) {
+      return <Product3DIcon size={16} />;
+    }
+    if (p.includes('variant')) {
+      return <Variant3DIcon size={16} />;
+    }
+    if (p.includes('catalogue') || p.includes('category') || p.includes('brand') || p.includes('hsn')) {
       return <Catalogue3DIcon size={16} />;
     }
     if (p.includes('inventory') || p.includes('item') || p.includes('stock')) {

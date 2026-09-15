@@ -18,6 +18,7 @@ export const getBaseUrl = (): string => {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
     const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.includes('dev.');
+    const isLanIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.endsWith('.local');
 
     const override = localStorage.getItem('portal_override_backend_url') === 'true';
     const savedUrl = localStorage.getItem('portal_backend_url');
@@ -28,13 +29,33 @@ export const getBaseUrl = (): string => {
     const config = window.runtimeConfig as any;
     if (config?.apiBaseUrl) {
       const url = config.apiBaseUrl;
-      if (isLocalHost || (!url.includes('localhost') && !url.includes('127.0.0.1'))) {
+      if (isLocalHost || isLanIp || (!url.includes('localhost') && !url.includes('127.0.0.1'))) {
+        if (isLanIp && url.includes('localhost')) {
+          return url.replace('localhost', host).replace(/\/$/, '');
+        }
         return url.replace(/\/$/, '');
       }
+    }
+
+    if (isLanIp) {
+      let localPort = '8082';
+      try {
+        const defaultUrl = getDefaultBackendUrl();
+        if (defaultUrl) {
+          const parsedUrl = new URL(defaultUrl);
+          if (parsedUrl.port) {
+            localPort = parsedUrl.port;
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+      return `http://${host}:${localPort}/api/v1`;
     }
   }
   return getDefaultBackendUrl();
 };
+
 
 export const apiClient = axios.create({
   baseURL: getBaseUrl(),
@@ -77,7 +98,8 @@ export const getWorkspaceFromUrl = (): string => {
 
     // 2. Check Hostname subdomain (e.g. synchx.geeksman.co.in)
     const host = window.location.hostname.toLowerCase();
-    if (host && host !== 'localhost' && host !== '127.0.0.1' && !host.endsWith('.localhost')) {
+    const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
+    if (host && host !== 'localhost' && host !== '127.0.0.1' && !host.endsWith('.localhost') && !isIpAddress) {
       const parts = host.split('.');
       if (parts.length > 1 && parts[0] !== 'admin' && parts[0] !== 'platform' && parts[0] !== 'www') {
         return parts[0];
@@ -264,7 +286,7 @@ export const createApiClient = (options: CreateClientOptions) => {
           return `${url.replace(/\/$/, '')}${options.suffix}`;
         }
       }
-      
+
       const defaultBase = getDefaultBackendUrl();
       return `${defaultBase.replace(/\/$/, '')}${options.suffix}`;
     }

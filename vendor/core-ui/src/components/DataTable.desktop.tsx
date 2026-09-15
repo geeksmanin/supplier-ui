@@ -665,7 +665,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', minHeight: 0 }}>
       {/* Search, Actions & SubToolbar Header */}
-      {(!hideSearch || filterDropdowns || actionButton || onRefresh || subToolbar) && (
+      {(!hideSearch || filterDropdowns || actionButton || subToolbar) && (
         <div style={{
           position: 'sticky',
           top: 0,
@@ -678,7 +678,7 @@ export const DataTable: React.FC<DataTableProps> = ({
           backgroundColor: '#ffffff',
           flexShrink: 0
         }}>
-          {(!hideSearch || filterDropdowns || actionButton || onRefresh) && (
+          {(!hideSearch || filterDropdowns || actionButton) && (
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: seamless ? 0 : '0.75rem', width: '100%', justifyContent: hideSearch ? 'flex-end' : 'space-between' }}>
               {!hideSearch && (
                 <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
@@ -1460,6 +1460,8 @@ export const DataTable: React.FC<DataTableProps> = ({
                             minWidth: col.width,
                             maxWidth: col.width,
                             boxSizing: 'border-box',
+                            wordBreak: 'break-word',
+                            overflowWrap: 'anywhere',
                             padding: (col.key === 's_no' || col.key === 'sno' || col.key === 'index') ? '6px 2px' : undefined
                           }}
                         >

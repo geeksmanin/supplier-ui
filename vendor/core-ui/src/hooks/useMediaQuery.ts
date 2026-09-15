@@ -26,3 +26,8 @@ export const useMediaQuery = (query: string): boolean => {
 
     return matches;
 };
+
+export const useIsMobile = (breakpoint = 768): boolean => {
+    return useMediaQuery(`(max-width: ${breakpoint}px)`);
+};
+

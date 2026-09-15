@@ -19,7 +19,9 @@ import {
   Backupsync3DIcon,
   Pricing3DIcon,
   Requisition3DIcon,
-  RFQ3DIcon
+  RFQ3DIcon,
+  Product3DIcon,
+  Variant3DIcon
 } from './icons3d';
 
 export interface GalaxyLoaderProps {
@@ -57,6 +59,18 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
   scale = 1,
 }) => {
   const [currentStatusIndex, setCurrentStatusIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      if (typeof window !== 'undefined') {
+        setIsMobile(window.innerWidth < 768 || window.innerHeight < 700);
+      }
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     if (statusList && statusList.length > 1) {
@@ -69,139 +83,143 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
 
   const activeMessage = statusMessage || (statusList ? statusList[currentStatusIndex] : 'Loading...');
 
+  const innerIconSize = isMobile ? 24 : 44;
+  const middleIconSize = isMobile ? 28 : 46;
+  const outerIconSize = isMobile ? 32 : 48;
+
   // -------------------------------------------------------------------------
   // ALL 20 3D VOLUMETRIC ICONS SPREAD ACROSS 3 CONCENTRIC GALAXY ORBITS
   // -------------------------------------------------------------------------
 
-  // 1. Inner Orbit (6 Core Master Modules) - Radius: 120px, Size: 44px
+  // 1. Inner Orbit (6 Core Master Modules)
   const innerOrbitApps: SatelliteApp3D[] = [
     {
       id: 'locations',
       name: 'Locations & Warehouses',
       glow: 'rgba(16, 185, 129, 0.65)',
-      icon: <Location3DIcon size={44} />,
+      icon: <Location3DIcon size={innerIconSize} />,
     },
     {
       id: 'catalogue',
       name: 'Product Catalogue',
       glow: 'rgba(236, 72, 153, 0.65)',
-      icon: <Catalogue3DIcon size={44} />,
+      icon: <Catalogue3DIcon size={innerIconSize} />,
     },
     {
       id: 'accounts',
       name: 'Financial Accounts & Ledgers',
       glow: 'rgba(16, 185, 129, 0.65)',
-      icon: <Accounts3DIcon size={44} />,
+      icon: <Accounts3DIcon size={innerIconSize} />,
     },
     {
       id: 'contacts',
       name: 'Contacts & Parties',
       glow: 'rgba(245, 158, 11, 0.65)',
-      icon: <Contacts3DIcon size={44} />,
+      icon: <Contacts3DIcon size={innerIconSize} />,
     },
     {
       id: 'invoices',
       name: 'Invoices & Billing',
       glow: 'rgba(6, 182, 212, 0.65)',
-      icon: <Invoices3DIcon size={44} />,
+      icon: <Invoices3DIcon size={innerIconSize} />,
     },
     {
       id: 'dashboard',
       name: 'Dashboard Analytics',
       glow: 'rgba(59, 130, 246, 0.65)',
-      icon: <Dashboard3DIcon size={44} />,
+      icon: <Dashboard3DIcon size={innerIconSize} />,
     },
   ];
 
-  // 2. Middle Orbit (7 Commercial & Ops Modules) - Radius: 195px, Size: 46px
+  // 2. Middle Orbit (7 Commercial & Ops Modules)
   const middleOrbitApps: SatelliteApp3D[] = [
     {
       id: 'sales',
       name: 'Sales & Quotations',
-      glow: 'rgba(244, 63, 94, 0.65)',
-      icon: <Sales3DIcon size={46} />,
+      glow: 'rgba(59, 130, 246, 0.65)',
+      icon: <Sales3DIcon size={middleIconSize} />,
     },
     {
-      id: 'purchase',
-      name: 'Purchase Orders',
-      glow: 'rgba(37, 99, 235, 0.65)',
-      icon: <PurchaseOrder3DIcon size={46} />,
+      id: 'purchaseorder',
+      name: 'Purchase Orders & Vendor',
+      glow: 'rgba(139, 92, 246, 0.65)',
+      icon: <PurchaseOrder3DIcon size={middleIconSize} />,
     },
     {
       id: 'inventory',
-      name: 'Inventory & Stock Control',
-      glow: 'rgba(168, 85, 247, 0.65)',
-      icon: <Inventory3DIcon size={46} />,
+      name: 'Stock & Inventory',
+      glow: 'rgba(16, 185, 129, 0.65)',
+      icon: <Inventory3DIcon size={middleIconSize} />,
     },
     {
       id: 'wms',
-      name: 'WMS Logistics',
-      glow: 'rgba(2, 132, 199, 0.65)',
-      icon: <WMS3DIcon size={46} />,
+      name: 'WMS & Fulfillment',
+      glow: 'rgba(168, 85, 247, 0.65)',
+      icon: <WMS3DIcon size={middleIconSize} />,
     },
     {
       id: 'crm',
       name: 'CRM & Pipeline',
-      glow: 'rgba(14, 165, 233, 0.65)',
-      icon: <CRM3DIcon size={46} />,
+      glow: 'rgba(245, 158, 11, 0.65)',
+      icon: <CRM3DIcon size={middleIconSize} />,
     },
     {
       id: 'chat',
       name: 'Staff Chat & Comms',
       glow: 'rgba(59, 130, 246, 0.65)',
-      icon: <Chat3DIcon size={46} />,
+      icon: <Chat3DIcon size={middleIconSize} />,
     },
     {
       id: 'pricing',
       name: 'Pricing & Rules',
       glow: 'rgba(244, 63, 94, 0.65)',
-      icon: <Pricing3DIcon size={46} />,
+      icon: <Pricing3DIcon size={middleIconSize} />,
     },
   ];
 
-  // 3. Outer Orbit (7 Enterprise & Workflow Modules) - Radius: 270px, Size: 48px
+  // 3. Outer Orbit (7 Enterprise & Workflow Modules)
   const outerOrbitApps: SatelliteApp3D[] = [
     {
       id: 'automations',
       name: 'Automations & Rules',
       glow: 'rgba(56, 189, 248, 0.65)',
-      icon: <Automations3DIcon size={48} />,
+      icon: <Automations3DIcon size={outerIconSize} />,
     },
     {
       id: 'settings',
       name: 'System Config',
       glow: 'rgba(148, 163, 184, 0.65)',
-      icon: <Settings3DIcon size={48} />,
+      icon: <Settings3DIcon size={outerIconSize} />,
     },
     {
       id: 'tenant',
       name: 'Tenant Onboarding',
       glow: 'rgba(16, 185, 129, 0.65)',
-      icon: <Tenant3DIcon size={48} />,
+      icon: <Tenant3DIcon size={outerIconSize} />,
     },
     {
       id: 'hr',
       name: 'HR & People Hierarchy',
       glow: 'rgba(99, 102, 241, 0.65)',
-      icon: <HR3DIcon size={48} />,
+      icon: <HR3DIcon size={outerIconSize} />,
     },
     {
       id: 'backupsync',
       name: 'Backupsync & Cloud',
       glow: 'rgba(168, 85, 247, 0.65)',
-      icon: <Backupsync3DIcon size={48} />,
+      icon: <Backupsync3DIcon size={outerIconSize} />,
     },
     {
       id: 'requisitions',
       name: 'Requisitions & Indents',
       glow: 'rgba(16, 185, 129, 0.65)',
-      icon: <Requisition3DIcon size={48} />,
+      icon: <Requisition3DIcon size={outerIconSize} />,
     },
     {
       id: 'rfqs',
       name: 'RFQs & Quotes',
       glow: 'rgba(139, 92, 246, 0.65)',
-      icon: <RFQ3DIcon size={48} />,
+      icon: <RFQ3DIcon size={outerIconSize} />,
     },
   ];
 
@@ -318,9 +336,9 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
       };
 
   // Concentric Orbit Radii (px)
-  const innerRadius = 120;
-  const middleRadius = 195;
-  const outerRadius = 270;
+  const innerRadius = isMobile ? 65 : 120;
+  const middleRadius = isMobile ? 115 : 195;
+  const outerRadius = isMobile ? 165 : 270;
 
   const innerOrbitSize = innerRadius * 2;
   const middleOrbitSize = middleRadius * 2;
@@ -354,8 +372,8 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
               position: 'absolute',
               top: '20%',
               left: '30%',
-              width: '520px',
-              height: '520px',
+              width: isMobile ? '280px' : '520px',
+              height: isMobile ? '280px' : '520px',
               borderRadius: '50%',
               background: 'radial-gradient(circle, rgba(99, 102, 241, 0.16) 0%, rgba(59, 130, 246, 0.08) 50%, transparent 72%)',
               filter: 'blur(55px)',
@@ -366,8 +384,8 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
               position: 'absolute',
               top: '38%',
               left: '52%',
-              width: '450px',
-              height: '450px',
+              width: isMobile ? '240px' : '450px',
+              height: isMobile ? '240px' : '450px',
               borderRadius: '50%',
               background: 'radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, rgba(236, 72, 153, 0.06) 55%, transparent 72%)',
               filter: 'blur(50px)',
@@ -398,23 +416,23 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
       <div
         style={{
           position: 'relative',
-          width: `${outerOrbitSize + 90}px`,
-          height: `${outerOrbitSize + 90}px`,
+          width: `${outerOrbitSize + (isMobile ? 40 : 90)}px`,
+          height: `${outerOrbitSize + (isMobile ? 40 : 90)}px`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           transform: `scale(${scale})`,
           transition: 'transform 0.3s ease',
           maxWidth: '100vw',
-          maxHeight: '75vh',
+          maxHeight: isMobile ? '50vh' : '75vh',
         }}
       >
         {/* Core Ambient Energy Glow */}
         <div
           style={{
             position: 'absolute',
-            width: '320px',
-            height: '320px',
+            width: isMobile ? '180px' : '320px',
+            height: isMobile ? '180px' : '320px',
             borderRadius: '50%',
             background: isLight
               ? 'radial-gradient(circle, rgba(59, 130, 246, 0.14) 0%, rgba(99, 102, 241, 0.05) 55%, transparent 70%)'
@@ -425,7 +443,7 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
         />
 
         {/* ------------------------------------------------------------- */}
-        {/* 2A. OUTER ORBIT (7 Apps, Clockwise 48s, Radius: 270px)        */}
+        {/* 2A. OUTER ORBIT */}
         {/* ------------------------------------------------------------- */}
         <div
           style={{
@@ -446,8 +464,9 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
           {outerOrbitApps.map((app, index) => {
             const angle = (index * 360) / outerOrbitApps.length;
             const rad = (angle * Math.PI) / 180;
-            const x = outerRadius + outerRadius * Math.cos(rad) - 24; // 48px / 2 = 24
-            const y = outerRadius + outerRadius * Math.sin(rad) - 24;
+            const halfIcon = outerIconSize / 2;
+            const x = outerRadius + outerRadius * Math.cos(rad) - halfIcon;
+            const y = outerRadius + outerRadius * Math.sin(rad) - halfIcon;
 
             return (
               <div
@@ -457,8 +476,8 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
                   position: 'absolute',
                   left: `${x}px`,
                   top: `${y}px`,
-                  width: '48px',
-                  height: '48px',
+                  width: `${outerIconSize}px`,
+                  height: `${outerIconSize}px`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -476,7 +495,7 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
         </div>
 
         {/* ------------------------------------------------------------- */}
-        {/* 2B. MIDDLE ORBIT (7 Apps, Counter-Clockwise 34s, Radius: 195px)*/}
+        {/* 2B. MIDDLE ORBIT */}
         {/* ------------------------------------------------------------- */}
         <div
           style={{
@@ -497,8 +516,9 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
           {middleOrbitApps.map((app, index) => {
             const angle = (index * 360) / middleOrbitApps.length;
             const rad = (angle * Math.PI) / 180;
-            const x = middleRadius + middleRadius * Math.cos(rad) - 23; // 46px / 2 = 23
-            const y = middleRadius + middleRadius * Math.sin(rad) - 23;
+            const halfIcon = middleIconSize / 2;
+            const x = middleRadius + middleRadius * Math.cos(rad) - halfIcon;
+            const y = middleRadius + middleRadius * Math.sin(rad) - halfIcon;
 
             return (
               <div
@@ -508,8 +528,8 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
                   position: 'absolute',
                   left: `${x}px`,
                   top: `${y}px`,
-                  width: '46px',
-                  height: '46px',
+                  width: `${middleIconSize}px`,
+                  height: `${middleIconSize}px`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -527,7 +547,7 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
         </div>
 
         {/* ------------------------------------------------------------- */}
-        {/* 2C. INNER ORBIT (6 Apps, Clockwise 22s, Radius: 120px)        */}
+        {/* 2C. INNER ORBIT */}
         {/* ------------------------------------------------------------- */}
         <div
           style={{
@@ -548,8 +568,9 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
           {innerOrbitApps.map((app, index) => {
             const angle = (index * 360) / innerOrbitApps.length;
             const rad = (angle * Math.PI) / 180;
-            const x = innerRadius + innerRadius * Math.cos(rad) - 22; // 44px / 2 = 22
-            const y = innerRadius + innerRadius * Math.sin(rad) - 22;
+            const halfIcon = innerIconSize / 2;
+            const x = innerRadius + innerRadius * Math.cos(rad) - halfIcon;
+            const y = innerRadius + innerRadius * Math.sin(rad) - halfIcon;
 
             return (
               <div
@@ -559,8 +580,8 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
                   position: 'absolute',
                   left: `${x}px`,
                   top: `${y}px`,
-                  width: '44px',
-                  height: '44px',
+                  width: `${innerIconSize}px`,
+                  height: `${innerIconSize}px`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -583,8 +604,8 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
             <div
               style={{
                 position: 'absolute',
-                width: '100px',
-                height: '100px',
+                width: isMobile ? '60px' : '100px',
+                height: isMobile ? '60px' : '100px',
                 borderRadius: '50%',
                 border: '1.5px solid rgba(56, 189, 248, 0.65)',
                 animation: 'galaxy-energy-ring 3.6s cubic-bezier(0.16, 1, 0.3, 1) infinite',
@@ -594,8 +615,8 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
             <div
               style={{
                 position: 'absolute',
-                width: '100px',
-                height: '100px',
+                width: isMobile ? '60px' : '100px',
+                height: isMobile ? '60px' : '100px',
                 borderRadius: '50%',
                 border: '1.5px solid rgba(139, 92, 246, 0.55)',
                 animation: 'galaxy-energy-ring 3.6s cubic-bezier(0.16, 1, 0.3, 1) infinite',
@@ -606,12 +627,12 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
           </>
         )}
 
-        {/* 2E. CENTER NUCLEUS CORE (Geeksman Core Logo Floating in Space) */}
+        {/* 2E. CENTER NUCLEUS CORE */}
         <div
           style={{
             position: 'relative',
-            width: '94px',
-            height: '94px',
+            width: isMobile ? '60px' : '94px',
+            height: isMobile ? '60px' : '94px',
             borderRadius: '50%',
             background: isLight
               ? 'rgba(255, 255, 255, 0.95)'
@@ -619,6 +640,7 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
             border: isLight
               ? '2px solid rgba(59, 130, 246, 0.25)'
               : '2px solid rgba(96, 165, 250, 0.45)',
+
             boxShadow: isLight
               ? '0 10px 25px rgba(37, 99, 235, 0.2)'
               : '0 0 40px rgba(59, 130, 246, 0.5), 0 0 16px rgba(255, 255, 255, 0.1) inset',
@@ -634,11 +656,12 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
             src={logoUrl || '/logo.png'}
             alt={appName || 'Geeksman'}
             style={{
-              width: '68px',
-              height: '68px',
+              width: isMobile ? '40px' : '68px',
+              height: isMobile ? '40px' : '68px',
               objectFit: 'contain',
               filter: isLight ? 'none' : 'drop-shadow(0 2px 10px rgba(0, 0, 0, 0.7))',
             }}
+
             onError={(e) => {
               const target = e.currentTarget;
               if (target.src.indexOf('/favicon.png') === -1) {

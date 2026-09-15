@@ -487,7 +487,7 @@ export const LayoutMobile: React.FC<any> = ({
         display: 'flex',
         overflowX: 'auto',
         overflowY: 'hidden',
-        justifyContent: 'flex-start',
+        justifyContent: (activeSubNavs.length > 0 ? (activeSubNavs.length + 1) : mainNavItems.length) <= 5 ? 'space-around' : 'flex-start',
         alignItems: 'center',
         padding: '0 6px',
         gap: '2px',
@@ -510,9 +510,8 @@ export const LayoutMobile: React.FC<any> = ({
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
-                flex: '0 0 58px',
-                minWidth: '58px',
-                maxWidth: '64px',
+                flex: (activeSubNavs.length + 1) <= 5 ? 1 : '0 0 58px',
+                minWidth: (activeSubNavs.length + 1) <= 5 ? 0 : '58px',
                 height: '100%',
                 padding: '2px 0',
                 opacity: isDashboard ? 1 : 0.8,
@@ -551,10 +550,6 @@ export const LayoutMobile: React.FC<any> = ({
             {/* App Subnavigation Tabs */}
             {activeSubNavs.map((sub, idx) => {
               const isActive = currentPath === sub.path || (sub.path !== '/' && (currentPath.startsWith(sub.path + '/') || currentPath.startsWith(sub.path + '?')));
-              const bgGradient = (sub.bgGradient && sub.bgGradient !== 'transparent' && sub.bgGradient !== 'none')
-                ? sub.bgGradient
-                : SUBNAV_GRADIENTS[idx % SUBNAV_GRADIENTS.length];
-              const isTransparent = sub.bgGradient === 'transparent' || sub.bgGradient === 'none';
 
               return (
                 <div
@@ -571,9 +566,8 @@ export const LayoutMobile: React.FC<any> = ({
                     alignItems: 'center',
                     justifyContent: 'center',
                     cursor: 'pointer',
-                    flex: '0 0 58px',
-                    minWidth: '58px',
-                    maxWidth: '64px',
+                    flex: (activeSubNavs.length + 1) <= 5 ? 1 : '0 0 58px',
+                    minWidth: (activeSubNavs.length + 1) <= 5 ? 0 : '58px',
                     height: '100%',
                     padding: '2px 0',
                     opacity: isActive ? 1 : 0.75,
@@ -583,31 +577,28 @@ export const LayoutMobile: React.FC<any> = ({
                   <div style={{
                     width: '22px',
                     height: '22px',
-                    borderRadius: isTransparent ? '0px' : '5px',
-                    background: isTransparent ? 'transparent' : bgGradient,
+                    background: 'transparent',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#ffffff',
+                    color: isActive ? '#2563eb' : '#64748b',
                     marginBottom: '1px',
-                    boxShadow: (isActive && !isTransparent) ? '0 2px 4px rgba(0,0,0,0.18)' : 'none',
-                    transform: isActive ? 'scale(1.05)' : 'scale(1)',
+                    transform: isActive ? 'scale(1.1)' : 'scale(1)',
                     transition: 'transform 0.15s ease',
                   }}>
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      width: isTransparent ? '20px' : '100%',
-                      height: isTransparent ? '20px' : '100%',
-                      transform: isTransparent ? 'none' : 'scale(0.72)',
+                      width: '20px',
+                      height: '20px',
                     }}>
                       {React.isValidElement(sub.icon) && typeof sub.icon.type === 'string' && sub.icon.type !== 'svg' ? (
                         sub.icon
                       ) : React.isValidElement(sub.icon) ? (
                         React.cloneElement(sub.icon as React.ReactElement<any>, { 
                           style: { 
-                            color: isTransparent ? (isActive ? '#3b82f6' : '#64748b') : '#ffffff',
+                            color: isActive ? '#2563eb' : '#64748b',
                             width: '100%',
                             height: '100%',
                             display: 'block'
@@ -626,7 +617,7 @@ export const LayoutMobile: React.FC<any> = ({
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     textAlign: 'center',
-                    color: isActive ? '#1f2937' : '#64748b'
+                    color: isActive ? '#2563eb' : '#64748b'
                   }}>
                     {sub.label}
                   </span>
@@ -654,9 +645,8 @@ export const LayoutMobile: React.FC<any> = ({
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  flex: '0 0 58px',
-                  minWidth: '58px',
-                  maxWidth: '64px',
+                  flex: mainNavItems.length <= 5 ? 1 : '0 0 58px',
+                  minWidth: mainNavItems.length <= 5 ? 0 : '58px',
                   height: '100%',
                   padding: '2px 0',
                   opacity: isActive ? 1 : 0.75,
@@ -667,14 +657,12 @@ export const LayoutMobile: React.FC<any> = ({
                 <div style={{
                   width: '22px',
                   height: '22px',
-                  borderRadius: (item.bgGradient && item.bgGradient !== 'transparent' && item.bgGradient !== 'none') ? '5px' : '0px',
-                  background: (item.bgGradient && item.bgGradient !== 'transparent' && item.bgGradient !== 'none') ? item.bgGradient : 'transparent',
+                  background: 'transparent',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: (item.bgGradient && item.bgGradient !== 'transparent' && item.bgGradient !== 'none') ? '#ffffff' : (isActive ? '#2563eb' : '#64748b'),
+                  color: isActive ? '#2563eb' : '#64748b',
                   marginBottom: '1px',
-                  boxShadow: (isActive && item.bgGradient && item.bgGradient !== 'transparent' && item.bgGradient !== 'none') ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
                 }}>
                   <div style={{
                     display: 'flex',
@@ -688,6 +676,7 @@ export const LayoutMobile: React.FC<any> = ({
                     ) : React.isValidElement(item.icon) ? (
                       React.cloneElement(item.icon as React.ReactElement<any>, { 
                         style: { 
+                          color: isActive ? '#2563eb' : '#64748b',
                           width: '100%',
                           height: '100%',
                           display: 'block'
@@ -706,7 +695,7 @@ export const LayoutMobile: React.FC<any> = ({
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   textAlign: 'center',
-                  color: isActive ? '#1f2937' : '#64748b'
+                  color: isActive ? '#2563eb' : '#64748b'
                 }}>
                   {item.label}
                 </span>

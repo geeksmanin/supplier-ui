@@ -23,3 +23,13 @@ export * from './Orders3DIcon';
 export * from './Challan3DIcon';
 export * from './Subscription3DIcon';
 export * from './Rewards3DIcon';
+export * from './Masters3DIcon';
+export * from './Brand3DIcon';
+export * from './Category3DIcon';
+export * from './Group3DIcon';
+export * from './Currency3DIcon';
+export * from './HSN3DIcon';
+export * from './Product3DIcon';
+export * from './Variant3DIcon';
+
+

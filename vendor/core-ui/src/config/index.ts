@@ -98,8 +98,27 @@ export const resolveAppConfig = (
       return activeTesting;
     }
     if (host && host !== 'localhost' && host !== '127.0.0.1' && !host.endsWith('.localhost')) {
+      const isLanIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.endsWith('.local');
+      if (isLanIp) {
+        let localPort = '8082';
+        try {
+          if (local.apiBaseUrl) {
+            const parsedUrl = new URL(local.apiBaseUrl);
+            if (parsedUrl.port) {
+              localPort = parsedUrl.port;
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+        return {
+          ...local,
+          apiBaseUrl: `http://${host}:${localPort}/api/v1`,
+        };
+      }
       return prod;
     }
+
   }
 
   // 5. Default to Local Development

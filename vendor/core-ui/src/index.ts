@@ -1,6 +1,6 @@
 export { apiClient, getWorkspaceFromUrl, resolveTenantCodeFromServer, resolveTenantByCode, clearActiveWorkspace, createApiClient, getDefaultBackendUrl, getBaseUrl } from './api/client';
 export type { TenantMetadata } from './api/client';
-export { useMediaQuery } from './hooks/useMediaQuery';
+export { useMediaQuery, useIsMobile } from './hooks/useMediaQuery';
 export { useRefreshOnVisible } from './hooks/useRefreshOnVisible';
 export { useClipboardImageUpload } from './hooks/useClipboardImageUpload';
 
