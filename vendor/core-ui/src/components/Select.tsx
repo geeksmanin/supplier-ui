@@ -41,7 +41,7 @@ export interface SelectAsyncConfig {
 export interface SelectProps {
   // ----- value / selection -----
   value: string | string[];
-  onChange: (value: string | string[]) => void;
+  onChange: (value: any, option?: SelectOption) => void;
   /** Allow selecting multiple values. */
   multi?: boolean;
 
@@ -429,9 +429,9 @@ export const Select: React.FC<SelectProps> = ({
       const next = isSelected(val)
         ? selectedValues.filter((v) => v !== val)
         : [...selectedValues, val];
-      onChange(next);
+      onChange(next, found);
     } else {
-      onChange(val);
+      onChange(val, found);
       setIsOpen(false);
     }
   };
