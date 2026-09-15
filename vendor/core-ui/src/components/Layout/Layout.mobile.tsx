@@ -613,7 +613,7 @@ export const LayoutMobile: React.FC<any> = ({
                     fontSize: '0.58rem', 
                     fontWeight: isActive ? 700 : 500,
                     lineHeight: '1.1',
-                    maxWidth: '56px',
+                    maxWidth: '68px',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     textAlign: 'center',
