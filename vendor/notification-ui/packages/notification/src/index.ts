@@ -5,6 +5,7 @@ export * from './NotificationToastContainer';
 export * from './components/WhatsAppIntegrationPage';
 export * from './components/WhatsAppIntegrationPage.desktop';
 export * from './components/WhatsAppIntegrationPage.mobile';
+export * from './components/WhatsAppSendTestPanel';
+export * from './components/WhatsAppPairingModal';
+export * from './components/IntegrationsIcon';
 export * from './register';
-
-
