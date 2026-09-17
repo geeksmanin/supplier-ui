@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { getAppConfig } from '../config';
-import { getWorkspaceFromUrl } from '../api/client';
+import { getWorkspaceFromUrl, apiClient } from '../api/client';
 
 export interface SelectOption {
   value: string;
@@ -365,29 +365,31 @@ export const Select: React.FC<SelectProps> = ({
           Object.entries(baseParams).map(([k, v]) => [k, String(v)])
         ).toString();
 
-        // derive base URL — same source as apiClient
-        const baseUrl =
-          getAppConfig().apiBaseUrl ||
-          (typeof window !== 'undefined' && (window as Window & { runtimeConfig?: { apiBaseUrl?: string } }).runtimeConfig?.apiBaseUrl) ||
-          '';
+        let data: unknown;
+        if (asyncConfig.url.startsWith('http')) {
+          const qs = new URLSearchParams(
+            Object.entries(baseParams).map(([k, v]) => [k, String(v)])
+          ).toString();
+          const resp = await fetch(`${asyncConfig.url}?${qs}`, {
+            signal: ctrl.signal,
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Tenant-Code': getWorkspaceFromUrl(),
+              ...(localStorage.getItem('token')
+                ? { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                : {}),
+            },
+          });
+          if (!resp.ok) throw new Error(`Server error: ${resp.status}`);
+          data = await resp.json();
+        } else {
+          const res = await apiClient.get(asyncConfig.url, {
+            params: baseParams,
+            signal: ctrl.signal,
+          });
+          data = res.data;
+        }
 
-        const fullUrl = asyncConfig.url.startsWith('http')
-          ? `${asyncConfig.url}?${qs}`
-          : `${baseUrl.replace(/\/$/, '')}${asyncConfig.url.startsWith('/') ? '' : '/'}${asyncConfig.url}?${qs}`;
-
-        const resp = await fetch(fullUrl, {
-          signal: ctrl.signal,
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Tenant-Code': getWorkspaceFromUrl(),
-            ...(localStorage.getItem('token')
-              ? { Authorization: `Bearer ${localStorage.getItem('token')}` }
-              : {}),
-          },
-        });
-
-        if (!resp.ok) throw new Error(`Server error: ${resp.status}`);
-        const data = await resp.json();
         const transformed = asyncConfig.transform(data) || [];
         setAsyncOptions(transformed);
         setAsyncCache((prev) => {
@@ -398,7 +400,7 @@ export const Select: React.FC<SelectProps> = ({
           return next;
         });
       } catch (err: unknown) {
-        if (err instanceof Error && err.name === 'AbortError') return;
+        if (err instanceof Error && (err.name === 'AbortError' || err.name === 'CanceledError' || (err as any)?.code === 'ERR_CANCELED')) return;
         setFetchError('Failed to load options');
       } finally {
         setIsLoading(false);
