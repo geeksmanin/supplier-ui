@@ -577,7 +577,16 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
   const props: any = {
     navItems: finalNavItems,
     currentPath: location.pathname,
-    onNavigate: (path: string) => navigate(path),
+    onNavigate: (path: string) => {
+      if (path && typeof window !== 'undefined') {
+        const clean = path.split('?')[0];
+        const targetHash = '#' + (clean.startsWith('/') ? clean : '/' + clean);
+        if (window.location.hash !== targetHash) {
+          window.location.hash = targetHash;
+        }
+      }
+      navigate(path);
+    },
     userEmail: localStorage.getItem('user_email') || 'admin@geeksman.com',
     onLogout: handleLogout,
     children,
@@ -590,7 +599,16 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
     activeTabPath,
     onCloseTab: handleCloseTab,
     onCloseAllTabs: handleCloseAllTabs,
-    onSelectTab: (path: string) => navigate(path),
+    onSelectTab: (path: string) => {
+      if (path && typeof window !== 'undefined') {
+        const clean = path.split('?')[0];
+        const targetHash = '#' + (clean.startsWith('/') ? clean : '/' + clean);
+        if (window.location.hash !== targetHash) {
+          window.location.hash = targetHash;
+        }
+      }
+      navigate(path);
+    },
     unreadCount,
     onOpenNotifications: () => setDrawerOpen(true),
   };
