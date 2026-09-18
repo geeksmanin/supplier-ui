@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button, useToast } from '@geeksman/core-ui';
 import { WhatsAppSendTestPanel } from './WhatsAppSendTestPanel';
 import { WhatsAppPairingModal } from './WhatsAppPairingModal';
-import { IntegrationsIcon } from './IntegrationsIcon';
+import { WhatsApp3DIcon } from './WhatsApp3DIcon';
 import { waApiGet, waApiPost, waApiDelete, WhatsAppConnectionInfo } from './WhatsAppIntegrationPage.desktop';
 
 export const WhatsAppIntegrationPageMobile: React.FC = () => {
@@ -72,7 +72,7 @@ export const WhatsAppIntegrationPageMobile: React.FC = () => {
     <div style={{ padding: '16px', backgroundColor: '#f8fafc', minHeight: '100vh', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div style={{ backgroundColor: '#ffffff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <IntegrationsIcon size={24} />
+          <WhatsApp3DIcon size={28} />
           <h1 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Integrations — WhatsApp</h1>
         </div>
         <Button variant="primary" style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }} onClick={() => setIsPairingOpen(true)}>

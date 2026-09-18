@@ -3,6 +3,7 @@ import { DataTable, Column, Button, useToast, apiClient } from '@geeksman/core-u
 import { WhatsAppSendTestPanel } from './WhatsAppSendTestPanel';
 import { WhatsAppPairingModal } from './WhatsAppPairingModal';
 import { WhatsAppDetailModal } from './WhatsAppDetailModal';
+import { WhatsAppDetailView } from './WhatsAppDetailView';
 import { WhatsApp3DIcon } from './WhatsApp3DIcon';
 
 export interface WhatsAppConnectionInfo {
@@ -264,13 +265,11 @@ export const WhatsAppIntegrationPageDesktop: React.FC = () => {
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
             <Button
               variant="secondary"
-              style={{ padding: '0.35rem 0.75rem', fontSize: '0.78rem' }}
-              onClick={() => {
-                setSelectedConnection(row);
-                setIsDetailOpen(true);
-              }}
+              title="View Connection Details"
+              style={{ padding: '0.35rem 0.6rem', fontSize: '0.85rem' }}
+              onClick={() => setSelectedConnection(row)}
             >
-              👁️ View
+              👁️
             </Button>
             {!isConnected && (
               <Button
@@ -289,7 +288,7 @@ export const WhatsAppIntegrationPageDesktop: React.FC = () => {
                 onClick={() => handleDisconnect(row.connection_id)}
                 disabled={disconnectingId === row.connection_id}
               >
-                {disconnectingId === row.connection_id ? 'Disconnecting...' : 'Disconnect'}
+                {disconnectingId === row.connection_id ? 'Disconnecting...' : '🔌 Disconnect'}
               </Button>
             )}
             <Button
@@ -305,6 +304,22 @@ export const WhatsAppIntegrationPageDesktop: React.FC = () => {
       },
     },
   ];
+
+  if (selectedConnection) {
+    return (
+      <WhatsAppDetailView
+        connection={selectedConnection}
+        onBack={() => setSelectedConnection(null)}
+        onRefresh={fetchConnections}
+        onDisconnect={handleDisconnect}
+        onReconnect={handleReconnect}
+        onDelete={(id) => {
+          setSelectedConnection(null);
+          setConfirmDeleteId(id);
+        }}
+      />
+    );
+  }
 
   return (
     <div style={{ padding: '24px', backgroundColor: '#f8fafc', minHeight: '100vh', display: 'flex', flexDirection: 'column', gap: '20px' }}>
