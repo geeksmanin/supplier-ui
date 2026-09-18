@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, useToast } from '@geeksman/core-ui';
+import { Button, useToast, Select, SelectOption } from '@geeksman/core-ui';
 import { waApiGet, waApiPost } from './WhatsAppIntegrationPage.desktop';
 
 interface WhatsAppConnectionInfo {
@@ -116,18 +116,18 @@ export const WhatsAppSendTestPanel: React.FC<WhatsAppSendTestPanelProps> = ({ co
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
         <div>
           <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '4px' }}>From Connection</label>
-          <select
+          <Select
             value={fromPhone}
-            onChange={(e) => setFromPhone(e.target.value)}
-            style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
-          >
-            <option value="">Auto-Select Active Connection</option>
-            {connections.map((c) => (
-              <option key={c.connection_id} value={c.phone_number}>
-                +{c.phone_number || c.connection_id} ({c.status})
-              </option>
-            ))}
-          </select>
+            onChange={(val) => setFromPhone(typeof val === 'string' ? val : '')}
+            options={[
+              { value: '', label: 'Auto-Select Active Connection' },
+              ...connections.map((c) => ({
+                value: c.phone_number || c.connection_id,
+                label: `+${c.phone_number || c.connection_id} (${c.status})`,
+              })),
+            ]}
+            placeholder="Auto-Select Active Connection"
+          />
         </div>
 
         <div>
