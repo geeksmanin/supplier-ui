@@ -6,15 +6,38 @@ interface WhatsAppPairingModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialPhone?: string;
+  initialPairing?: boolean;
 }
 
-export const WhatsAppPairingModal: React.FC<WhatsAppPairingModalProps> = ({ isOpen, onClose, onSuccess }) => {
+export const WhatsAppPairingModal: React.FC<WhatsAppPairingModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  initialPhone,
+  initialPairing,
+}) => {
   const { showToast } = useToast();
-  const [phone, setPhone] = useState<string>('');
+  const [phone, setPhone] = useState<string>(initialPhone || '');
   const [qrBase64, setQrBase64] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
-  const [pairingStatus, setPairingStatus] = useState<string>('INIT');
+  const [pairingStatus, setPairingStatus] = useState<string>(initialPairing ? 'PAIRING' : 'INIT');
+  const [isDisclaimerAccepted, setIsDisclaimerAccepted] = useState<boolean>(true);
   const isFetchingQR = React.useRef<boolean>(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialPhone) {
+        setPhone(initialPhone);
+      }
+      if (initialPairing || initialPhone) {
+        setPairingStatus('PAIRING');
+        setIsDisclaimerAccepted(true);
+      } else {
+        setPairingStatus('INIT');
+      }
+    }
+  }, [isOpen, initialPhone, initialPairing]);
 
   const startPairing = async () => {
     setLoading(true);
@@ -114,14 +137,29 @@ export const WhatsAppPairingModal: React.FC<WhatsAppPairingModalProps> = ({ isOp
                 You can enter a person/department name (e.g. <strong>Trilok</strong>, <strong>Billing</strong>) or a phone number.
               </span>
             </div>
+
+            <div style={{ backgroundColor: '#fffbebfb', border: '1px solid #fef08a', borderRadius: '8px', padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+              <input
+                type="checkbox"
+                id="unofficial-disclaimer-check"
+                checked={isDisclaimerAccepted}
+                onChange={(e) => setIsDisclaimerAccepted(e.target.checked)}
+                style={{ marginTop: '3px', cursor: 'pointer' }}
+              />
+              <label htmlFor="unofficial-disclaimer-check" style={{ fontSize: '0.78rem', color: '#854d0e', cursor: 'pointer', lineHeight: '1.3' }}>
+                I understand this is an <strong>unofficial integration</strong> using WhatsApp Web companion protocol. I acknowledge that WhatsApp may impose rate limits or terms restrictions.
+              </label>
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <Button variant="secondary" onClick={onClose}>Cancel</Button>
-              <Button variant="primary" onClick={startPairing} disabled={loading}>
+              <Button variant="primary" onClick={startPairing} disabled={loading || !isDisclaimerAccepted}>
                 {loading ? 'Initializing...' : 'Generate Pairing QR'}
               </Button>
             </div>
           </div>
         ) : (
+
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
             {qrBase64 ? (
               <>

@@ -7,5 +7,7 @@ export * from './components/WhatsAppIntegrationPage.desktop';
 export * from './components/WhatsAppIntegrationPage.mobile';
 export * from './components/WhatsAppSendTestPanel';
 export * from './components/WhatsAppPairingModal';
+export * from './components/WhatsAppMessageLogPanel';
 export * from './components/IntegrationsIcon';
 export * from './register';
+

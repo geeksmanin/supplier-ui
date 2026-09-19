@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button, useToast } from '@geeksman/core-ui';
 import { WhatsAppConnectionInfo, waApiGet, waApiPost } from './WhatsAppIntegrationPage.desktop';
 import { WhatsApp3DIcon } from './WhatsApp3DIcon';
+import { WhatsAppMessageLogPanel } from './WhatsAppMessageLogPanel';
 
 interface WhatsAppDetailModalProps {
   connection: WhatsAppConnectionInfo | null;
@@ -175,7 +176,7 @@ export const WhatsAppDetailModal: React.FC<WhatsAppDetailModalProps> = ({
                     border: `1px solid ${isConnected ? '#bbf7d0' : '#fecaca'}`,
                   }}
                 >
-                  {isConnected ? '🟢 Connected' : '⚪ Disconnected'}
+                  {isConnected ? 'Connected' : 'Disconnected'}
                 </span>
               </div>
               <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
@@ -222,35 +223,47 @@ export const WhatsAppDetailModal: React.FC<WhatsAppDetailModalProps> = ({
               {!isConnected ? (
                 <Button
                   variant="secondary"
-                  style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem' }}
+                  style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   onClick={async () => {
                     await onReconnect(connection.connection_id);
                     onRefresh();
                   }}
                 >
-                  🔄 Reconnect Device
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 4v6h-6"/>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                  </svg>
+                  Reconnect Device
                 </Button>
               ) : (
                 <Button
                   variant="secondary"
-                  style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem', color: '#b91c1c', borderColor: '#fecaca' }}
+                  style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem', color: '#b91c1c', borderColor: '#fecaca', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   onClick={async () => {
                     await onDisconnect(connection.connection_id);
                     onRefresh();
                   }}
                 >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                    <line x1="12" y1="2" x2="12" y2="12"/>
+                  </svg>
                   Disconnect &amp; Unlink
                 </Button>
               )}
               <Button
                 variant="danger"
-                style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem' }}
+                style={{ padding: '0.35rem 0.85rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                 onClick={() => {
                   onClose();
                   onDelete(connection.connection_id);
                 }}
               >
-                🗑️ Delete
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+                Delete
               </Button>
             </div>
           </div>
@@ -268,8 +281,11 @@ export const WhatsAppDetailModal: React.FC<WhatsAppDetailModalProps> = ({
             }}
           >
             <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '10px' }}>
-              <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
-                💬 Send Live WhatsApp Message from +{fromPhone}
+              <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                Send Live WhatsApp Message from +{fromPhone}
               </h3>
               <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
                 Test outbound messaging directly from this active connection
@@ -289,8 +305,12 @@ export const WhatsAppDetailModal: React.FC<WhatsAppDetailModalProps> = ({
                   onChange={(e) => setToPhone(e.target.value)}
                   style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
                 />
-                <Button variant="secondary" onClick={handleCheckNumber} disabled={checking}>
-                  {checking ? '...' : 'Check WA'}
+                <Button variant="secondary" onClick={handleCheckNumber} disabled={checking} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  </svg>
+                  {checking ? 'Checking...' : 'Check Registered'}
                 </Button>
               </div>
               {checkResult && (
@@ -300,9 +320,10 @@ export const WhatsAppDetailModal: React.FC<WhatsAppDetailModalProps> = ({
                     color: checkResult.exists ? '#15803d' : '#b91c1c',
                     marginTop: '4px',
                     display: 'block',
+                    fontWeight: 600,
                   }}
                 >
-                  {checkResult.exists ? '✅ Number exists on WhatsApp' : '❌ Not registered on WhatsApp'}
+                  {checkResult.exists ? '✓ Number exists on WhatsApp' : '✕ Not registered on WhatsApp'}
                 </span>
               )}
             </div>
@@ -328,9 +349,12 @@ export const WhatsAppDetailModal: React.FC<WhatsAppDetailModalProps> = ({
                       fontWeight: 600,
                       fontSize: '0.78rem',
                       cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
                     }}
                   >
-                    {type === 'text' ? '💬 Text' : type === 'image' ? '🖼️ Image' : '📄 PDF'}
+                    {type.toUpperCase()}
                   </button>
                 ))}
               </div>
@@ -368,7 +392,7 @@ export const WhatsAppDetailModal: React.FC<WhatsAppDetailModalProps> = ({
                   onChange={handleFileChange}
                   style={{ fontSize: '0.8rem' }}
                 />
-                {mediaName && <span style={{ fontSize: '0.75rem', color: '#15803d' }}>📎 Selected: {mediaName}</span>}
+                {mediaName && <span style={{ fontSize: '0.75rem', color: '#15803d' }}>Selected: {mediaName}</span>}
                 <input
                   type="text"
                   placeholder="Optional caption..."
@@ -385,9 +409,9 @@ export const WhatsAppDetailModal: React.FC<WhatsAppDetailModalProps> = ({
                   padding: '10px 14px',
                   borderRadius: '8px',
                   fontSize: '0.8rem',
-                  backgroundColor: lastResult.startsWith('✅') ? '#f0fdf4' : '#fef2f2',
-                  border: `1px solid ${lastResult.startsWith('✅') ? '#bbf7d0' : '#fecaca'}`,
-                  color: lastResult.startsWith('✅') ? '#166534' : '#991b1b',
+                  backgroundColor: lastResult.startsWith('✅') || lastResult.includes('dispatched') ? '#f0fdf4' : '#fef2f2',
+                  border: `1px solid ${lastResult.startsWith('✅') || lastResult.includes('dispatched') ? '#bbf7d0' : '#fecaca'}`,
+                  color: lastResult.startsWith('✅') || lastResult.includes('dispatched') ? '#166534' : '#991b1b',
                   fontWeight: 600,
                 }}
               >
@@ -396,11 +420,18 @@ export const WhatsAppDetailModal: React.FC<WhatsAppDetailModalProps> = ({
             )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
-              <Button variant="primary" onClick={handleSend} disabled={sending || !isConnected}>
-                {sending ? 'Sending...' : '🚀 Send Message'}
+              <Button variant="primary" onClick={handleSend} disabled={sending || !isConnected} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"/>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+                {sending ? 'Sending...' : 'Send WhatsApp Message'}
               </Button>
             </div>
           </div>
+
+          {/* Connection Specific Audit Logs */}
+          <WhatsAppMessageLogPanel connectionId={connection.connection_id} />
         </div>
 
         {/* Modal Footer */}

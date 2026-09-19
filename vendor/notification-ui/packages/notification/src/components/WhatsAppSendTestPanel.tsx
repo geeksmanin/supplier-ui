@@ -106,8 +106,12 @@ export const WhatsAppSendTestPanel: React.FC<WhatsAppSendTestPanelProps> = ({ co
   return (
     <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
-        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
-          📤 Outbound Message Test Console
+        <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+          Outbound Message Test Console
         </h2>
         <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Send live test text, images, or PDFs to any recipient</span>
       </div>
@@ -140,13 +144,22 @@ export const WhatsAppSendTestPanel: React.FC<WhatsAppSendTestPanelProps> = ({ co
               onChange={(e) => setToPhone(e.target.value)}
               style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
             />
-            <Button variant="secondary" onClick={handleCheckNumber} disabled={checking}>
-              {checking ? '...' : 'Check WA'}
+            <Button
+              variant="secondary"
+              onClick={handleCheckNumber}
+              disabled={checking}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              {checking ? 'Checking...' : 'Check Registered'}
             </Button>
           </div>
           {checkResult && (
-            <span style={{ fontSize: '0.75rem', color: checkResult.exists ? '#15803d' : '#b91c1c', marginTop: '2px', display: 'block' }}>
-              {checkResult.exists ? '✅ Number exists on WhatsApp' : '❌ Not registered on WhatsApp'}
+            <span style={{ fontSize: '0.75rem', color: checkResult.exists ? '#15803d' : '#b91c1c', marginTop: '4px', display: 'block', fontWeight: 600 }}>
+              {checkResult.exists ? '✓ Number exists on WhatsApp' : '✕ Not registered on WhatsApp'}
             </span>
           )}
         </div>
@@ -171,10 +184,10 @@ export const WhatsAppSendTestPanel: React.FC<WhatsAppSendTestPanelProps> = ({ co
                 fontWeight: 600,
                 fontSize: '0.8rem',
                 cursor: 'pointer',
-                textTransform: 'capitalize',
+                textTransform: 'uppercase',
               }}
             >
-              {type === 'text' ? '💬 Text' : type === 'image' ? '🖼️ Image' : '📄 PDF Document'}
+              {type}
             </button>
           ))}
         </div>
@@ -222,13 +235,17 @@ export const WhatsAppSendTestPanel: React.FC<WhatsAppSendTestPanelProps> = ({ co
       {/* Submit Button & Status */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '8px' }}>
         {lastResult && (
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: lastResult.startsWith('✅') ? '#15803d' : '#b91c1c' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: lastResult.startsWith('✅') || lastResult.includes('dispatched') ? '#15803d' : '#b91c1c' }}>
             {lastResult}
           </span>
         )}
         <div style={{ marginLeft: 'auto' }}>
-          <Button variant="primary" onClick={handleSend} disabled={sending}>
-            {sending ? 'Sending Message...' : '🚀 Send WhatsApp Message'}
+          <Button variant="primary" onClick={handleSend} disabled={sending} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+            {sending ? 'Sending Message...' : 'Send WhatsApp Message'}
           </Button>
         </div>
       </div>

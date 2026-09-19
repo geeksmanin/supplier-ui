@@ -30,6 +30,7 @@ import {
   RFQ3DIcon,
   Product3DIcon,
   Variant3DIcon,
+  Integrations3DIcon,
 } from '../icons3d';
 
 
@@ -181,6 +182,9 @@ export const LayoutDesktop: React.FC<any> = ({
     }
     if (p.includes('requisition')) {
       return <Requisition3DIcon size={16} />;
+    }
+    if (p.includes('integration') || p.includes('whatsapp')) {
+      return <Integrations3DIcon size={16} />;
     }
     if (p.includes('setting') || p.includes('config')) {
       return <Settings3DIcon size={16} />;
@@ -1096,6 +1100,46 @@ export const LayoutDesktop: React.FC<any> = ({
                 </div>
               </div>
             )}
+
+            {/* WhatsApp Integration Quick Status Header Button */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <button
+                style={{
+                  background: 'none',
+                  cursor: 'pointer',
+                  padding: '5px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  width: '32px',
+                  height: '32px',
+                  transition: 'all 0.15s ease',
+                  position: 'relative'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}
+                onClick={() => onNavigate('/integrations/whatsapp')}
+                title="WhatsApp Integration (Connected)"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414-.074-.124-.272-.198-.57-.347z" fill="#25D366"/>
+                  <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 2.223.725 4.276 1.956 5.937L2.5 21.5l3.673-1.41C7.744 21.282 9.77 22 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.928 0-3.71-.58-5.187-1.576l-.372-.251-2.474.95.962-2.417-.272-.39C3.606 14.808 3 13.473 3 12c0-4.97 4.03-9 9-9s9 4.03 9 9-4.03 9-9 9z" fill="#25D366"/>
+                </svg>
+                <span style={{
+                  position: 'absolute',
+                  top: '1px',
+                  right: '1px',
+                  width: '8px',
+                  height: '8px',
+                  backgroundColor: '#16a34a',
+                  borderRadius: '50%',
+                  border: '1.5px solid #ffffff'
+                }} />
+              </button>
+            </div>
 
             {/* Notification Bell */}
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
