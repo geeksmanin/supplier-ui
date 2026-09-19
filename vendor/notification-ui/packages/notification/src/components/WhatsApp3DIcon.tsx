@@ -3,51 +3,45 @@ import React from 'react';
 interface WhatsApp3DIconProps {
   size?: number;
   className?: string;
+  style?: React.CSSProperties;
 }
 
-export const WhatsApp3DIcon: React.FC<WhatsApp3DIconProps> = ({ size = 36, className }) => {
+export const WhatsApp3DIcon: React.FC<WhatsApp3DIconProps> = ({ size = 36, className, style }) => {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 64 64"
+      viewBox="0 0 48 48"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      style={{ filter: 'drop-shadow(0px 6px 12px rgba(18, 140, 126, 0.35))' }}
+      style={{
+        display: 'inline-block',
+        verticalAlign: 'middle',
+        flexShrink: 0,
+        borderRadius: '10px',
+        boxShadow: '0 2px 5px rgba(18, 140, 126, 0.25)',
+        ...style,
+      }}
     >
       <defs>
-        <linearGradient id="wa3d_bg" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+        <linearGradient id="wa_platform_grad" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#25D366" />
-          <stop offset="50%" stopColor="#1ebd56" />
-          <stop offset="100%" stopColor="#0e8346" />
-        </linearGradient>
-        <radialGradient id="wa3d_light" cx="32" cy="14" r="28" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.45" />
-          <stop offset="60%" stopColor="#ffffff" stopOpacity="0" />
-        </radialGradient>
-        <linearGradient id="wa3d_phone" x1="20" y1="20" x2="44" y2="44" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="100%" stopColor="#f0fdf4" />
+          <stop offset="100%" stopColor="#128C7E" />
         </linearGradient>
       </defs>
-
-      {/* 3D Base Circle / Chat Tail */}
-      <path
-        d="M32 4C16.536 4 4 16.536 4 32c0 5.412 1.534 10.465 4.195 14.76L4.5 59.5l13.125-3.62C21.724 58.337 26.657 60 32 60c15.464 0 28-12.536 28-28S47.464 4 32 4z"
-        fill="url(#wa3d_bg)"
-      />
-      {/* Top Specular Highlight */}
-      <path
-        d="M32 4C16.536 4 4 16.536 4 32c0 5.412 1.534 10.465 4.195 14.76L4.5 59.5l13.125-3.62C21.724 58.337 26.657 60 32 60c15.464 0 28-12.536 28-28S47.464 4 32 4z"
-        fill="url(#wa3d_light)"
-      />
+      {/* Sleek rounded squircle background matching platform aesthetic */}
+      <rect width="48" height="48" rx="11" fill="url(#wa_platform_grad)" />
       
-      {/* 3D Phone Handle Icon */}
+      {/* Subtle top inner reflection border */}
+      <rect x="0.5" y="0.5" width="47" height="47" rx="10.5" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
+
+      {/* Crisp White Official WhatsApp Glyph */}
       <path
-        d="M21.5 17.5c-.8-.8-1.7-1-2.5-1-.9 0-1.7.2-2.3.8-1 1-2.2 2.6-2.2 4.7 0 4.1 2.9 8.6 6.8 12.5 3.9 3.9 8.4 6.8 12.5 6.8 2.1 0 3.7-1.2 4.7-2.2.6-.6.8-1.4.8-2.3 0-.8-.2-1.7-1-2.5l-4-4c-.7-.7-1.6-.9-2.3-.4l-2 1.6c-.5.4-1.2.4-1.8.1-1.3-.6-3.2-1.8-4.7-3.3-1.5-1.5-2.7-3.4-3.3-4.7-.3-.6-.3-1.3.1-1.8l1.6-2c.5-.7.3-1.6-.4-2.3l-4-4z"
-        fill="url(#wa3d_phone)"
-        filter="drop-shadow(0px 2px 3px rgba(0,0,0,0.25))"
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M24 9.5C16.03 9.5 9.5 16.03 9.5 24C9.5 26.65 10.22 29.14 11.48 31.28L10 38.5L17.43 36.56C19.43 37.66 21.65 38.25 24 38.25C31.97 38.25 38.5 31.72 38.5 23.75C38.5 15.78 31.97 9.5 24 9.5ZM20.65 16.5C20.35 15.85 19.95 15.8 19.45 15.8C19.2 15.8 18.9 15.8 18.6 15.8C18.3 15.8 17.85 15.95 17.5 16.35C17.1 16.75 16 17.8 16 19.95C16 22.1 17.55 24.2 17.75 24.5C18 24.8 20.75 29.3 25.1 31C28.7 32.4 29.45 31.85 30.2 31.75C30.95 31.65 32.65 30.75 33 29.75C33.35 28.75 33.35 27.9 33.25 27.75C33.15 27.6 32.85 27.5 32.4 27.25C31.95 27 29.75 25.9 29.35 25.75C28.95 25.6 28.65 25.5 28.35 25.95C28.05 26.4 27.2 27.5 26.95 27.8C26.7 28.1 26.45 28.15 26 27.9C25.55 27.65 24.15 27.2 22.45 25.7C21.15 24.55 20.25 23.1 20 22.65C19.75 22.2 20 21.95 20.2 21.75C20.4 21.55 20.65 21.2 20.85 20.95C21.05 20.7 21.15 20.5 21.3 20.2C21.45 19.9 21.35 19.65 21.25 19.45C21.15 19.25 20.75 18.3 20.65 16.5Z"
+        fill="white"
       />
     </svg>
   );

@@ -19,9 +19,13 @@ export interface WhatsAppMessageLog {
 
 interface WhatsAppMessageLogPanelProps {
   connectionId?: string;
+  fromPhone?: string;
 }
 
-export const WhatsAppMessageLogPanel: React.FC<WhatsAppMessageLogPanelProps> = ({ connectionId: defaultConnectionId }) => {
+export const WhatsAppMessageLogPanel: React.FC<WhatsAppMessageLogPanelProps> = ({ 
+  connectionId: defaultConnectionId,
+  fromPhone: defaultFromPhone,
+}) => {
   const { showToast } = useToast();
   const [logs, setLogs] = useState<WhatsAppMessageLog[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
