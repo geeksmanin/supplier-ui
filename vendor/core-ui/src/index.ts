@@ -5,7 +5,8 @@ export { useRefreshOnVisible } from './hooks/useRefreshOnVisible';
 export { useClipboardImageUpload } from './hooks/useClipboardImageUpload';
 
 // Native Bridge & Push Notifications (Capacitor)
-export { usePushNotifications, isNativePlatform, getNativePlatform, getCapacitor } from './native/usePushNotifications';
+export { usePushNotifications, isNativePlatform, getNativePlatform, getCapacitor, checkNotificationPermission, useNotificationPermission } from './native/usePushNotifications';
+export type { NotificationPermissionState } from './native/usePushNotifications';
 export { useNativeDevice } from './native/useNativeDevice';
 export type { UseNativeDeviceOptions } from './native/useNativeDevice';
 export { useBarcodeScanner } from './native/useBarcodeScanner';

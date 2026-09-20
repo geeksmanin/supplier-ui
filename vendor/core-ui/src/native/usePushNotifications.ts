@@ -1,5 +1,6 @@
-import { useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiClient, getWorkspaceFromUrl } from '../api/client';
+import { isMobileDevice } from '../utils/device';
 import { DeviceRegistrationPayload, PushNotificationData } from './types';
 
 // Safely resolve Capacitor from window / global
@@ -27,7 +28,95 @@ export const getNativePlatform = (): 'android' | 'ios' | 'web' => {
   return 'web';
 };
 
+export type NotificationPermissionState = 'granted' | 'denied' | 'prompt' | 'unsupported';
+
+export const checkNotificationPermission = async (): Promise<NotificationPermissionState> => {
+  if (isNativePlatform()) {
+    const cap = getCapacitor();
+    const PushNotifications = cap?.Plugins?.PushNotifications;
+    if (PushNotifications && typeof PushNotifications.checkPermissions === 'function') {
+      try {
+        const result = await PushNotifications.checkPermissions();
+        if (result && result.receive) {
+          return result.receive as NotificationPermissionState;
+        }
+      } catch (err) {
+        console.warn('Error checking native push permissions:', err);
+      }
+    }
+  }
+
+  if (typeof window !== 'undefined' && 'Notification' in window) {
+    return window.Notification.permission as NotificationPermissionState;
+  }
+
+  return 'unsupported';
+};
+
+export const useNotificationPermission = () => {
+  const [permission, setPermission] = useState<NotificationPermissionState>('prompt');
+  const [isPhone, setIsPhone] = useState<boolean>(() => isNativePlatform() || isMobileDevice());
+
+  const check = useCallback(async () => {
+    const phone = isNativePlatform() || isMobileDevice();
+    setIsPhone(phone);
+    const perm = await checkNotificationPermission();
+    setPermission(perm);
+    return { phone, perm };
+  }, []);
+
+  useEffect(() => {
+    check();
+
+    const handleFocus = () => {
+      check();
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        check();
+      }
+    };
+
+    const handleDeniedEvent = () => {
+      check();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('notification_permission_denied', handleDeniedEvent);
+    window.addEventListener('notification-permission-granted', handleDeniedEvent);
+
+    const cap = getCapacitor();
+    const App = cap?.Plugins?.App;
+    let appListener: any;
+    if (App && typeof App.addListener === 'function') {
+      App.addListener('appStateChange', (state: any) => {
+        if (state?.isActive) {
+          check();
+        }
+      }).then((l: any) => { appListener = l; }).catch(() => {});
+    }
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('notification_permission_denied', handleDeniedEvent);
+      window.removeEventListener('notification-permission-granted', handleDeniedEvent);
+      appListener?.remove?.();
+    };
+  }, [check]);
+
+  return {
+    permission,
+    isPhone,
+    isDeniedOnPhone: isPhone && permission === 'denied',
+    recheck: check,
+  };
+};
+
 export const usePushNotifications = (onNavigate?: (route: string) => void) => {
+  const { permission, isPhone, isDeniedOnPhone, recheck } = useNotificationPermission();
   const registerDeviceTokenWithBackend = useCallback(async (deviceToken: string) => {
     const token = localStorage.getItem('token');
     if (!token) return; // Wait until user is authenticated
@@ -81,6 +170,9 @@ export const usePushNotifications = (onNavigate?: (route: string) => void) => {
     PushNotifications.requestPermissions().then((result: any) => {
       if (result.receive === 'granted') {
         PushNotifications.register();
+        window.dispatchEvent(new Event('notification-permission-granted'));
+      } else if (result.receive === 'denied') {
+        window.dispatchEvent(new Event('notification_permission_denied'));
       }
     }).catch((err: any) => {
       console.warn('Error requesting native push permissions:', err);
@@ -183,5 +275,9 @@ export const usePushNotifications = (onNavigate?: (route: string) => void) => {
     isNative: isNativePlatform(),
     platform: getNativePlatform(),
     unregisterDeviceToken,
+    permission,
+    isPhone,
+    isDeniedOnPhone,
+    recheckPermission: recheck,
   };
 };
