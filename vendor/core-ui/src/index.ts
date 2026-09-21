@@ -117,3 +117,6 @@ export type { UsePostalCodeOptions, UsePostalCodeReturn } from './hooks/usePosta
 
 // Local-First Event Stream, IndexedDB Store & Offline Outbox Engine
 export * from './eventstream';
+
+// Fast Keyboard-Centric Voucher & Billing Engine
+export * from './components/FastVoucher';
