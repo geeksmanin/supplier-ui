@@ -344,7 +344,9 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
             >
               {fields.map(field => {
                 const options = fieldOptions[field.fieldKey] || [];
-                const currentValue = formValues[field.fieldKey] || '';
+                const rawValue = formValues[field.fieldKey];
+                const currentValue = rawValue !== undefined && rawValue !== null ? rawValue : '';
+                const isConfigured = currentValue !== '';
 
                 return (
                   <div key={field.fieldKey}>
@@ -352,7 +354,7 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
                       <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
                         {field.label}
                       </label>
-                      {currentValue && (
+                      {isConfigured && (
                         <span style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                           <CheckCircleIcon size={12} /> Configured
                         </span>
@@ -360,7 +362,6 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
                     </div>
 
                     {field.type === 'boolean' || field.type === 'toggle' ? (() => {
-                      const isConfigured = currentValue !== undefined && currentValue !== null && currentValue !== '';
                       const isChecked = isConfigured
                         ? (currentValue === true || currentValue === 'true' || currentValue === 1 || currentValue === '1')
                         : (field.defaultValue !== undefined ? Boolean(field.defaultValue) : true);
@@ -369,7 +370,7 @@ export const FormDefaultsConfig: React.FC<FormDefaultsConfigProps> = ({
                       const offLabel = field.toggleLabels?.off || (field.fieldKey === 'auto_create_default_contact' ? 'OFF (Do Not Auto-create)' : 'Disabled');
 
                       const toggleValue = () => {
-                        const nextVal = isChecked ? 'false' : 'true';
+                        const nextVal = isChecked ? false : true;
                         setFormValues(prev => ({ ...prev, [field.fieldKey]: nextVal }));
                         setIsDirty(true);
                       };
