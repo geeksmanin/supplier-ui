@@ -89,6 +89,7 @@ export const NotificationObservabilityPageMobile: React.FC = () => {
   const [testBody, setTestBody] = useState<string>('Testing push notification delivery from mobile console.');
   const [testType, setTestType] = useState<string>('mention');
   const [testLink, setTestLink] = useState<string>('/dashboard');
+  const [selectedChannels, setSelectedChannels] = useState<string[]>(['sse', 'webpush', 'fcm']);
   const [dispatching, setDispatching] = useState<boolean>(false);
   const [lastDispatchResult, setLastDispatchResult] = useState<TestDispatchResult | null>(null);
 
@@ -220,6 +221,7 @@ export const NotificationObservabilityPageMobile: React.FC = () => {
         body: testBody.trim(),
         type: testType,
         link: testLink.trim() || undefined,
+        channels: selectedChannels.length > 0 ? selectedChannels : undefined,
       };
       const resp = await notifAdminPost('/admin/test-dispatch', payload);
       const result: TestDispatchResult = resp.data?.data || resp.data;
@@ -880,20 +882,77 @@ export const NotificationObservabilityPageMobile: React.FC = () => {
                 />
               </div>
 
+              {/* Channel Selector */}
+              <div style={{ marginTop: '4px' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                  Delivery Channels
+                </label>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {([
+                    { key: 'sse', label: '⚡ SSE', color: '#10b981', bg: '#ecfdf5', border: '#a7f3d0' },
+                    { key: 'webpush', label: '🔔 Web Push', color: '#7e22ce', bg: '#faf5ff', border: '#e9d5ff' },
+                    { key: 'fcm', label: '📱 FCM', color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
+                  ] as const).map(({ key, label, color, bg, border }) => {
+                    const active = selectedChannels.includes(key);
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() =>
+                          setSelectedChannels((prev) =>
+                            prev.includes(key) ? prev.filter((c) => c !== key) : [...prev, key]
+                          )
+                        }
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '5px 12px',
+                          borderRadius: '7px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          border: `1.5px solid ${active ? border : '#e2e8f0'}`,
+                          backgroundColor: active ? bg : '#f8fafc',
+                          color: active ? color : '#94a3b8',
+                          outline: 'none',
+                        }}
+                      >
+                        {active && <span style={{ fontSize: '0.6rem' }}>✓</span>}
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <Button
                 variant="primary"
                 onClick={handleDispatchTest}
-                disabled={dispatching}
+                disabled={dispatching || selectedChannels.length === 0}
                 style={{ width: '100%', marginTop: '6px', padding: '10px' }}
               >
-                {dispatching ? 'Sending...' : '🚀 Send Notification'}
+                {dispatching ? 'Sending...' : `🚀 Send via ${selectedChannels.length === 0 ? '—' : selectedChannels.map((c) => c.toUpperCase()).join(' + ')}`}
               </Button>
 
               {lastDispatchResult && (
-                <div style={{ marginTop: '8px', backgroundColor: '#f1f5f9', borderRadius: '8px', padding: '10px', fontSize: '0.75rem' }}>
-                  <div>SSE: <strong>{lastDispatchResult.delivered_sse ? 'Delivered' : 'Offline'}</strong></div>
-                  <div>FCM: <strong>{lastDispatchResult.fcm_dispatched_count} device(s)</strong></div>
-                  <div>WebPush: <strong>{lastDispatchResult.web_push_dispatched_count} browser(s)</strong></div>
+                <div style={{ marginTop: '8px', backgroundColor: '#f1f5f9', borderRadius: '8px', padding: '10px', fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  {(lastDispatchResult.channel_results || []).map((cr) => {
+                    const channelLabel: Record<string, string> = {
+                      sqlite: '💾 Stored',
+                      sse: '⚡ SSE',
+                      fcm: '📱 FCM',
+                      webpush: '🔔 Web Push',
+                    };
+                    return (
+                      <div key={cr.channel} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 600, color: '#334155' }}>{channelLabel[cr.channel] || cr.channel}</span>
+                        <span style={{ padding: '2px 8px', borderRadius: '5px', fontWeight: 700, fontSize: '0.7rem', backgroundColor: cr.success ? '#dcfce7' : '#fee2e2', color: cr.success ? '#166534' : '#991b1b' }}>
+                          {cr.success ? 'Sent' : 'Failed'}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
