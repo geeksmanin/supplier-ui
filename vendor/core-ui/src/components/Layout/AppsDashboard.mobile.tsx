@@ -4,15 +4,17 @@ import { AppConfig } from './AppsDashboard';
 interface AppsDashboardMobileProps {
   navItems: AppConfig[];
   onNavigate: (path: string) => void;
+  userEmail?: string;
+  onLogout?: () => void;
 }
 
-export const AppsDashboardMobile: React.FC<AppsDashboardMobileProps> = ({ navItems, onNavigate }) => {
+export const AppsDashboardMobile: React.FC<AppsDashboardMobileProps> = ({ navItems, onNavigate, userEmail, onLogout }) => {
   const displayItems = navItems.filter((item: any) => !item.parentId);
   return (
     <div style={{
       maxWidth: '1200px',
       margin: '0 auto',
-      padding: '2rem 1rem',
+      padding: '1.5rem 1rem 3rem 1rem',
       display: 'flex',
       flexDirection: 'column',
       fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
@@ -101,6 +103,89 @@ export const AppsDashboardMobile: React.FC<AppsDashboardMobileProps> = ({ navIte
             </div>
           );
         })}
+      </div>
+
+      {/* User Session Profile & Logout Card */}
+      <div style={{
+        marginTop: '2.5rem',
+        padding: '1rem 1.15rem',
+        borderRadius: '16px',
+        backgroundColor: '#ffffff',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '0.75rem',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+            color: '#ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 700,
+            fontSize: '0.95rem',
+            flexShrink: 0,
+            boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)',
+          }}>
+            {userEmail ? userEmail[0].toUpperCase() : 'U'}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <span style={{
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              color: '#0f172a',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
+              {userEmail ? userEmail.split('@')[0] : 'Logged In User'}
+            </span>
+            <span style={{
+              fontSize: '0.7rem',
+              color: '#64748b',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
+              {userEmail || 'Active Session'}
+            </span>
+          </div>
+        </div>
+
+        {onLogout && (
+          <button
+            type="button"
+            onClick={onLogout}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              padding: '0.45rem 0.85rem',
+              borderRadius: '9px',
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              color: '#dc2626',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              flexShrink: 0,
+              transition: 'background-color 0.15s ease',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            Logout
+          </button>
+        )}
       </div>
     </div>
   );

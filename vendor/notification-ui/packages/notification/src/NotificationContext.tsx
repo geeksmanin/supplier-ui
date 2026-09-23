@@ -507,9 +507,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     }
 
     const cleanBaseUrl = (baseUrl || '').replace(/\/$/, '');
-    let streamUrl = `${cleanBaseUrl}/notification/stream?userId=${userId}`;
+    let streamUrl = `${cleanBaseUrl}/notification/stream?userId=${encodeURIComponent(userId || '')}`;
+    if (tenantCode) {
+      streamUrl += `&tenant_code=${encodeURIComponent(tenantCode)}`;
+    }
     if (tokenVal) {
-      streamUrl += `&token=${tokenVal}`;
+      streamUrl += `&token=${encodeURIComponent(tokenVal)}`;
     }
 
     // Pass sequence watermark for BadgerDB catch-up scan, or fallback to lastEventId

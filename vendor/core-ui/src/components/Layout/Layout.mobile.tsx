@@ -453,6 +453,36 @@ export const LayoutMobile: React.FC<any> = ({
             onClick={() => setVersionModalOpen(true)}
             style={{ marginRight: '0.35rem', padding: '0.18rem 0.45rem', fontSize: '0.65rem' }}
           />
+
+          {onLogout && (
+            <button
+              type="button"
+              onClick={onLogout}
+              title="Logout"
+              aria-label="Logout"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '30px',
+                height: '30px',
+                borderRadius: '8px',
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#ef4444',
+                cursor: 'pointer',
+                padding: 0,
+                flexShrink: 0,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </button>
+          )}
         </header>
       )}
 
@@ -466,7 +496,7 @@ export const LayoutMobile: React.FC<any> = ({
         transition: 'padding-bottom 0.25s ease, padding-top 0.25s ease',
       }}>
         {isDashboard ? (
-          <AppsDashboard navItems={mainNavItems} onNavigate={onNavigate} />
+          <AppsDashboard navItems={mainNavItems} onNavigate={onNavigate} userEmail={userEmail} onLogout={onLogout} />
         ) : (
           children
         )}

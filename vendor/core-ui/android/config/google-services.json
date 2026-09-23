@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "622021880057",
+    "project_id": "geeksmanos",
+    "storage_bucket": "geeksmanos.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:622021880057:android:9b04d75335a6a69cf79a28",
+        "android_client_info": {
+          "package_name": "com.geeksmanos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDljwvFJvkf_56aWoEwCMUNEQme6wMgME"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

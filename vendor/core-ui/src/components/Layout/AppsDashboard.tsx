@@ -16,6 +16,8 @@ export interface AppConfig {
 interface AppsDashboardProps {
   navItems: AppConfig[];
   onNavigate: (path: string) => void;
+  userEmail?: string;
+  onLogout?: () => void;
 }
 
 export const AppsDashboard: React.FC<AppsDashboardProps> = (props) => {

@@ -1,0 +1,9 @@
+{
+  "name": "@geeksman/android-wrapper-builder",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "convert": "node scripts/convert.mjs"
+  }
+}

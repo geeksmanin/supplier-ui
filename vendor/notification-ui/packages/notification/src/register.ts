@@ -1,6 +1,7 @@
 import React from 'react';
 import { UIRegistry } from '@geeksman/core-ui';
 import { WhatsAppIntegrationPage } from './components/WhatsAppIntegrationPage';
+import { NotificationObservabilityPage } from './components/NotificationObservabilityPage';
 import { IntegrationsIcon } from './components/IntegrationsIcon';
 
 export function registerNotificationModule() {
@@ -43,6 +44,40 @@ export function registerNotificationModule() {
   UIRegistry.registerRoute({
     path: '/settings/integrations/whatsapp',
     element: React.createElement(WhatsAppIntegrationPage),
+    isProtected: true,
+  });
+
+  // 6. Register Notification Observability sub-route (/integrations/notifications)
+  UIRegistry.registerRoute({
+    path: '/integrations/notifications',
+    element: React.createElement(NotificationObservabilityPage),
+    isProtected: true,
+  });
+
+  // 7. Register Notification Observability sub-nav item under Integrations parent
+  UIRegistry.registerNavItem({
+    id: 'integrations-notifications',
+    label: 'Notification & Devices',
+    path: '/integrations/notifications',
+    icon: '🔔',
+    section: 'extended',
+    parentId: 'integrations-hub',
+  });
+
+  // 8. Register Global Search Item (Ctrl+K)
+  UIRegistry.registerSearchItem({
+    id: 'integrations-notifications-search',
+    title: 'Notification & Live Devices',
+    description: 'Monitor active SSE streams, FCM device tokens, WebPush, and dispatch test notifications',
+    category: 'Integrations',
+    keywords: ['notifications', 'devices', 'fcm', 'push', 'sse', 'live stream', 'integrations', 'mobile'],
+    action: (navigate: (path: string) => void) => navigate('/integrations/notifications'),
+  });
+
+  // 9. Legacy settings route alias
+  UIRegistry.registerRoute({
+    path: '/settings/integrations/notifications',
+    element: React.createElement(NotificationObservabilityPage),
     isProtected: true,
   });
 }

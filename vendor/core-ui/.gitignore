@@ -30,3 +30,5 @@ config.local.yml
 dist
 node_modules
 *.log
+android/.build/
+android/dist/
