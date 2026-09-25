@@ -169,6 +169,9 @@ export const MetaWhatsAppDesktop: React.FC = () => {
   const [sendLoading, setSendLoading] = useState<boolean>(false);
   const [uploadLoading, setUploadLoading] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const templateHeaderFileInputRef = useRef<HTMLInputElement>(null);
+  const [isDraggingHeader, setIsDraggingHeader] = useState<boolean>(false);
+  const [isDraggingSessionMedia, setIsDraggingSessionMedia] = useState<boolean>(false);
 
   const [testPayload, setTestPayload] = useState({
     account_id: '',
@@ -308,7 +311,7 @@ export const MetaWhatsAppDesktop: React.FC = () => {
     }
   };
 
-  const handleUploadPDF = async (file: File) => {
+  const handleUploadMedia = async (file: File) => {
     setUploadLoading(true);
     try {
       const form = new FormData();
@@ -321,9 +324,9 @@ export const MetaWhatsAppDesktop: React.FC = () => {
       );
       const mediaID = res.data?.data?.media_url || '';
       setTestPayload((prev) => ({ ...prev, media_url: mediaID }));
-      showToast('PDF uploaded to Meta successfully! Media ID ready.', 'success');
+      showToast(`Media uploaded to Meta successfully! (${file.name})`, 'success');
     } catch (err: any) {
-      showToast(err?.response?.data?.message || 'Failed to upload PDF', 'error');
+      showToast(err?.response?.data?.message || 'Failed to upload media', 'error');
     } finally {
       setUploadLoading(false);
     }
@@ -1537,15 +1540,33 @@ export const MetaWhatsAppDesktop: React.FC = () => {
                         </span>
                       </div>
                       <div
-                        onClick={() => fileInputRef.current?.click()}
+                        onClick={() => templateHeaderFileInputRef.current?.click()}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsDraggingHeader(true);
+                        }}
+                        onDragLeave={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsDraggingHeader(false);
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsDraggingHeader(false);
+                          const file = e.dataTransfer.files?.[0];
+                          if (file) handleUploadMedia(file);
+                        }}
                         style={{
                           padding: '0.85rem',
                           borderRadius: '8px',
-                          border: '2px dashed #f59e0b',
-                          backgroundColor: '#ffffff',
+                          border: isDraggingHeader ? '2px dashed #2563eb' : '2px dashed #f59e0b',
+                          backgroundColor: isDraggingHeader ? '#eff6ff' : '#ffffff',
                           cursor: 'pointer',
                           textAlign: 'center',
                           marginBottom: '6px',
+                          transition: 'background-color 0.15s, border-color 0.15s',
                         }}
                       >
                         {uploadLoading ? (
@@ -1568,10 +1589,31 @@ export const MetaWhatsAppDesktop: React.FC = () => {
                             <span style={{ fontSize: '0.82rem', color: '#92400e', fontWeight: 700 }}>
                               Click or drop {parsedTemplate.headerFormat.toLowerCase()} here
                             </span>
-                            <div style={{ fontSize: '0.7rem', color: '#b45309' }}>JPG, PNG, PDF up to 16MB</div>
+                            <div style={{ fontSize: '0.7rem', color: '#b45309' }}>
+                              {parsedTemplate.headerFormat === 'IMAGE' ? 'JPG, PNG up to 16MB' : parsedTemplate.headerFormat === 'DOCUMENT' ? 'PDF up to 100MB' : 'MP4, 3GPP up to 16MB'}
+                            </div>
                           </div>
                         )}
                       </div>
+                      <input
+                        ref={templateHeaderFileInputRef}
+                        type="file"
+                        accept={
+                          parsedTemplate.headerFormat === 'IMAGE'
+                            ? 'image/jpeg,image/png,image/webp'
+                            : parsedTemplate.headerFormat === 'DOCUMENT'
+                            ? '.pdf,application/pdf'
+                            : parsedTemplate.headerFormat === 'VIDEO'
+                            ? 'video/mp4,video/3gpp'
+                            : 'image/jpeg,image/png,.pdf,application/pdf'
+                        }
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleUploadMedia(file);
+                          e.target.value = '';
+                        }}
+                      />
                       <input
                         type="text"
                         placeholder="— or paste image/media URL directly (https://...) —"
@@ -1701,21 +1743,32 @@ export const MetaWhatsAppDesktop: React.FC = () => {
                     <label style={labelStyle}>Attach PDF / Image</label>
                     <div
                       onClick={() => fileInputRef.current?.click()}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDraggingSessionMedia(true);
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDraggingSessionMedia(false);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDraggingSessionMedia(false);
+                        const file = e.dataTransfer.files?.[0];
+                        if (file) handleUploadMedia(file);
+                      }}
                       style={{
                         marginTop: '6px',
                         padding: '1.25rem',
                         borderRadius: '10px',
-                        border: '2px dashed #cbd5e1',
-                        backgroundColor: '#f8fafc',
+                        border: isDraggingSessionMedia ? '2px dashed #2563eb' : '2px dashed #cbd5e1',
+                        backgroundColor: isDraggingSessionMedia ? '#eff6ff' : '#f8fafc',
                         cursor: 'pointer',
                         textAlign: 'center',
-                        transition: 'border-color 0.15s',
-                      }}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        const file = e.dataTransfer.files[0];
-                        if (file) handleUploadPDF(file);
+                        transition: 'background-color 0.15s, border-color 0.15s',
                       }}
                     >
                       {uploadLoading ? (
@@ -1749,7 +1802,8 @@ export const MetaWhatsAppDesktop: React.FC = () => {
                       style={{ display: 'none' }}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) handleUploadPDF(file);
+                        if (file) handleUploadMedia(file);
+                        e.target.value = '';
                       }}
                     />
                   </div>
