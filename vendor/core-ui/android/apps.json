@@ -4,15 +4,15 @@
   "apps": {
     "ajit-catalogue": {
       "name": "Ajit Pharma",
-      "package": "com.geeksmanos",
+      "package": "com.geeksmanos.ajitpharma",
       "url": "https://a3pl.in",
       "version": "1.0.0",
       "versionCode": 1,
       "description": "Ajit Pharma Customer & Catalogue Ordering Portal"
     },
     "ajit-staff": {
-      "name": "Ajit Pharma Staff",
-      "package": "com.geeksmanos",
+      "name": "A3pl Staff",
+      "package": "com.geeksmanos.Ajitpharmastaff",
       "url": "https://staff.a3pl.in",
       "version": "1.0.0",
       "versionCode": 1,

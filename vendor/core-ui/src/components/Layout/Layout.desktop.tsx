@@ -6,6 +6,7 @@ import { CommandPalette } from '../CommandPalette';
 import { useAppVersion } from '../../hooks/useAppVersion';
 import { VersionModal } from '../VersionModal';
 import { VersionBadge } from '../VersionBadge';
+import { BranchSelector } from '../BranchSelector';
 import { getWorkspaceFromUrl } from '../../api/client';
 import {
   Location3DIcon,
@@ -1053,7 +1054,10 @@ export const LayoutDesktop: React.FC<any> = ({
           </div>
 
           {/* Right Header items */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', justifyContent: 'flex-end', flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', justifyContent: 'flex-end', flex: 1 }}>
+            {/* Operating Branch Selector */}
+            <BranchSelector />
+
             {/* Premium Network Strength Status Indicator */}
             {localStorage.getItem('disable_network_status') !== 'true' && (
               <div style={{

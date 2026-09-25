@@ -212,6 +212,17 @@ async function main() {
     fs.chmodSync(gradlewPath, '755');
   }
 
+  // Link node_modules so that ../node_modules resolves for Capacitor plugins
+  const nodeModulesSource = path.join(ROOT_DIR, 'node_modules');
+  const targetNodeModules = path.join(buildDir, 'node_modules');
+  if (fs.existsSync(nodeModulesSource) && !fs.existsSync(targetNodeModules)) {
+    try {
+      fs.symlinkSync(nodeModulesSource, targetNodeModules, 'junction');
+    } catch {
+      copyRecursiveSync(nodeModulesSource, targetNodeModules);
+    }
+  }
+
   // 4. Configure Capacitor capacitor.config.json & capacitor.config.ts
   console.log('[2/5] Injecting production URL and native bridge configurations...');
   const capacitorConfig = {
@@ -252,6 +263,17 @@ async function main() {
     path.join(assetsDir, 'capacitor.config.json'),
     JSON.stringify(capacitorConfig, null, 2)
   );
+
+  // Write capacitor.plugins.json to guarantee native plugins are registered in the bridge
+  const plugins = [
+    { pkg: "@capacitor/push-notifications", classpath: "com.capacitorjs.plugins.pushnotifications.PushNotificationsPlugin" },
+    { pkg: "@capacitor/app", classpath: "com.capacitorjs.plugins.app.AppPlugin" },
+    { pkg: "@capacitor/splash-screen", classpath: "com.capacitorjs.plugins.splashscreen.SplashScreenPlugin" },
+    { pkg: "@capacitor/status-bar", classpath: "com.capacitorjs.plugins.statusbar.StatusBarPlugin" },
+    { pkg: "@capacitor/filesystem", classpath: "com.capacitorjs.plugins.filesystem.FilesystemPlugin" },
+    { pkg: "@capacitor/share", classpath: "com.capacitorjs.plugins.share.SharePlugin" }
+  ];
+  fs.writeFileSync(path.join(assetsDir, 'capacitor.plugins.json'), JSON.stringify(plugins, null, 2));
 
   // 5. Configure Android Gradle & Manifest
   console.log('[3/5] Configuring Android build.gradle & package naming...');

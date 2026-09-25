@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-jdk-jammy
+FROM eclipse-temurin:21-jdk-jammy
 
 ENV ANDROID_HOME=/opt/android-sdk
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
@@ -29,12 +29,16 @@ RUN mkdir -p ${ANDROID_HOME}/cmdline-tools \
 RUN yes | sdkmanager --licenses \
     && sdkmanager "platforms;android-34" "platforms;android-36" "build-tools;34.0.0" "platform-tools"
 
-# 4. Copy app files and template
+# 4. Install Capacitor dependencies
+COPY package*.json /app/
+RUN npm install
+
+# 5. Copy app files and template
 COPY . /app
 
-# 5. Set executable permissions
+# 6. Set executable permissions
 RUN chmod +x /app/convert.sh /app/template/android/gradlew
 
-# 6. Default command runs conversion CLI
+# 7. Default command runs conversion CLI
 ENTRYPOINT ["node", "/app/scripts/convert.mjs"]
 CMD ["--help"]

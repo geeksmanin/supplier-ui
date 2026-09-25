@@ -23,6 +23,44 @@
           "other_platform_oauth_client": []
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:622021880057:android:59e85f03675f7810f79a28",
+        "android_client_info": {
+          "package_name": "com.geeksmanos.Ajitpharmastaff"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDljwvFJvkf_56aWoEwCMUNEQme6wMgME"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:622021880057:android:8574cf0448607a9ff79a28",
+        "android_client_info": {
+          "package_name": "com.geeksmanos.ajitpharma"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDljwvFJvkf_56aWoEwCMUNEQme6wMgME"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
     }
   ],
   "configuration_version": "1"

@@ -5,6 +5,7 @@ export interface DeviceRegistrationPayload {
   platform: NativePlatform;
   device_model?: string;
   app_version?: string;
+  user_type?: string;
 }
 
 export interface PushNotificationData {

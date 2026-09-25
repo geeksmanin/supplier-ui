@@ -33,14 +33,14 @@ fi
 # Build Docker builder image if not already built
 if ! docker image inspect "$IMAGE_NAME" &> /dev/null; then
     echo "[Docker] Building Android build container image ($IMAGE_NAME)..."
-    docker build -t "$IMAGE_NAME" -f "$SCRIPT_DIR/Dockerfile" "$SCRIPT_DIR"
+    docker build --platform linux/amd64 -t "$IMAGE_NAME" -f "$SCRIPT_DIR/Dockerfile" "$SCRIPT_DIR"
 fi
 
 # Prepare output directory
 mkdir -p "$SCRIPT_DIR/dist"
 
 echo "[Docker] Launching Android conversion inside container..."
-docker run --rm \
+docker run --rm --platform linux/amd64 \
     -v "$SCRIPT_DIR/dist:/app/dist" \
     -v "$SCRIPT_DIR/config:/app/config:ro" \
     -v "$SCRIPT_DIR/apps.json:/app/apps.json:ro" \

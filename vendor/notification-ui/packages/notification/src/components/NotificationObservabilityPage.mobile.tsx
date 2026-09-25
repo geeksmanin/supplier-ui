@@ -217,10 +217,12 @@ export const NotificationObservabilityPageMobile: React.FC = () => {
     try {
       const payload = {
         user_id: targetUserId.trim(),
+        recipient_id: targetUserId.trim(),
         title: testTitle.trim(),
         body: testBody.trim(),
         type: testType,
         link: testLink.trim() || undefined,
+        route: testLink.trim() || undefined,
         channels: selectedChannels.length > 0 ? selectedChannels : undefined,
       };
       const resp = await notifAdminPost('/admin/test-dispatch', payload);
@@ -665,6 +667,33 @@ export const NotificationObservabilityPageMobile: React.FC = () => {
                       </span>
                     )}
                   </div>
+
+                  {d.device_token && (
+                    <div style={{ marginTop: '8px' }}>
+                      <code
+                        title="Click to copy full token"
+                        onClick={() => {
+                          navigator.clipboard.writeText(d.device_token);
+                          showToast('Full FCM Device Token copied to clipboard!', 'success');
+                        }}
+                        style={{
+                          fontSize: '0.72rem',
+                          backgroundColor: '#f1f5f9',
+                          padding: '3px 8px',
+                          borderRadius: '5px',
+                          color: '#2563eb',
+                          fontFamily: 'monospace',
+                          cursor: 'pointer',
+                          display: 'inline-block',
+                          border: '1px solid #cbd5e1',
+                        }}
+                      >
+                        {d.device_token.length > 20
+                          ? `${d.device_token.slice(0, 10)}...${d.device_token.slice(-8)}`
+                          : d.device_token} 📋
+                      </code>
+                    </div>
+                  )}
                 </div>
               );
             })}

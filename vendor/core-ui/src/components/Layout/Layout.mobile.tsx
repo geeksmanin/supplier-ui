@@ -4,6 +4,7 @@ import { AppsDashboard } from './AppsDashboard';
 import { useAppVersion } from '../../hooks/useAppVersion';
 import { VersionModal } from '../VersionModal';
 import { VersionBadge } from '../VersionBadge';
+import { BranchSelector } from '../BranchSelector';
 import { Dashboard3DIcon } from '../icons3d';
 
 export const LayoutMobile: React.FC<any> = ({
@@ -446,6 +447,8 @@ export const LayoutMobile: React.FC<any> = ({
               }} />
             </div>
           )}
+
+          <BranchSelector compact style={{ marginRight: '0.35rem' }} />
 
           <VersionBadge
             version={uiVersion}

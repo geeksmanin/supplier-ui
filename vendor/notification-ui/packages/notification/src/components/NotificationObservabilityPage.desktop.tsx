@@ -304,10 +304,12 @@ export const NotificationObservabilityPageDesktop: React.FC = () => {
     try {
       const payload = {
         user_id: targetUserId.trim(),
+        recipient_id: targetUserId.trim(),
         title: testTitle.trim(),
         body: testBody.trim(),
         type: testType,
         link: testLink.trim() || undefined,
+        route: testLink.trim() || undefined,
         channels: selectedChannels.length > 0 ? selectedChannels : undefined,
       };
       const resp = await notifAdminPost('/admin/test-dispatch', payload);
@@ -502,24 +504,33 @@ export const NotificationObservabilityPageDesktop: React.FC = () => {
       key: 'token',
       label: 'Push Token Fingerprint',
       render: (_, row) => {
+        if (!row.device_token) return <span>—</span>;
         const masked =
-          row.device_token && row.device_token.length > 20
+          row.device_token.length > 20
             ? `${row.device_token.slice(0, 10)}...${row.device_token.slice(-8)}`
-            : row.device_token || '—';
+            : row.device_token;
         return (
-          <code
-            title={row.device_token}
-            style={{
-              fontSize: '0.75rem',
-              backgroundColor: '#f1f5f9',
-              padding: '3px 7px',
-              borderRadius: '5px',
-              color: '#475569',
-              fontFamily: 'monospace',
-            }}
-          >
-            {masked}
-          </code>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <code
+              title="Click to copy full token"
+              onClick={() => {
+                navigator.clipboard.writeText(row.device_token);
+                showToast('Full FCM Device Token copied to clipboard!', 'success');
+              }}
+              style={{
+                fontSize: '0.75rem',
+                backgroundColor: '#f1f5f9',
+                padding: '3px 7px',
+                borderRadius: '5px',
+                color: '#2563eb',
+                fontFamily: 'monospace',
+                cursor: 'pointer',
+                border: '1px solid #cbd5e1',
+              }}
+            >
+              {masked} 📋
+            </code>
+          </div>
         );
       },
     },

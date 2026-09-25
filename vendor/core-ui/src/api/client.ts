@@ -233,6 +233,10 @@ apiClient.interceptors.request.use((config) => {
   // Resolve tenant code from current hostname subdomain or localStorage setting
   if (config.headers) {
     config.headers['X-Tenant-Code'] = getWorkspaceFromUrl();
+    const activeBranch = localStorage.getItem('active_branch');
+    if (activeBranch) {
+      config.headers['X-Business-Code'] = activeBranch;
+    }
   }
 
   return config;
@@ -310,6 +314,10 @@ export const createApiClient = (options: CreateClientOptions) => {
     }
     if (config.headers) {
       config.headers['X-Tenant-Code'] = getWorkspaceFromUrl();
+      const activeBranch = localStorage.getItem('active_branch');
+      if (activeBranch) {
+        config.headers['X-Business-Code'] = activeBranch;
+      }
     }
     return config;
   }, (error) => {

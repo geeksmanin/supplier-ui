@@ -8,16 +8,34 @@ import android.webkit.CookieManager;
 import android.webkit.URLUtil;
 import android.widget.Toast;
 import com.getcapacitor.BridgeActivity;
+import com.capacitorjs.plugins.pushnotifications.PushNotificationsPlugin;
+import com.capacitorjs.plugins.app.AppPlugin;
+import com.capacitorjs.plugins.splashscreen.SplashScreenPlugin;
+import com.capacitorjs.plugins.statusbar.StatusBarPlugin;
+import com.capacitorjs.plugins.filesystem.FilesystemPlugin;
+import com.capacitorjs.plugins.share.SharePlugin;
 
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(PushNotificationsPlugin.class);
+        registerPlugin(AppPlugin.class);
+        registerPlugin(SplashScreenPlugin.class);
+        registerPlugin(StatusBarPlugin.class);
+        registerPlugin(FilesystemPlugin.class);
+        registerPlugin(SharePlugin.class);
+
         super.onCreate(savedInstanceState);
 
         // Native DownloadManager Listener for Invoices, Reports, CSVs, and PDFs
         if (this.bridge != null && this.bridge.getWebView() != null) {
             this.bridge.getWebView().setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
                 try {
+                    // Blob and data URIs are generated client-side and handled via Capacitor Filesystem/Share
+                    if (url == null || url.startsWith("blob:") || url.startsWith("data:")) {
+                        return;
+                    }
+
                     DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
                     if (mimetype != null && !mimetype.isEmpty()) {
                         request.setMimeType(mimetype);
@@ -45,6 +63,15 @@ public class MainActivity extends BridgeActivity {
                     Toast.makeText(getApplicationContext(), "Download error: " + e.getMessage(), Toast.LENGTH_LONG).show();
                 }
             });
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (this.bridge != null && this.bridge.getWebView() != null && this.bridge.getWebView().canGoBack()) {
+            this.bridge.getWebView().goBack();
+        } else {
+            super.onBackPressed();
         }
     }
 }

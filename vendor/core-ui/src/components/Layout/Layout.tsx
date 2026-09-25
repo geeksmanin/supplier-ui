@@ -8,6 +8,7 @@ import { apiClient, getWorkspaceFromUrl, getBaseUrl } from '../../api/client';
 import { NotificationProvider, NotificationDrawer, NotificationToastContainer, useNotification } from '@geeksman/notification';
 import { useToast } from '../Toast/Toast';
 import { NativeContainer } from '../../native/NativeContainer';
+import { BranchProvider } from '../../context/BranchContext';
 
 export interface NavItem {
   id?: string;
@@ -814,16 +815,18 @@ export const Layout: React.FC<CustomLayoutProps> = (props) => {
   const token = localStorage.getItem('token') || '';
 
   return (
-    <NotificationProvider
-      baseUrl={baseUrl}
-      userId={userId}
-      tenantCode={tenantCode}
-      token={token}
-    >
-      <NativeContainer>
-        <LayoutInner {...props} />
-      </NativeContainer>
-    </NotificationProvider>
+    <BranchProvider>
+      <NotificationProvider
+        baseUrl={baseUrl}
+        userId={userId}
+        tenantCode={tenantCode}
+        token={token}
+      >
+        <NativeContainer>
+          <LayoutInner {...props} />
+        </NativeContainer>
+      </NotificationProvider>
+    </BranchProvider>
   );
 };
 

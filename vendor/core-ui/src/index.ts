@@ -6,13 +6,17 @@ export { useClipboardImageUpload } from './hooks/useClipboardImageUpload';
 
 // Native Bridge & Push Notifications (Capacitor)
 export { usePushNotifications, isNativePlatform, getNativePlatform, getCapacitor, checkNotificationPermission, useNotificationPermission } from './native/usePushNotifications';
-export type { NotificationPermissionState } from './native/usePushNotifications';
+export type { NotificationPermissionState, UsePushNotificationsOptions } from './native/usePushNotifications';
 export { useNativeDevice } from './native/useNativeDevice';
 export type { UseNativeDeviceOptions } from './native/useNativeDevice';
 export { useBarcodeScanner } from './native/useBarcodeScanner';
 export type { BarcodeScanResult } from './native/useBarcodeScanner';
 export { useAppUpdater } from './native/useAppUpdater';
-export type { AppVersionInfo } from './native/useAppUpdater';
+export type { AppVersionInfo, UseAppUpdaterOptions } from './native/useAppUpdater';
+export { AppUpdateModal } from './native/AppUpdateModal';
+export type { AppUpdateModalProps } from './native/AppUpdateModal';
+export { InstallChoiceModal } from './native/InstallChoiceModal';
+export type { InstallChoiceModalProps } from './native/InstallChoiceModal';
 export { NativeContainer } from './native/NativeContainer';
 export type { NativeContainerProps } from './native/NativeContainer';
 export type { DeviceRegistrationPayload, PushNotificationData, NativePlatform } from './native/types';
@@ -120,3 +124,9 @@ export * from './eventstream';
 
 // Fast Keyboard-Centric Voucher & Billing Engine
 export * from './components/FastVoucher';
+
+// Multi-Branch Scoping, Switcher & Context Subsystem
+export { BranchProvider, useBranch } from './context/BranchContext';
+export type { BranchInfo, BranchContextType } from './context/BranchContext';
+export { BranchSelector } from './components/BranchSelector';
+export type { BranchSelectorProps } from './components/BranchSelector';
