@@ -223,7 +223,14 @@ export const MetaWhatsAppDesktop: React.FC = () => {
   });
 
   const baseURL = typeof window !== 'undefined' ? window.location.origin : 'https://api.geeksman.com';
-  const tenantCode = 'org_default';
+  const tenantCode =
+    (typeof window !== 'undefined'
+      ? localStorage.getItem('tenant_code') ||
+        localStorage.getItem('workspace_code') ||
+        localStorage.getItem('portal_tenant_code') ||
+        localStorage.getItem('current_tenant_code') ||
+        localStorage.getItem('active_tenant')
+      : '') || 'platform';
 
   useEffect(() => {
     fetchData();
@@ -1199,30 +1206,54 @@ export const MetaWhatsAppDesktop: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Webhook Callback URL Box */}
-                    <div style={{ backgroundColor: '#f8fafc', padding: '0.65rem 0.85rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '1rem' }}>
-                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', marginBottom: '4px' }}>
-                        WEBHOOK CALLBACK URL (META CLOUD API)
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {webhookURL}
+                    {/* Webhook Callback URL & Verify Token Box */}
+                    <div style={{ backgroundColor: '#f8fafc', padding: '0.75rem 0.85rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#475569' }}>
+                          META WEBHOOK CALLBACK URL
                         </span>
                         <button
                           type="button"
                           onClick={() => copyToClipboard(webhookURL)}
                           style={{
-                            backgroundColor: '#e2e8f0',
-                            border: 'none',
+                            backgroundColor: '#eff6ff',
+                            color: '#1d4ed8',
+                            border: '1px solid #bfdbfe',
                             borderRadius: '4px',
                             padding: '2px 8px',
-                            fontSize: '0.72rem',
+                            fontSize: '0.7rem',
                             fontWeight: 700,
                             cursor: 'pointer',
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          Copy
+                          📋 Copy URL
+                        </button>
+                      </div>
+                      <div style={{ fontSize: '0.74rem', fontFamily: 'monospace', color: '#0f172a', backgroundColor: '#ffffff', padding: '4px 6px', borderRadius: '4px', border: '1px solid #e2e8f0', wordBreak: 'break-all' }}>
+                        {webhookURL}
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#475569' }}>
+                          VERIFY TOKEN: <code style={{ color: '#0369a1', fontFamily: 'monospace' }}>{acc.webhook_verify_token}</code>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(acc.webhook_verify_token)}
+                          style={{
+                            backgroundColor: '#f1f5f9',
+                            color: '#334155',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '4px',
+                            padding: '2px 8px',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          📋 Copy Token
                         </button>
                       </div>
                     </div>
