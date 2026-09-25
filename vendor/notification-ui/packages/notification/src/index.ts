@@ -26,5 +26,6 @@ export type {
   SendMessageResult,
   UseWhatsmeowWhatsappOptions,
 } from './hooks/useWhatsmeowWhatsapp';
+export * from './components/metaWhatsapp';
 export * from './register';
 
