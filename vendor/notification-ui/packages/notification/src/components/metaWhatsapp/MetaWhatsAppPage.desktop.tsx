@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { apiClient, useToast } from '@geeksman/core-ui';
+import { apiClient, useToast, DataTable, Column, Select } from '@geeksman/core-ui';
 import {
   META_BLUE,
   WHATSAPP_GREEN,
@@ -29,6 +29,111 @@ const labelStyle: React.CSSProperties = {
   display: 'block',
 };
 
+interface ParsedTemplateComponent {
+  type: string;
+  format?: string;
+  text?: string;
+}
+
+export const extractTemplateVariables = (componentsRaw: any): {
+  headerText: string;
+  headerFormat: string;
+  bodyText: string;
+  footerText: string;
+  bodyVariables: string[];
+  headerVariables: string[];
+} => {
+  let headerText = '';
+  let headerFormat = '';
+  let bodyText = '';
+  let footerText = '';
+  let bodyVariables: string[] = [];
+  let headerVariables: string[] = [];
+
+  if (!componentsRaw) return { headerText, headerFormat, bodyText, footerText, bodyVariables, headerVariables };
+
+  try {
+    const components: ParsedTemplateComponent[] = typeof componentsRaw === 'string'
+      ? JSON.parse(componentsRaw)
+      : componentsRaw;
+
+    if (Array.isArray(components)) {
+      for (const comp of components) {
+        if (comp.type === 'HEADER') {
+          if (comp.format) {
+            headerFormat = comp.format.toUpperCase();
+          }
+          if (comp.text) {
+            headerText = comp.text;
+            const matches = comp.text.match(/\{\{(\d+)\}\}/g);
+            if (matches) {
+              headerVariables = Array.from(new Set(matches.map((m) => m.replace(/[{}]/g, ''))));
+            }
+          }
+        } else if (comp.type === 'BODY' && comp.text) {
+          bodyText = comp.text;
+          const matches = comp.text.match(/\{\{(\d+)\}\}/g);
+          if (matches) {
+            bodyVariables = Array.from(new Set(matches.map((m) => m.replace(/[{}]/g, '')))).sort(
+              (a, b) => Number(a) - Number(b)
+            );
+          }
+        } else if (comp.type === 'FOOTER' && comp.text) {
+          footerText = comp.text;
+        }
+      }
+    }
+  } catch (err) {
+    // ignore parse errors
+  }
+
+  return { headerText, headerFormat, bodyText, footerText, bodyVariables, headerVariables };
+};
+
+const renderBodyWithHighlights = (text: string, values: Record<string, string>) => {
+  if (!text) return null;
+  const parts = text.split(/(\{\{\d+\}\})/g);
+  return parts.map((part, idx) => {
+    const match = part.match(/^\{\{(\d+)\}\}$/);
+    if (match) {
+      const vNum = match[1];
+      const val = values[vNum];
+      if (val && val.trim()) {
+        return (
+          <span
+            key={idx}
+            style={{
+              backgroundColor: '#fed7aa',
+              color: '#9a3412',
+              fontWeight: 700,
+              padding: '1px 5px',
+              borderRadius: '4px',
+            }}
+          >
+            {val}
+          </span>
+        );
+      }
+      return (
+        <span
+          key={idx}
+          style={{
+            backgroundColor: '#fef08a',
+            color: '#854d0e',
+            fontWeight: 700,
+            padding: '1px 5px',
+            borderRadius: '4px',
+            border: '1px dashed #ca8a04',
+          }}
+        >
+          {part}
+        </span>
+      );
+    }
+    return <span key={idx}>{part}</span>;
+  });
+};
+
 export const MetaWhatsAppDesktop: React.FC = () => {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'accounts' | 'templates' | 'contacts' | 'logs'>('accounts');
@@ -38,9 +143,22 @@ export const MetaWhatsAppDesktop: React.FC = () => {
   const [logs, setLogs] = useState<WhatsAppLog[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Search filters for datalist
-  const [logSearch, setLogSearch] = useState('');
+  // Search & Pagination states for each DataList tab
+  const [accountSearch, setAccountSearch] = useState('');
+  const [accountPage, setAccountPage] = useState(1);
+  const [accountPageSize, setAccountPageSize] = useState(10);
+
+  const [templateSearch, setTemplateSearch] = useState('');
+  const [templatePage, setTemplatePage] = useState(1);
+  const [templatePageSize, setTemplatePageSize] = useState(10);
+
   const [contactSearch, setContactSearch] = useState('');
+  const [contactPage, setContactPage] = useState(1);
+  const [contactPageSize, setContactPageSize] = useState(10);
+
+  const [logSearch, setLogSearch] = useState('');
+  const [logPage, setLogPage] = useState(1);
+  const [logPageSize, setLogPageSize] = useState(10);
 
   // Connection Modal
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -61,6 +179,22 @@ export const MetaWhatsAppDesktop: React.FC = () => {
     text_content: '',
     media_url: '',
     force_template: false,
+  });
+
+  // Dynamic variable values map for templates (e.g. { '1': 'John', '2': '#1024' })
+  const [templateVariableValues, setTemplateVariableValues] = useState<Record<string, string>>({});
+
+  // Create Template modal states
+  const [isCreateTemplateModalOpen, setIsCreateTemplateModalOpen] = useState<boolean>(false);
+  const [createTemplateLoading, setCreateTemplateLoading] = useState<boolean>(false);
+  const [newTemplate, setNewTemplate] = useState({
+    account_id: '',
+    name: '',
+    category: 'UTILITY',
+    language: 'en_US',
+    header_text: '',
+    body_text: '',
+    footer_text: '',
   });
 
   const [formData, setFormData] = useState({
@@ -99,6 +233,29 @@ export const MetaWhatsAppDesktop: React.FC = () => {
       }
     }
   }, [isTestModalOpen, templates]);
+
+  const selectedTemplate = React.useMemo(() => {
+    return templates.find((t) => t.name === testPayload.template_name);
+  }, [templates, testPayload.template_name]);
+
+  const parsedTemplate = React.useMemo(() => {
+    return extractTemplateVariables(selectedTemplate?.components);
+  }, [selectedTemplate]);
+
+  // Sync variable values when parsed template changes
+  useEffect(() => {
+    if (parsedTemplate.bodyVariables.length > 0) {
+      setTemplateVariableValues((prev) => {
+        const next: Record<string, string> = {};
+        parsedTemplate.bodyVariables.forEach((v) => {
+          next[v] = prev[v] || '';
+        });
+        return next;
+      });
+    } else {
+      setTemplateVariableValues({});
+    }
+  }, [parsedTemplate.bodyVariables]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -165,18 +322,40 @@ export const MetaWhatsAppDesktop: React.FC = () => {
     e.preventDefault();
     setSendLoading(true);
     try {
-      const paramsArray = testPayload.template_params
-        ? testPayload.template_params.split(',').map((s) => s.trim())
-        : [];
+      const isTemplate = testPayload.message_type === 'TEMPLATE';
+      let paramsArray: string[] = [];
+      if (isTemplate) {
+        // Enforce required header media (IMAGE, DOCUMENT, VIDEO)
+        if (parsedTemplate.headerFormat && parsedTemplate.headerFormat !== 'TEXT') {
+          if (!testPayload.media_url.trim()) {
+            showToast(`Template "${testPayload.template_name}" requires a header ${parsedTemplate.headerFormat}. Please attach a file or provide media_url.`, 'error');
+            setSendLoading(false);
+            return;
+          }
+        }
+
+        // Enforce required body variables
+        if (parsedTemplate.bodyVariables.length > 0) {
+          const missing = parsedTemplate.bodyVariables.filter((v) => !templateVariableValues[v]?.trim());
+          if (missing.length > 0) {
+            showToast(`Template "${testPayload.template_name}" requires all variables. Missing: {{${missing.join('}}, {{')}}}`, 'error');
+            setSendLoading(false);
+            return;
+          }
+          paramsArray = parsedTemplate.bodyVariables.map((v) => templateVariableValues[v] || '');
+        } else if (testPayload.template_params) {
+          paramsArray = testPayload.template_params.split(',').map((s) => s.trim());
+        }
+      }
 
       const body = {
         account_id: testPayload.account_id,
         recipient_phone: testPayload.recipient_phone,
-        template_name: testPayload.template_name,
+        template_name: isTemplate ? testPayload.template_name : '',
         template_params: paramsArray,
         text_content: testPayload.text_content,
         media_url: testPayload.media_url,
-        force_template: testPayload.message_type === 'TEMPLATE',
+        force_template: isTemplate,
       };
 
       const res = await metaWaPost('/meta-whatsapp/send', body);
@@ -190,11 +369,65 @@ export const MetaWhatsAppDesktop: React.FC = () => {
     }
   };
 
+  const handleCreateTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTemplate.name.trim()) {
+      showToast('Template name is required', 'error');
+      return;
+    }
+    if (!newTemplate.body_text.trim()) {
+      showToast('Body text is required', 'error');
+      return;
+    }
+
+    setCreateTemplateLoading(true);
+    try {
+      const components: any[] = [];
+      if (newTemplate.header_text.trim()) {
+        components.push({
+          type: 'HEADER',
+          format: 'TEXT',
+          text: newTemplate.header_text.trim(),
+        });
+      }
+      components.push({
+        type: 'BODY',
+        text: newTemplate.body_text.trim(),
+      });
+      if (newTemplate.footer_text.trim()) {
+        components.push({
+          type: 'FOOTER',
+          text: newTemplate.footer_text.trim(),
+        });
+      }
+
+      const body = {
+        account_id: newTemplate.account_id || accounts[0]?.id,
+        name: newTemplate.name.toLowerCase().trim().replace(/[^a-z0-9_]/g, '_'),
+        category: newTemplate.category,
+        language: newTemplate.language || 'en_US',
+        components,
+      };
+
+      const res = await metaWaPost('/meta-whatsapp/templates', body);
+      const createdTpl = res.data?.data;
+      showToast(
+        `Template "${body.name}" submitted to Meta! Status: ${createdTpl?.status || 'PENDING'}. (UTILITY templates usually auto-approve in 1–5 min)`,
+        'success'
+      );
+      setIsCreateTemplateModalOpen(false);
+      fetchData();
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Failed to create template on Meta', 'error');
+    } finally {
+      setCreateTemplateLoading(false);
+    }
+  };
+
   const handleSyncTemplates = async (accountID: string) => {
     try {
       await metaWaPost(`/meta-whatsapp/accounts/${accountID}/sync-templates`);
       showToast('WhatsApp templates synced successfully from Meta', 'success');
-      // Refresh templates list and local cache
       const res = await metaWaGet('/meta-whatsapp/templates');
       setTemplates(res.data?.data || []);
       if (activeTab === 'templates') fetchData();
@@ -208,27 +441,403 @@ export const MetaWhatsAppDesktop: React.FC = () => {
     showToast('Webhook Callback URL copied to clipboard!', 'success');
   };
 
-  // Filtered lists
-  const filteredLogs = logs.filter((lg) => {
-    const q = logSearch.toLowerCase();
-    return (
-      !q ||
-      lg.recipient_phone?.toLowerCase().includes(q) ||
-      lg.template_name?.toLowerCase().includes(q) ||
-      lg.status?.toLowerCase().includes(q) ||
-      lg.direction?.toLowerCase().includes(q)
+  // Filtered lists for client-side search & pagination in DataTables
+  const filteredAccounts = React.useMemo(() => {
+    const q = accountSearch.toLowerCase().trim();
+    if (!q) return accounts;
+    return accounts.filter((acc) =>
+      acc.connection_name?.toLowerCase().includes(q) ||
+      acc.phone_number?.toLowerCase().includes(q) ||
+      acc.phone_number_id?.toLowerCase().includes(q) ||
+      acc.waba_id?.toLowerCase().includes(q) ||
+      acc.status?.toLowerCase().includes(q)
     );
-  });
+  }, [accounts, accountSearch]);
 
-  const filteredContacts = contacts.filter((ct) => {
-    const q = contactSearch.toLowerCase();
-    return (
-      !q ||
+  const filteredTemplates = React.useMemo(() => {
+    const q = templateSearch.toLowerCase().trim();
+    if (!q) return templates;
+    return templates.filter((tpl) =>
+      tpl.name?.toLowerCase().includes(q) ||
+      tpl.category?.toLowerCase().includes(q) ||
+      tpl.language?.toLowerCase().includes(q) ||
+      tpl.status?.toLowerCase().includes(q)
+    );
+  }, [templates, templateSearch]);
+
+  const filteredContacts = React.useMemo(() => {
+    const q = contactSearch.toLowerCase().trim();
+    if (!q) return contacts;
+    return contacts.filter((ct) =>
       ct.phone_number?.toLowerCase().includes(q) ||
       ct.contact_name?.toLowerCase().includes(q) ||
       ct.status?.toLowerCase().includes(q)
     );
-  });
+  }, [contacts, contactSearch]);
+
+  const filteredLogs = React.useMemo(() => {
+    const q = logSearch.toLowerCase().trim();
+    if (!q) return logs;
+    return logs.filter((lg) =>
+      lg.recipient_phone?.toLowerCase().includes(q) ||
+      lg.template_name?.toLowerCase().includes(q) ||
+      lg.status?.toLowerCase().includes(q) ||
+      lg.direction?.toLowerCase().includes(q) ||
+      lg.message_type?.toLowerCase().includes(q)
+    );
+  }, [logs, logSearch]);
+
+  // ── 1. Connected Accounts Columns ──
+  const accountColumns: Column<WhatsAppAccount>[] = [
+    {
+      key: 'connection_name',
+      label: 'Connection Name',
+      sortable: true,
+      render: (_, acc) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <span style={{ fontWeight: 800, color: '#0f172a' }}>{acc.connection_name}</span>
+          <MetaBlueTickIcon size={16} />
+        </div>
+      ),
+    },
+    {
+      key: 'phone_number',
+      label: 'Phone Number',
+      sortable: true,
+      render: (val) => (
+        <span style={{ fontWeight: 800, color: WHATSAPP_GREEN }}>{val}</span>
+      ),
+    },
+    {
+      key: 'phone_number_id',
+      label: 'Phone Number ID',
+      render: (val) => <code style={{ fontSize: '0.8rem', color: '#475569' }}>{val}</code>,
+    },
+    {
+      key: 'waba_id',
+      label: 'WABA ID',
+      render: (val) => <code style={{ fontSize: '0.8rem', color: '#475569' }}>{val}</code>,
+    },
+    {
+      key: 'quality_rating',
+      label: 'Quality',
+      sortable: true,
+      render: (val) => (
+        <span style={{ fontWeight: 800, color: val === 'GREEN' ? '#16a34a' : val === 'RED' ? '#dc2626' : '#d97706' }}>
+          {val || '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      sortable: true,
+      render: (val) => (
+        <span
+          style={{
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            padding: '2px 8px',
+            borderRadius: '6px',
+            backgroundColor: val === 'CONNECTED' ? '#dcfce7' : '#fee2e2',
+            color: val === 'CONNECTED' ? '#15803d' : '#b91c1c',
+          }}
+        >
+          {val}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (_, acc) => {
+        const webhookURL = `${baseURL}/api/v1/notification/meta-whatsapp/webhooks/${tenantCode}/${acc.id}`;
+        return (
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => handleSyncTemplates(acc.id)}
+              style={{
+                backgroundColor: '#f1f5f9',
+                color: '#334155',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                padding: '0.35rem 0.65rem',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              🔄 Sync
+            </button>
+            <button
+              type="button"
+              onClick={() => copyToClipboard(webhookURL)}
+              style={{
+                backgroundColor: '#eff6ff',
+                color: '#1d4ed8',
+                border: '1px solid #bfdbfe',
+                borderRadius: '6px',
+                padding: '0.35rem 0.65rem',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              📋 Copy Webhook
+            </button>
+          </div>
+        );
+      },
+    },
+  ];
+
+  // ── 2. Message Templates Columns ──
+  const templateColumns: Column<WhatsAppTemplate>[] = [
+    {
+      key: 'name',
+      label: 'Template Name',
+      sortable: true,
+      render: (val) => <span style={{ fontWeight: 700, color: '#0f172a' }}>{val}</span>,
+    },
+    {
+      key: 'language',
+      label: 'Language',
+      sortable: true,
+      render: (val) => <span style={{ color: '#64748b' }}>{val}</span>,
+    },
+    {
+      key: 'category',
+      label: 'Category',
+      sortable: true,
+      render: (val) => (
+        <span
+          style={{
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            padding: '2px 6px',
+            borderRadius: '4px',
+            backgroundColor: '#f1f5f9',
+            color: '#475569',
+          }}
+        >
+          {val}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Approval Status',
+      sortable: true,
+      render: (val) => (
+        <span
+          style={{
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            padding: '2px 8px',
+            borderRadius: '6px',
+            backgroundColor: val === 'APPROVED' ? '#dcfce7' : '#fef3c7',
+            color: val === 'APPROVED' ? '#15803d' : '#92400e',
+          }}
+        >
+          {val}
+        </span>
+      ),
+    },
+    {
+      key: 'components',
+      label: 'Body Text Preview',
+      render: (val) => {
+        const parsed = extractTemplateVariables(val);
+        return (
+          <span
+            style={{
+              fontSize: '0.78rem',
+              color: '#475569',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              maxWidth: '300px',
+            }}
+          >
+            {parsed.bodyText || '—'}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'id',
+      label: 'Actions',
+      render: (_, row) => (
+        <button
+          type="button"
+          onClick={() => {
+            setTestPayload((prev) => ({
+              ...prev,
+              message_type: 'TEMPLATE',
+              template_name: row.name,
+              account_id: row.account_id || prev.account_id,
+            }));
+            setIsTestModalOpen(true);
+          }}
+          style={{
+            backgroundColor: '#eff6ff',
+            color: '#1d4ed8',
+            border: '1px solid #bfdbfe',
+            borderRadius: '6px',
+            padding: '3px 8px',
+            fontSize: '0.72rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          🚀 Test Send
+        </button>
+      ),
+    },
+  ];
+
+  // ── 3. Contacts Columns ──
+  const contactColumns: Column<WhatsAppContact>[] = [
+    {
+      key: 'phone_number',
+      label: 'Recipient Phone',
+      sortable: true,
+      render: (val) => <span style={{ fontWeight: 800, color: '#0f172a' }}>{val}</span>,
+    },
+    {
+      key: 'contact_name',
+      label: 'Contact Name',
+      sortable: true,
+      render: (val) => <span style={{ color: '#334155' }}>{val || '—'}</span>,
+    },
+    {
+      key: 'status',
+      label: 'Verification Status',
+      sortable: true,
+      render: (val) => (
+        <span
+          style={{
+            fontSize: '0.72rem',
+            fontWeight: 800,
+            padding: '2px 8px',
+            borderRadius: '6px',
+            backgroundColor: val === 'NOT_ON_WHATSAPP' ? '#fee2e2' : '#dcfce7',
+            color: val === 'NOT_ON_WHATSAPP' ? '#b91c1c' : '#15803d',
+          }}
+        >
+          {val}
+        </span>
+      ),
+    },
+    {
+      key: 'window',
+      label: '24h Session Window',
+      render: (_, ct) => {
+        const lastInbound = ct.last_inbound_at ? new Date(ct.last_inbound_at).getTime() : 0;
+        const isIn24hWindow = lastInbound > 0 && Date.now() - lastInbound <= 24 * 60 * 60 * 1000;
+        return isIn24hWindow ? (
+          <span style={{ color: '#16a34a', fontWeight: 800, fontSize: '0.82rem' }}>🟢 24h Session Active (Free Text/Media)</span>
+        ) : (
+          <span style={{ color: '#64748b', fontWeight: 600, fontSize: '0.82rem' }}>🔴 Out of Window (Requires Template)</span>
+        );
+      },
+    },
+    {
+      key: 'last_inbound_at',
+      label: 'Last Inbound Activity',
+      sortable: true,
+      render: (val) => (
+        <span style={{ color: '#64748b', fontSize: '0.82rem' }}>
+          {val ? new Date(val).toLocaleString() : 'No inbound message yet'}
+        </span>
+      ),
+    },
+  ];
+
+  // ── 4. Delivery Logs Columns ──
+  const logColumns: Column<WhatsAppLog>[] = [
+    {
+      key: 'created_at',
+      label: 'Date/Time',
+      sortable: true,
+      render: (val) => (
+        <span style={{ color: '#64748b', fontSize: '0.82rem' }}>
+          {new Date(val).toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      key: 'direction',
+      label: 'Direction',
+      sortable: true,
+      render: (val) => (
+        <span style={{ fontWeight: 800, color: val === 'OUTBOUND' ? '#2563eb' : '#16a34a', fontSize: '0.82rem' }}>
+          {val === 'OUTBOUND' ? '↗ Outbound' : '↙ Inbound'}
+        </span>
+      ),
+    },
+    {
+      key: 'recipient_phone',
+      label: 'Recipient Phone',
+      sortable: true,
+      render: (val) => <span style={{ fontWeight: 800, color: '#0f172a' }}>{val}</span>,
+    },
+    {
+      key: 'message_type',
+      label: 'Type',
+      sortable: true,
+      render: (val, row) => (
+        <span style={{ color: '#475569', fontSize: '0.82rem' }}>
+          {val} {row.template_name ? `(${row.template_name})` : ''}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      sortable: true,
+      render: (val) => {
+        const isSuccess = ['SENT', 'DELIVERED', 'READ'].includes(val);
+        return (
+          <span
+            style={{
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              padding: '2px 8px',
+              borderRadius: '6px',
+              backgroundColor: isSuccess ? '#dcfce7' : '#fee2e2',
+              color: isSuccess ? '#15803d' : '#b91c1c',
+            }}
+          >
+            {val}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'details',
+      label: 'Details',
+      render: (_, row) => (
+        <span
+          style={{
+            color: '#64748b',
+            fontSize: '0.78rem',
+            maxWidth: '320px',
+            display: 'block',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+          title={row.error_details || row.content || row.wamid || ''}
+        >
+          {row.error_details || row.content || row.wamid || '—'}
+        </span>
+      ),
+    },
+  ];
 
   const tabBtn = (tab: typeof activeTab, label: string) => (
     <button
@@ -295,25 +904,6 @@ export const MetaWhatsAppDesktop: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <a
-            href="/#/integrations/whatsapp"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              fontSize: '0.82rem',
-              fontWeight: 600,
-              color: '#16a34a',
-              textDecoration: 'none',
-              padding: '0.6rem 0.9rem',
-              borderRadius: '10px',
-              backgroundColor: '#f0fdf4',
-              border: '1px solid #bbf7d0',
-            }}
-          >
-            <span>💬 Switch to WhatsApp (QR Connect)</span>
-          </a>
-
           <button
             type="button"
             onClick={() => {
@@ -384,236 +974,45 @@ export const MetaWhatsAppDesktop: React.FC = () => {
         {tabBtn('logs', `📊 Delivery Logs (${logs.length})`)}
       </div>
 
-      {/* ── Contacts DataList ── */}
-      {activeTab === 'contacts' && (
-        <div>
-          {/* Filter Toolbar */}
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.85rem' }}>
-            <input
-              type="search"
-              placeholder="Search phone, name, status…"
-              value={contactSearch}
-              onChange={(e) => setContactSearch(e.target.value)}
-              style={{ ...inputStyle, marginTop: 0, maxWidth: '340px' }}
-            />
-            <button
-              type="button"
-              onClick={fetchData}
-              style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                backgroundColor: '#f8fafc',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                color: '#334155',
-              }}
-            >
-              🔄 Refresh
-            </button>
-            <span style={{ fontSize: '0.8rem', color: '#94a3b8', marginLeft: 'auto' }}>
-              {filteredContacts.length} of {contacts.length} contacts
-            </span>
-          </div>
-
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569', position: 'sticky', top: 0 }}>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Recipient Phone</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Contact Name</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Verification Status</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>24h Session Window</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Last Inbound Activity</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredContacts.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
-                      {contactSearch ? 'No contacts match your search.' : 'No contacts recorded yet. When customers reply to WhatsApp messages, their 24h session window will appear here.'}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredContacts.map((ct) => {
-                    const lastInbound = ct.last_inbound_at ? new Date(ct.last_inbound_at).getTime() : 0;
-                    const isIn24hWindow = lastInbound > 0 && Date.now() - lastInbound <= 24 * 60 * 60 * 1000;
-                    return (
-                      <tr key={ct.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '0.85rem 1.25rem', fontWeight: 800, color: '#0f172a' }}>{ct.phone_number}</td>
-                        <td style={{ padding: '0.85rem 1.25rem', color: '#334155' }}>{ct.contact_name || '—'}</td>
-                        <td style={{ padding: '0.85rem 1.25rem' }}>
-                          <span style={{
-                            fontSize: '0.72rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px',
-                            backgroundColor: ct.status === 'NOT_ON_WHATSAPP' ? '#fee2e2' : '#dcfce7',
-                            color: ct.status === 'NOT_ON_WHATSAPP' ? '#b91c1c' : '#15803d',
-                          }}>
-                            {ct.status}
-                          </span>
-                        </td>
-                        <td style={{ padding: '0.85rem 1.25rem' }}>
-                          {isIn24hWindow
-                            ? <span style={{ color: '#16a34a', fontWeight: 800 }}>🟢 24h Session Active (Free Text/Media)</span>
-                            : <span style={{ color: '#64748b', fontWeight: 600 }}>🔴 Out of Window (Requires Template)</span>}
-                        </td>
-                        <td style={{ padding: '0.85rem 1.25rem', color: '#64748b' }}>
-                          {ct.last_inbound_at ? new Date(ct.last_inbound_at).toLocaleString() : 'No inbound message yet'}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ── Templates DataList ── */}
-      {activeTab === 'templates' && (
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
-                <th style={{ padding: '0.85rem 1.25rem' }}>Template Name</th>
-                <th style={{ padding: '0.85rem 1.25rem' }}>Language</th>
-                <th style={{ padding: '0.85rem 1.25rem' }}>Category</th>
-                <th style={{ padding: '0.85rem 1.25rem' }}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {templates.length === 0 ? (
-                <tr>
-                  <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
-                    No templates synced. Click "Sync Templates" on your connected account to fetch Meta templates.
-                  </td>
-                </tr>
-              ) : (
-                templates.map((tpl) => (
-                  <tr key={tpl.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '0.85rem 1.25rem', fontWeight: 700, color: '#0f172a' }}>{tpl.name}</td>
-                    <td style={{ padding: '0.85rem 1.25rem', color: '#64748b' }}>{tpl.language}</td>
-                    <td style={{ padding: '0.85rem 1.25rem', color: '#334155' }}>{tpl.category}</td>
-                    <td style={{ padding: '0.85rem 1.25rem' }}>
-                      <span style={{
-                        fontSize: '0.72rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px',
-                        backgroundColor: tpl.status === 'APPROVED' ? '#dcfce7' : '#fef3c7',
-                        color: tpl.status === 'APPROVED' ? '#15803d' : '#92400e',
-                      }}>
-                        {tpl.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* ── Logs DataList ── */}
-      {activeTab === 'logs' && (
-        <div>
-          {/* Filter Toolbar */}
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.85rem' }}>
-            <input
-              type="search"
-              placeholder="Search phone, template, status, direction…"
-              value={logSearch}
-              onChange={(e) => setLogSearch(e.target.value)}
-              style={{ ...inputStyle, marginTop: 0, maxWidth: '380px' }}
-            />
-            <button
-              type="button"
-              onClick={fetchData}
-              style={{
-                padding: '0.5rem 1rem',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                backgroundColor: '#f8fafc',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                color: '#334155',
-              }}
-            >
-              🔄 Refresh
-            </button>
-            <span style={{ fontSize: '0.8rem', color: '#94a3b8', marginLeft: 'auto' }}>
-              {filteredLogs.length} of {logs.length} entries
-            </span>
-          </div>
-
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569', position: 'sticky', top: 0 }}>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Date/Time</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Direction</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Recipient Phone</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Type</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Status</th>
-                  <th style={{ padding: '0.85rem 1.25rem' }}>Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLogs.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={{ padding: '2.5rem', textAlign: 'center', color: '#94a3b8' }}>
-                      {logSearch ? 'No logs match your search.' : 'No delivery logs recorded yet.'}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredLogs.map((lg) => (
-                    <tr key={lg.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '0.85rem 1.25rem', color: '#64748b' }}>
-                        {new Date(lg.created_at).toLocaleString()}
-                      </td>
-                      <td style={{ padding: '0.85rem 1.25rem', fontWeight: 700 }}>
-                        <span style={{ color: lg.direction === 'OUTBOUND' ? '#2563eb' : '#16a34a' }}>
-                          {lg.direction === 'OUTBOUND' ? '↗ Outbound' : '↙ Inbound'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '0.85rem 1.25rem', fontWeight: 700, color: '#0f172a' }}>{lg.recipient_phone}</td>
-                      <td style={{ padding: '0.85rem 1.25rem', color: '#475569' }}>
-                        {lg.message_type} {lg.template_name ? `(${lg.template_name})` : ''}
-                      </td>
-                      <td style={{ padding: '0.85rem 1.25rem' }}>
-                        <span style={{
-                          fontSize: '0.72rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px',
-                          backgroundColor: ['SENT', 'DELIVERED', 'READ'].includes(lg.status) ? '#dcfce7' : '#fee2e2',
-                          color: ['SENT', 'DELIVERED', 'READ'].includes(lg.status) ? '#15803d' : '#b91c1c',
-                        }}>
-                          {lg.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '0.85rem 1.25rem', color: '#64748b', fontSize: '0.78rem', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {lg.error_details || lg.content || lg.wamid || '—'}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ── Accounts Cards ── */}
+      {/* ── Tab Content: Connected Accounts (Visual Card Grid) ── */}
       {activeTab === 'accounts' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.25rem' }}>
           {accounts.length === 0 ? (
-            <div style={{ gridColumn: '1 / -1', padding: '3rem', textAlign: 'center', backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📱</div>
-              <h3 style={{ margin: '0 0 0.5rem', color: '#0f172a' }}>No Meta WhatsApp Business Account Connected</h3>
-              <p style={{ margin: '0 0 1.25rem', color: '#64748b', fontSize: '0.9rem' }}>
+            <div style={{ gridColumn: '1 / -1', padding: '3.5rem 2rem', textAlign: 'center', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📱</div>
+              <h3 style={{ margin: '0 0 0.5rem', color: '#0f172a', fontSize: '1.2rem', fontWeight: 800 }}>
+                No Meta WhatsApp Business Account Connected
+              </h3>
+              <p style={{ margin: '0 auto 1.5rem', color: '#64748b', fontSize: '0.9rem', maxWidth: '480px', lineHeight: 1.5 }}>
                 Connect your Meta Cloud API Phone Number ID, WABA ID, and permanent Access Token to start sending messages.
               </p>
               <button
                 type="button"
-                onClick={() => setIsModalOpen(true)}
-                style={{ backgroundColor: META_BLUE, color: '#ffffff', border: 'none', borderRadius: '10px', padding: '0.65rem 1.5rem', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer' }}
+                onClick={() => {
+                  setSelectedAccountID('');
+                  setFormData({
+                    connection_name: '',
+                    phone_number: '',
+                    phone_number_id: '',
+                    waba_id: '',
+                    access_token: '',
+                    webhook_verify_token: `wh_v_${Math.random().toString(36).substring(2, 10)}`,
+                    webhook_secret: '',
+                    is_default: true,
+                  });
+                  setIsModalOpen(true);
+                }}
+                style={{
+                  backgroundColor: META_BLUE,
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '10px',
+                  padding: '0.7rem 1.6rem',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(24, 119, 242, 0.35)',
+                }}
               >
                 + Connect WhatsApp Account
               </button>
@@ -622,31 +1021,89 @@ export const MetaWhatsAppDesktop: React.FC = () => {
             accounts.map((acc) => {
               const webhookURL = `${baseURL}/api/v1/notification/meta-whatsapp/webhooks/${tenantCode}/${acc.id}`;
               return (
-                <div key={acc.id} style={{ backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '1.25rem 1.5rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>{acc.connection_name}</h3>
-                        <MetaBlueTickIcon size={16} />
+                <div
+                  key={acc.id}
+                  style={{
+                    backgroundColor: '#ffffff',
+                    borderRadius: '14px',
+                    border: '1px solid #e2e8f0',
+                    padding: '1.35rem 1.5rem',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                            {acc.connection_name}
+                          </h3>
+                          <MetaBlueTickIcon size={16} />
+                        </div>
+                        <span style={{ fontSize: '0.9rem', color: WHATSAPP_GREEN, fontWeight: 700, display: 'block', marginTop: '2px' }}>
+                          {acc.phone_number}
+                        </span>
                       </div>
-                      <span style={{ fontSize: '0.9rem', color: WHATSAPP_GREEN, fontWeight: 700 }}>{acc.phone_number}</span>
+                      <span
+                        style={{
+                          backgroundColor: acc.status === 'CONNECTED' ? '#dcfce7' : '#fee2e2',
+                          color: acc.status === 'CONNECTED' ? '#15803d' : '#b91c1c',
+                          fontSize: '0.72rem',
+                          fontWeight: 800,
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                        }}
+                      >
+                        {acc.status}
+                      </span>
                     </div>
-                    <span style={{ backgroundColor: acc.status === 'CONNECTED' ? '#dcfce7' : '#fee2e2', color: acc.status === 'CONNECTED' ? '#15803d' : '#b91c1c', fontSize: '0.72rem', fontWeight: 800, padding: '2px 8px', borderRadius: '6px' }}>
-                      {acc.status}
-                    </span>
-                  </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.82rem', color: '#475569', marginBottom: '1rem' }}>
-                    <div><strong>Phone Number ID:</strong> <code>{acc.phone_number_id}</code></div>
-                    <div><strong>WABA ID:</strong> <code>{acc.waba_id}</code></div>
-                    <div><strong>Quality Rating:</strong> <span style={{ color: '#16a34a', fontWeight: 800 }}>{acc.quality_rating}</span></div>
-                  </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.82rem', color: '#475569', marginBottom: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 600 }}>Phone Number ID:</span>
+                        <code style={{ fontSize: '0.75rem', backgroundColor: '#f1f5f9', padding: '1px 6px', borderRadius: '4px' }}>{acc.phone_number_id}</code>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 600 }}>WABA ID:</span>
+                        <code style={{ fontSize: '0.75rem', backgroundColor: '#f1f5f9', padding: '1px 6px', borderRadius: '4px' }}>{acc.waba_id}</code>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 600 }}>Quality Rating:</span>
+                        <span style={{ color: acc.quality_rating === 'RED' ? '#dc2626' : '#16a34a', fontWeight: 800 }}>
+                          {acc.quality_rating || 'GREEN'}
+                        </span>
+                      </div>
+                    </div>
 
-                  <div style={{ backgroundColor: '#f8fafc', padding: '0.65rem 0.85rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '1rem' }}>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', marginBottom: '4px' }}>WEBHOOK CALLBACK URL (META CLOUD API)</div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{webhookURL}</span>
-                      <button type="button" onClick={() => copyToClipboard(webhookURL)} style={{ backgroundColor: '#e2e8f0', border: 'none', borderRadius: '4px', padding: '2px 8px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}>Copy</button>
+                    {/* Webhook Callback URL Box */}
+                    <div style={{ backgroundColor: '#f8fafc', padding: '0.65rem 0.85rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '1rem' }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', marginBottom: '4px' }}>
+                        WEBHOOK CALLBACK URL (META CLOUD API)
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {webhookURL}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(webhookURL)}
+                          style={{
+                            backgroundColor: '#e2e8f0',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '2px 8px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Copy
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -654,15 +1111,188 @@ export const MetaWhatsAppDesktop: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleSyncTemplates(acc.id)}
-                      style={{ flex: 1, backgroundColor: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '0.5rem', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}
+                      style={{
+                        flex: 1,
+                        backgroundColor: '#f1f5f9',
+                        color: '#334155',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        padding: '0.5rem',
+                        fontSize: '0.82rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
                     >
                       🔄 Sync Templates
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedAccountID(acc.id);
+                        setFormData({
+                          connection_name: acc.connection_name,
+                          phone_number: acc.phone_number,
+                          phone_number_id: acc.phone_number_id,
+                          waba_id: acc.waba_id,
+                          access_token: acc.access_token,
+                          webhook_verify_token: acc.webhook_verify_token,
+                          webhook_secret: acc.webhook_secret || '',
+                          is_default: acc.is_default,
+                        });
+                        setIsModalOpen(true);
+                      }}
+                      style={{
+                        backgroundColor: '#eff6ff',
+                        color: '#1d4ed8',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: '8px',
+                        padding: '0.5rem 0.85rem',
+                        fontSize: '0.82rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ⚙️ Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTestPayload((prev) => ({
+                          ...prev,
+                          account_id: acc.id,
+                        }));
+                        setIsTestModalOpen(true);
+                      }}
+                      style={{
+                        backgroundColor: '#f0fdf4',
+                        color: '#15803d',
+                        border: '1px solid #bbf7d0',
+                        borderRadius: '8px',
+                        padding: '0.5rem 0.85rem',
+                        fontSize: '0.82rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      🚀 Test
                     </button>
                   </div>
                 </div>
               );
             })
           )}
+        </div>
+      )}
+
+      {/* ── Templates DataList ── */}
+      {activeTab === 'templates' && (
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '1.25rem' }}>
+          <DataTable
+            columns={templateColumns}
+            data={filteredTemplates}
+            searchVal={templateSearch}
+            setSearchVal={setTemplateSearch}
+            pageSize={templatePageSize}
+            setPageSize={setTemplatePageSize}
+            currentPage={templatePage}
+            setCurrentPage={setTemplatePage}
+            totalItems={filteredTemplates.length}
+            loading={loading}
+            onRefresh={fetchData}
+            searchPlaceholder="Search templates by name, category, language…"
+            actionButton={
+              <div style={{ display: 'flex', gap: '0.6rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewTemplate({
+                      account_id: accounts[0]?.id || '',
+                      name: '',
+                      category: 'UTILITY',
+                      language: 'en_US',
+                      header_text: '',
+                      body_text: '',
+                      footer_text: '',
+                    });
+                    setIsCreateTemplateModalOpen(true);
+                  }}
+                  style={{
+                    backgroundColor: META_BLUE,
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '0.55rem 1.1rem',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                  }}
+                >
+                  + Create Template
+                </button>
+                {accounts.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => handleSyncTemplates(accounts[0].id)}
+                    style={{
+                      backgroundColor: '#f1f5f9',
+                      color: '#334155',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      padding: '0.55rem 1rem',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🔄 Sync from Meta
+                  </button>
+                )}
+              </div>
+            }
+          />
+        </div>
+      )}
+
+      {/* ── Contacts DataList ── */}
+      {activeTab === 'contacts' && (
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '1.25rem' }}>
+          <DataTable
+            columns={contactColumns}
+            data={filteredContacts}
+            searchVal={contactSearch}
+            setSearchVal={setContactSearch}
+            pageSize={contactPageSize}
+            setPageSize={setContactPageSize}
+            currentPage={contactPage}
+            setCurrentPage={setContactPage}
+            totalItems={filteredContacts.length}
+            loading={loading}
+            onRefresh={fetchData}
+            searchPlaceholder="Search contacts by phone, name, status…"
+          />
+        </div>
+      )}
+
+      {/* ── Delivery Logs DataList ── */}
+      {activeTab === 'logs' && (
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '1.25rem' }}>
+          <DataTable
+            columns={logColumns}
+            data={filteredLogs}
+            searchVal={logSearch}
+            setSearchVal={setLogSearch}
+            pageSize={logPageSize}
+            setPageSize={setLogPageSize}
+            currentPage={logPage}
+            setCurrentPage={setLogPage}
+            totalItems={filteredLogs.length}
+            loading={loading}
+            onRefresh={fetchData}
+            searchPlaceholder="Search delivery logs by phone, template, direction, status…"
+          />
         </div>
       )}
 
@@ -679,16 +1309,22 @@ export const MetaWhatsAppDesktop: React.FC = () => {
               {/* Account selector */}
               <div>
                 <label style={labelStyle}>Select WhatsApp Connection</label>
-                <select
-                  value={testPayload.account_id}
-                  onChange={(e) => setTestPayload({ ...testPayload, account_id: e.target.value })}
-                  style={inputStyle}
-                >
-                  <option value="">Default Active Connection</option>
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.id}>{acc.connection_name} ({acc.phone_number})</option>
-                  ))}
-                </select>
+                <div style={{ marginTop: '4px' }}>
+                  <Select
+                    value={testPayload.account_id}
+                    onChange={(val) =>
+                      setTestPayload({ ...testPayload, account_id: typeof val === 'string' ? val : '' })
+                    }
+                    options={[
+                      { value: '', label: 'Default Active Connection' },
+                      ...accounts.map((acc) => ({
+                        value: acc.id,
+                        label: `${acc.connection_name} (${acc.phone_number})`,
+                      })),
+                    ]}
+                    placeholder="Select WhatsApp Connection"
+                  />
+                </div>
               </div>
 
               {/* Recipient */}
@@ -735,45 +1371,188 @@ export const MetaWhatsAppDesktop: React.FC = () => {
               {testPayload.message_type === 'TEMPLATE' && (
                 <>
                   <div>
-                    <label style={labelStyle}>Select Template</label>
-                    {templates.length > 0 ? (
-                      <select
-                        value={testPayload.template_name}
-                        onChange={(e) => setTestPayload({ ...testPayload, template_name: e.target.value })}
-                        style={inputStyle}
-                        required
-                      >
-                        <option value="">— Choose a template —</option>
-                        {templates.map((tpl) => (
-                          <option key={tpl.id} value={tpl.name}>
-                            {tpl.name} [{tpl.language}] {tpl.status !== 'APPROVED' ? `(${tpl.status})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <div style={{ marginTop: '4px', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                        <input
-                          type="text"
-                          required
-                          placeholder="e.g. hello_world — sync templates first"
+                    <label style={labelStyle}>Select WhatsApp Template</label>
+                    <div style={{ marginTop: '4px' }}>
+                      {templates.length > 0 ? (
+                        <Select
                           value={testPayload.template_name}
-                          onChange={(e) => setTestPayload({ ...testPayload, template_name: e.target.value })}
-                          style={inputStyle}
+                          onChange={(val) => {
+                            const tName = typeof val === 'string' ? val : '';
+                            setTestPayload((prev) => ({ ...prev, template_name: tName }));
+                          }}
+                          options={templates.map((tpl) => ({
+                            value: tpl.name,
+                            label: `${tpl.name} [${tpl.language}] ${tpl.status !== 'APPROVED' ? `(${tpl.status})` : ''}`,
+                          }))}
+                          placeholder="— Choose an Approved Template —"
                         />
-                        <span style={{ fontSize: '0.75rem', color: '#f59e0b', whiteSpace: 'nowrap' }}>⚠ No templates synced</span>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. hello_world — sync templates first"
+                            value={testPayload.template_name}
+                            onChange={(e) => setTestPayload({ ...testPayload, template_name: e.target.value })}
+                            style={inputStyle}
+                          />
+                          <span style={{ fontSize: '0.75rem', color: '#f59e0b', whiteSpace: 'nowrap' }}>⚠ No templates synced</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Header Media Required for Template */}
+                  {(parsedTemplate.headerFormat === 'IMAGE' || parsedTemplate.headerFormat === 'DOCUMENT' || parsedTemplate.headerFormat === 'VIDEO') && (
+                    <div style={{ backgroundColor: '#fffbeb', borderRadius: '10px', padding: '0.85rem', border: '1px solid #fde68a' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#92400e' }}>
+                          📸 Header {parsedTemplate.headerFormat} (Required by Meta)
+                        </span>
+                        <span style={{ fontSize: '0.72rem', color: '#b45309', fontWeight: 600 }}>
+                          Required Attachment
+                        </span>
                       </div>
-                    )}
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Template Parameters (Comma-separated)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Challan #1002, $500.00"
-                      value={testPayload.template_params}
-                      onChange={(e) => setTestPayload({ ...testPayload, template_params: e.target.value })}
-                      style={inputStyle}
-                    />
-                  </div>
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        style={{
+                          padding: '0.85rem',
+                          borderRadius: '8px',
+                          border: '2px dashed #f59e0b',
+                          backgroundColor: '#ffffff',
+                          cursor: 'pointer',
+                          textAlign: 'center',
+                          marginBottom: '6px',
+                        }}
+                      >
+                        {uploadLoading ? (
+                          <span style={{ color: '#b45309', fontSize: '0.82rem' }}>⏳ Uploading to Meta…</span>
+                        ) : testPayload.media_url ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: '0.78rem', color: '#15803d', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              ✅ Attached: {testPayload.media_url}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setTestPayload((p) => ({ ...p, media_url: '' })); }}
+                              style={{ fontSize: '0.72rem', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+                            >
+                              ✕ Remove
+                            </button>
+                          </div>
+                        ) : (
+                          <div>
+                            <span style={{ fontSize: '0.82rem', color: '#92400e', fontWeight: 700 }}>
+                              Click or drop {parsedTemplate.headerFormat.toLowerCase()} here
+                            </span>
+                            <div style={{ fontSize: '0.7rem', color: '#b45309' }}>JPG, PNG, PDF up to 16MB</div>
+                          </div>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="— or paste image/media URL directly (https://...) —"
+                        value={testPayload.media_url}
+                        onChange={(e) => setTestPayload({ ...testPayload, media_url: e.target.value })}
+                        style={{ ...inputStyle, marginTop: 0 }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Variables UI: Render separate input for each placeholder if variables exist */}
+                  {parsedTemplate.bodyVariables.length > 0 ? (
+                    <div style={{ backgroundColor: '#f8fafc', padding: '0.85rem', borderRadius: '10px', border: '1px solid #e2e8f0', marginTop: '2px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <label style={{ ...labelStyle, color: '#1e293b' }}>
+                          Template Variables ({parsedTemplate.bodyVariables.length})
+                        </label>
+                        <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                          All placeholders will be populated dynamically
+                        </span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: parsedTemplate.bodyVariables.length > 1 ? '1fr 1fr' : '1fr', gap: '0.65rem' }}>
+                        {parsedTemplate.bodyVariables.map((vNum) => (
+                          <div key={vNum}>
+                            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '2px' }}>
+                              Variable {'{{' + vNum + '}}'}
+                            </span>
+                            <input
+                              type="text"
+                              required
+                              placeholder={`Value for {{${vNum}}}`}
+                              value={templateVariableValues[vNum] || ''}
+                              onChange={(e) => setTemplateVariableValues({ ...templateVariableValues, [vNum]: e.target.value })}
+                              style={inputStyle}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : selectedTemplate ? (
+                    <div style={{ padding: '0.65rem 0.85rem', borderRadius: '8px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', fontSize: '0.8rem', color: '#166534', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>✓</span>
+                      <span>This template has no dynamic variable placeholders.</span>
+                    </div>
+                  ) : (
+                    <div>
+                      <label style={labelStyle}>Template Parameters (Comma-separated)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Challan #1002, $500.00"
+                        value={testPayload.template_params}
+                        onChange={(e) => setTestPayload({ ...testPayload, template_params: e.target.value })}
+                        style={inputStyle}
+                      />
+                    </div>
+                  )}
+
+                  {/* Live WhatsApp Chat Preview */}
+                  {(parsedTemplate.bodyText || parsedTemplate.headerText) && (
+                    <div>
+                      <label style={{ ...labelStyle, marginBottom: '6px' }}>Live WhatsApp Chat Preview</label>
+                      <div
+                        style={{
+                          backgroundColor: '#efeae2',
+                          backgroundImage: 'radial-gradient(#d1d5db 1px, transparent 1px)',
+                          backgroundSize: '16px 16px',
+                          borderRadius: '12px',
+                          padding: '0.9rem',
+                          border: '1px solid #cbd5e1',
+                        }}
+                      >
+                        <div
+                          style={{
+                            backgroundColor: '#ffffff',
+                            borderRadius: '8px 8px 8px 2px',
+                            padding: '0.75rem 0.95rem',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
+                            maxWidth: '94%',
+                            fontSize: '0.84rem',
+                            color: '#111827',
+                            lineHeight: 1.5,
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          {parsedTemplate.headerText && (
+                            <div style={{ fontWeight: 800, color: '#0f172a', marginBottom: '4px', fontSize: '0.9rem' }}>
+                              {parsedTemplate.headerText}
+                            </div>
+                          )}
+                          <div style={{ whiteSpace: 'pre-wrap' }}>
+                            {renderBodyWithHighlights(parsedTemplate.bodyText || '', templateVariableValues)}
+                          </div>
+                          {parsedTemplate.footerText && (
+                            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '6px', borderTop: '1px solid #f1f5f9', paddingTop: '4px' }}>
+                              {parsedTemplate.footerText}
+                            </div>
+                          )}
+                          <div style={{ textAlign: 'right', fontSize: '0.65rem', color: '#94a3b8', marginTop: '4px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '3px' }}>
+                            Just now <span style={{ color: META_BLUE, fontWeight: 700 }}>✓✓</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -926,6 +1705,229 @@ export const MetaWhatsAppDesktop: React.FC = () => {
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
                 <button type="button" onClick={() => setIsModalOpen(false)} style={{ backgroundColor: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', padding: '0.6rem 1.2rem', fontWeight: 700, cursor: 'pointer' }}>Cancel</button>
                 <button type="submit" style={{ backgroundColor: META_BLUE, color: '#ffffff', border: 'none', borderRadius: '8px', padding: '0.6rem 1.4rem', fontWeight: 800, cursor: 'pointer' }}>Save Connection</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Create WhatsApp Message Template ── */}
+      {isCreateTemplateModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '100%', maxWidth: '640px', backgroundColor: '#ffffff', borderRadius: '16px', padding: '1.75rem', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>✨ Create WhatsApp Message Template</h2>
+                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                  Templates are registered directly on Meta Cloud API and reviewed for delivery approval.
+                </p>
+              </div>
+              <button type="button" onClick={() => setIsCreateTemplateModalOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}>✕</button>
+            </div>
+
+            {/* Explainer banner on WhatsApp Template Approval Flow */}
+            <div style={{ backgroundColor: '#eff6ff', borderRadius: '10px', padding: '0.75rem 1rem', border: '1px solid #bfdbfe', marginBottom: '1rem', fontSize: '0.78rem', color: '#1e40af', lineHeight: 1.45 }}>
+              <div style={{ fontWeight: 800, marginBottom: '2px' }}>ℹ️ How Meta Template Approvals Work:</div>
+              <div>• <strong>UTILITY</strong>: Order status, shipping updates, receipts &amp; invoices (Automated AI review: <strong>1–5 minutes</strong>).</div>
+              <div>• <strong>MARKETING</strong>: Promotional campaigns, special offers, announcements (Review takes <strong>15m–2 hours</strong>).</div>
+              <div>• <strong>AUTHENTICATION</strong>: One-time login passcodes &amp; verification codes.</div>
+            </div>
+
+            <form onSubmit={handleCreateTemplate} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              {/* Account Selector if multiple */}
+              {accounts.length > 1 && (
+                <div>
+                  <label style={labelStyle}>WhatsApp Business Account</label>
+                  <div style={{ marginTop: '4px' }}>
+                    <Select
+                      value={newTemplate.account_id || accounts[0]?.id}
+                      onChange={(val) => setNewTemplate({ ...newTemplate, account_id: typeof val === 'string' ? val : '' })}
+                      options={accounts.map((acc) => ({
+                        value: acc.id,
+                        label: `${acc.connection_name} (${acc.phone_number})`,
+                      }))}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Template Name & Category */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '0.85rem' }}>
+                <div>
+                  <label style={labelStyle}>Template Name (Unique identifier)</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. order_delivered_alert"
+                    value={newTemplate.name}
+                    onChange={(e) => {
+                      const clean = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+                      setNewTemplate({ ...newTemplate, name: clean });
+                    }}
+                    style={inputStyle}
+                  />
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px', display: 'block' }}>
+                    Lowercase letters, numbers, and underscores only
+                  </span>
+                </div>
+                <div>
+                  <label style={labelStyle}>Category</label>
+                  <div style={{ marginTop: '4px' }}>
+                    <Select
+                      value={newTemplate.category}
+                      onChange={(val) => setNewTemplate({ ...newTemplate, category: typeof val === 'string' ? val : 'UTILITY' })}
+                      options={[
+                        { value: 'UTILITY', label: 'UTILITY (Fast approval)' },
+                        { value: 'MARKETING', label: 'MARKETING' },
+                        { value: 'AUTHENTICATION', label: 'AUTHENTICATION' },
+                      ]}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Language */}
+              <div>
+                <label style={labelStyle}>Language</label>
+                <div style={{ marginTop: '4px' }}>
+                  <Select
+                    value={newTemplate.language}
+                    onChange={(val) => setNewTemplate({ ...newTemplate, language: typeof val === 'string' ? val : 'en_US' })}
+                    options={[
+                      { value: 'en_US', label: 'English (US) — en_US' },
+                      { value: 'en_GB', label: 'English (UK) — en_GB' },
+                      { value: 'hi', label: 'Hindi (India) — hi' },
+                      { value: 'es', label: 'Spanish — es' },
+                      { value: 'ar', label: 'Arabic — ar' },
+                    ]}
+                  />
+                </div>
+              </div>
+
+              {/* Header Text (Optional) */}
+              <div>
+                <label style={labelStyle}>Header Title (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Order Delivery Status"
+                  value={newTemplate.header_text}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, header_text: e.target.value })}
+                  style={inputStyle}
+                />
+              </div>
+
+              {/* Body Text (Required) with Variable Insert chips */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label style={labelStyle}>Body Message Text</label>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#64748b', marginRight: '4px', alignSelf: 'center' }}>Insert Variable:</span>
+                    {['{{1}}', '{{2}}', '{{3}}', '{{4}}'].map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setNewTemplate((prev) => ({ ...prev, body_text: prev.body_text + (prev.body_text ? ' ' : '') + v }))}
+                        style={{
+                          backgroundColor: '#f1f5f9',
+                          color: '#0f172a',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '4px',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          padding: '1px 6px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        + {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <textarea
+                  rows={4}
+                  required
+                  placeholder="e.g. Hello {{1}}, your order #{{2}} has been delivered successfully! Thank you for choosing us."
+                  value={newTemplate.body_text}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, body_text: e.target.value })}
+                  style={{ ...inputStyle, resize: 'vertical' }}
+                />
+              </div>
+
+              {/* Footer Text (Optional) */}
+              <div>
+                <label style={labelStyle}>Footer Text (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Reply STOP to opt out"
+                  value={newTemplate.footer_text}
+                  onChange={(e) => setNewTemplate({ ...newTemplate, footer_text: e.target.value })}
+                  style={inputStyle}
+                />
+              </div>
+
+              {/* Live WhatsApp Bubble Preview */}
+              {(newTemplate.body_text || newTemplate.header_text) && (
+                <div>
+                  <label style={{ ...labelStyle, marginBottom: '6px' }}>Live WhatsApp Bubble Preview</label>
+                  <div
+                    style={{
+                      backgroundColor: '#efeae2',
+                      backgroundImage: 'radial-gradient(#d1d5db 1px, transparent 1px)',
+                      backgroundSize: '16px 16px',
+                      borderRadius: '12px',
+                      padding: '0.9rem',
+                      border: '1px solid #cbd5e1',
+                    }}
+                  >
+                    <div
+                      style={{
+                        backgroundColor: '#ffffff',
+                        borderRadius: '8px 8px 8px 2px',
+                        padding: '0.75rem 0.95rem',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
+                        maxWidth: '92%',
+                        fontSize: '0.84rem',
+                        color: '#111827',
+                        lineHeight: 1.5,
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {newTemplate.header_text && (
+                        <div style={{ fontWeight: 800, color: '#0f172a', marginBottom: '4px', fontSize: '0.9rem' }}>
+                          {newTemplate.header_text}
+                        </div>
+                      )}
+                      <div style={{ whiteSpace: 'pre-wrap' }}>
+                        {renderBodyWithHighlights(newTemplate.body_text, {})}
+                      </div>
+                      {newTemplate.footer_text && (
+                        <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '6px', borderTop: '1px solid #f1f5f9', paddingTop: '4px' }}>
+                          {newTemplate.footer_text}
+                        </div>
+                      )}
+                      <div style={{ textAlign: 'right', fontSize: '0.65rem', color: '#94a3b8', marginTop: '4px' }}>
+                        12:00 PM <span style={{ color: META_BLUE }}>✓✓</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateTemplateModalOpen(false)}
+                  style={{ backgroundColor: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', padding: '0.6rem 1.2rem', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={createTemplateLoading}
+                  style={{ backgroundColor: META_BLUE, color: '#ffffff', border: 'none', borderRadius: '8px', padding: '0.6rem 1.4rem', fontWeight: 800, cursor: 'pointer', opacity: createTemplateLoading ? 0.7 : 1 }}
+                >
+                  {createTemplateLoading ? 'Submitting to Meta…' : '🚀 Submit Template to Meta'}
+                </button>
               </div>
             </form>
           </div>
