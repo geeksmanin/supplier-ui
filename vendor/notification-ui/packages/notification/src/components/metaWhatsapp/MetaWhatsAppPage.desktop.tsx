@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { apiClient, useToast, DataTable, Column, Select } from '@geeksman/core-ui';
+import { apiClient, useToast, DataTable, Column, Select, ConfirmModal } from '@geeksman/core-ui';
 import {
   META_BLUE,
   WHATSAPP_GREEN,
@@ -9,7 +9,7 @@ import {
   WhatsAppLog,
   MetaBlueTickIcon,
 } from './types';
-import { metaWaGet, metaWaPost, metaWaPut } from './api';
+import { metaWaGet, metaWaPost, metaWaPut, deleteMetaTemplate, uploadTemplateSample } from './api';
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -187,15 +187,26 @@ export const MetaWhatsAppDesktop: React.FC = () => {
   // Create Template modal states
   const [isCreateTemplateModalOpen, setIsCreateTemplateModalOpen] = useState<boolean>(false);
   const [createTemplateLoading, setCreateTemplateLoading] = useState<boolean>(false);
+  const [sampleUploading, setSampleUploading] = useState<boolean>(false);
   const [newTemplate, setNewTemplate] = useState({
     account_id: '',
     name: '',
     category: 'UTILITY',
     language: 'en_US',
+    header_type: 'NONE', // 'NONE' | 'TEXT' | 'DOCUMENT' | 'IMAGE'
     header_text: '',
+    sample_handle: '',
+    button_type: 'NONE', // 'NONE' | 'URL' | 'QUICK_REPLY'
+    button_text: '',
+    button_url: '',
     body_text: '',
     footer_text: '',
   });
+
+  // Delete Template confirmation states
+  const [templateToDelete, setTemplateToDelete] = useState<{ name: string; accountId?: string } | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState<boolean>(false);
+  const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
 
   const [formData, setFormData] = useState({
     connection_name: '',
@@ -369,6 +380,38 @@ export const MetaWhatsAppDesktop: React.FC = () => {
     }
   };
 
+  const handleUploadSample = async (file: File) => {
+    setSampleUploading(true);
+    try {
+      const res = await uploadTemplateSample(file, newTemplate.account_id || accounts[0]?.id);
+      const handle = (res.data as any)?.handle || (res.data as any)?.data?.handle;
+      if (handle) {
+        setNewTemplate((prev) => ({ ...prev, sample_handle: handle }));
+        showToast('Sample file uploaded to Meta Resumable API successfully!', 'success');
+      }
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Failed to upload sample file to Meta', 'error');
+    } finally {
+      setSampleUploading(false);
+    }
+  };
+
+  const handleConfirmDeleteTemplate = async () => {
+    if (!templateToDelete) return;
+    setDeleteLoading(true);
+    try {
+      await deleteMetaTemplate(templateToDelete.name, templateToDelete.accountId);
+      showToast(`Template "${templateToDelete.name}" deleted from Meta and database`, 'success');
+      setIsDeleteConfirmOpen(false);
+      setTemplateToDelete(null);
+      fetchData();
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Failed to delete template', 'error');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   const handleCreateTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTemplate.name.trim()) {
@@ -383,21 +426,74 @@ export const MetaWhatsAppDesktop: React.FC = () => {
     setCreateTemplateLoading(true);
     try {
       const components: any[] = [];
-      if (newTemplate.header_text.trim()) {
+
+      // 1. Header Component
+      if (newTemplate.header_type === 'TEXT' && newTemplate.header_text.trim()) {
         components.push({
           type: 'HEADER',
           format: 'TEXT',
           text: newTemplate.header_text.trim(),
         });
+      } else if (newTemplate.header_type === 'DOCUMENT') {
+        const headerComp: any = {
+          type: 'HEADER',
+          format: 'DOCUMENT',
+        };
+        if (newTemplate.sample_handle.trim()) {
+          headerComp.example = {
+            header_handle: [newTemplate.sample_handle.trim()],
+          };
+        }
+        components.push(headerComp);
+      } else if (newTemplate.header_type === 'IMAGE') {
+        const headerComp: any = {
+          type: 'HEADER',
+          format: 'IMAGE',
+        };
+        if (newTemplate.sample_handle.trim()) {
+          headerComp.example = {
+            header_handle: [newTemplate.sample_handle.trim()],
+          };
+        }
+        components.push(headerComp);
       }
+
+      // 2. Body Component
       components.push({
         type: 'BODY',
         text: newTemplate.body_text.trim(),
       });
+
+      // 3. Footer Component
       if (newTemplate.footer_text.trim()) {
         components.push({
           type: 'FOOTER',
           text: newTemplate.footer_text.trim(),
+        });
+      }
+
+      // 4. Buttons Component (Call To Action URL e.g. Pay Now, or Quick Reply)
+      if (newTemplate.button_type === 'URL' && newTemplate.button_text.trim() && newTemplate.button_url.trim()) {
+        components.push({
+          type: 'BUTTONS',
+          buttons: [
+            {
+              type: 'URL',
+              text: newTemplate.button_text.trim(),
+              url: newTemplate.button_url.trim(),
+              example: ['sample_token_123'],
+            },
+          ],
+        });
+      } else if (newTemplate.button_type === 'QUICK_REPLY' && newTemplate.button_text.trim()) {
+        components.push({
+          type: 'BUTTONS',
+          buttons: [
+            {
+              type: 'QUICK_REPLY',
+              text: newTemplate.button_text.trim(),
+            },
+          ],
         });
       }
 
@@ -670,31 +766,53 @@ export const MetaWhatsAppDesktop: React.FC = () => {
       key: 'id',
       label: 'Actions',
       render: (_, row) => (
-        <button
-          type="button"
-          onClick={() => {
-            setTestPayload((prev) => ({
-              ...prev,
-              message_type: 'TEMPLATE',
-              template_name: row.name,
-              account_id: row.account_id || prev.account_id,
-            }));
-            setIsTestModalOpen(true);
-          }}
-          style={{
-            backgroundColor: '#eff6ff',
-            color: '#1d4ed8',
-            border: '1px solid #bfdbfe',
-            borderRadius: '6px',
-            padding: '3px 8px',
-            fontSize: '0.72rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          🚀 Test Send
-        </button>
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setTestPayload((prev) => ({
+                ...prev,
+                message_type: 'TEMPLATE',
+                template_name: row.name,
+                account_id: row.account_id || prev.account_id,
+              }));
+              setIsTestModalOpen(true);
+            }}
+            style={{
+              backgroundColor: '#eff6ff',
+              color: '#1d4ed8',
+              border: '1px solid #bfdbfe',
+              borderRadius: '6px',
+              padding: '3px 8px',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            🚀 Test Send
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setTemplateToDelete({ name: row.name, accountId: row.account_id });
+              setIsDeleteConfirmOpen(true);
+            }}
+            style={{
+              backgroundColor: '#fef2f2',
+              color: '#dc2626',
+              border: '1px solid #fecaca',
+              borderRadius: '6px',
+              padding: '3px 8px',
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            🗑️ Delete
+          </button>
+        </div>
       ),
     },
   ];
@@ -1210,7 +1328,12 @@ export const MetaWhatsAppDesktop: React.FC = () => {
                       name: '',
                       category: 'UTILITY',
                       language: 'en_US',
+                      header_type: 'NONE',
                       header_text: '',
+                      sample_handle: '',
+                      button_type: 'NONE',
+                      button_text: '',
+                      button_url: '',
                       body_text: '',
                       footer_text: '',
                     });
@@ -1804,17 +1927,63 @@ export const MetaWhatsAppDesktop: React.FC = () => {
                 </div>
               </div>
 
-              {/* Header Text (Optional) */}
+              {/* Header Format Selection */}
               <div>
-                <label style={labelStyle}>Header Title (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Order Delivery Status"
-                  value={newTemplate.header_text}
-                  onChange={(e) => setNewTemplate({ ...newTemplate, header_text: e.target.value })}
-                  style={inputStyle}
-                />
+                <label style={labelStyle}>Header Format (Optional)</label>
+                <div style={{ marginTop: '4px' }}>
+                  <Select
+                    value={newTemplate.header_type}
+                    onChange={(val) => setNewTemplate({ ...newTemplate, header_type: typeof val === 'string' ? val : 'NONE' })}
+                    options={[
+                      { value: 'NONE', label: 'None (No header)' },
+                      { value: 'TEXT', label: 'Text Header (Bold title)' },
+                      { value: 'DOCUMENT', label: 'Document Header (PDF Invoice / Challan / PO)' },
+                      { value: 'IMAGE', label: 'Image Header (JPEG / PNG)' },
+                    ]}
+                  />
+                </div>
               </div>
+
+              {/* Text Header Input */}
+              {newTemplate.header_type === 'TEXT' && (
+                <div>
+                  <label style={labelStyle}>Header Text</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Order Delivery Status"
+                    value={newTemplate.header_text}
+                    onChange={(e) => setNewTemplate({ ...newTemplate, header_text: e.target.value })}
+                    style={inputStyle}
+                  />
+                </div>
+              )}
+
+              {/* Document / Image Header Sample Upload */}
+              {(newTemplate.header_type === 'DOCUMENT' || newTemplate.header_type === 'IMAGE') && (
+                <div style={{ backgroundColor: '#f8fafc', padding: '0.85rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label style={labelStyle}>
+                      {newTemplate.header_type === 'DOCUMENT' ? 'Sample PDF Document (Required by Meta for Review)' : 'Sample Image (Required by Meta for Review)'}
+                    </label>
+                    {newTemplate.sample_handle && (
+                      <span style={{ fontSize: '0.72rem', color: '#15803d', fontWeight: 800 }}>✓ Sample Handle Ready</span>
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept={newTemplate.header_type === 'DOCUMENT' ? 'application/pdf' : 'image/jpeg,image/png'}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUploadSample(file);
+                    }}
+                    style={{ fontSize: '0.8rem', color: '#475569' }}
+                  />
+                  {sampleUploading && <p style={{ fontSize: '0.75rem', color: '#2563eb', margin: '4px 0 0' }}>Uploading sample to Meta Resumable API…</p>}
+                  <p style={{ margin: '4px 0 0', fontSize: '0.72rem', color: '#64748b' }}>
+                    Meta requires a sample file to approve templates with headers. When sending to customers, dynamic files (like real invoices) are attached per message.
+                  </p>
+                </div>
+              )}
 
               {/* Body Text (Required) with Variable Insert chips */}
               <div>
@@ -1846,7 +2015,7 @@ export const MetaWhatsAppDesktop: React.FC = () => {
                 <textarea
                   rows={4}
                   required
-                  placeholder="e.g. Hello {{1}}, your order #{{2}} has been delivered successfully! Thank you for choosing us."
+                  placeholder="e.g. Hello {{1}}, your invoice #{{2}} of {{3}} is generated. Please complete payment before {{4}}."
                   value={newTemplate.body_text}
                   onChange={(e) => setNewTemplate({ ...newTemplate, body_text: e.target.value })}
                   style={{ ...inputStyle, resize: 'vertical' }}
@@ -1865,8 +2034,65 @@ export const MetaWhatsAppDesktop: React.FC = () => {
                 />
               </div>
 
+              {/* Interactive Buttons (Optional) */}
+              <div>
+                <label style={labelStyle}>Interactive Button (Optional)</label>
+                <div style={{ marginTop: '4px' }}>
+                  <Select
+                    value={newTemplate.button_type}
+                    onChange={(val) => setNewTemplate({ ...newTemplate, button_type: typeof val === 'string' ? val : 'NONE' })}
+                    options={[
+                      { value: 'NONE', label: 'None (No buttons)' },
+                      { value: 'URL', label: 'Call To Action URL (e.g. Pay Now / Download Link)' },
+                      { value: 'QUICK_REPLY', label: 'Quick Reply (e.g. Confirm Received)' },
+                    ]}
+                  />
+                </div>
+              </div>
+
+              {newTemplate.button_type === 'URL' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '0.85rem' }}>
+                  <div>
+                    <label style={labelStyle}>Button Label</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Pay Now"
+                      value={newTemplate.button_text}
+                      onChange={(e) => setNewTemplate({ ...newTemplate, button_text: e.target.value })}
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Website URL (with variable suffix)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. https://pay.geeksman.in/invoice/{{1}}"
+                      value={newTemplate.button_url}
+                      onChange={(e) => setNewTemplate({ ...newTemplate, button_url: e.target.value })}
+                      style={inputStyle}
+                    />
+                    <span style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px', display: 'block' }}>
+                      Domain must be fixed. Use {`{{1}}`} for dynamic invoice token / transaction ID.
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {newTemplate.button_type === 'QUICK_REPLY' && (
+                <div>
+                  <label style={labelStyle}>Quick Reply Button Label</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Confirm Received"
+                    value={newTemplate.button_text}
+                    onChange={(e) => setNewTemplate({ ...newTemplate, button_text: e.target.value })}
+                    style={inputStyle}
+                  />
+                </div>
+              )}
+
               {/* Live WhatsApp Bubble Preview */}
-              {(newTemplate.body_text || newTemplate.header_text) && (
+              {(newTemplate.body_text || newTemplate.header_text || newTemplate.header_type !== 'NONE') && (
                 <div>
                   <label style={{ ...labelStyle, marginBottom: '6px' }}>Live WhatsApp Bubble Preview</label>
                   <div
@@ -1892,7 +2118,21 @@ export const MetaWhatsAppDesktop: React.FC = () => {
                         wordBreak: 'break-word',
                       }}
                     >
-                      {newTemplate.header_text && (
+                      {newTemplate.header_type === 'DOCUMENT' && (
+                        <div style={{ backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '0.5rem 0.75rem', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '1.2rem' }}>📄</span>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '0.8rem', color: '#0f172a' }}>Document (PDF Invoice)</div>
+                            <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Attached at delivery time</div>
+                          </div>
+                        </div>
+                      )}
+                      {newTemplate.header_type === 'IMAGE' && (
+                        <div style={{ backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '1rem', textAlign: 'center', marginBottom: '8px', color: '#64748b', fontSize: '0.78rem' }}>
+                          🖼️ Attached Image Header
+                        </div>
+                      )}
+                      {newTemplate.header_type === 'TEXT' && newTemplate.header_text && (
                         <div style={{ fontWeight: 800, color: '#0f172a', marginBottom: '4px', fontSize: '0.9rem' }}>
                           {newTemplate.header_text}
                         </div>
@@ -1909,6 +2149,54 @@ export const MetaWhatsAppDesktop: React.FC = () => {
                         12:00 PM <span style={{ color: META_BLUE }}>✓✓</span>
                       </div>
                     </div>
+
+                    {/* Native WhatsApp Button Preview */}
+                    {newTemplate.button_type === 'URL' && newTemplate.button_text && (
+                      <div style={{ maxWidth: '92%', marginTop: '4px' }}>
+                        <div
+                          style={{
+                            backgroundColor: '#ffffff',
+                            borderRadius: '8px',
+                            padding: '0.5rem',
+                            textAlign: 'center',
+                            color: '#2563eb',
+                            fontWeight: 700,
+                            fontSize: '0.82rem',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                            border: '1px solid #e2e8f0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.35rem',
+                          }}
+                        >
+                          <span>💳</span> {newTemplate.button_text} ↗
+                        </div>
+                      </div>
+                    )}
+                    {newTemplate.button_type === 'QUICK_REPLY' && newTemplate.button_text && (
+                      <div style={{ maxWidth: '92%', marginTop: '4px' }}>
+                        <div
+                          style={{
+                            backgroundColor: '#ffffff',
+                            borderRadius: '8px',
+                            padding: '0.5rem',
+                            textAlign: 'center',
+                            color: '#2563eb',
+                            fontWeight: 700,
+                            fontSize: '0.82rem',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                            border: '1px solid #e2e8f0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.35rem',
+                          }}
+                        >
+                          <span>↩️</span> {newTemplate.button_text}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1933,6 +2221,21 @@ export const MetaWhatsAppDesktop: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Template Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isDeleteConfirmOpen}
+        title="Delete WhatsApp Template"
+        message={`Are you sure you want to permanently delete template "${templateToDelete?.name}" from Meta WhatsApp Cloud API and your database? This action cannot be undone.`}
+        confirmText={deleteLoading ? 'Deleting…' : 'Delete Template'}
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={handleConfirmDeleteTemplate}
+        onCancel={() => {
+          setIsDeleteConfirmOpen(false);
+          setTemplateToDelete(null);
+        }}
+      />
     </div>
   );
 };
