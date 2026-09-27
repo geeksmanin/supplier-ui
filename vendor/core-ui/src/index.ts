@@ -130,3 +130,6 @@ export { BranchProvider, useBranch } from './context/BranchContext';
 export type { BranchInfo, BranchContextType } from './context/BranchContext';
 export { BranchSelector } from './components/BranchSelector';
 export type { BranchSelectorProps } from './components/BranchSelector';
+export { BranchTeamStaffPicker } from './components/BranchTeamStaffPicker';
+export type { BranchTeamStaffPickerProps } from './components/BranchTeamStaffPicker';
+
