@@ -25,6 +25,14 @@
       "version": "1.0.0",
       "versionCode": 1,
       "description": "Geeksman Enterprise Cloud Management"
+    },
+    "samwad": {
+      "name": "Samvad",
+      "package": "com.geeksmanos.samvad",
+      "url": "https://samwad.a3pl.in",
+      "version": "1.0.0",
+      "versionCode": 1,
+      "description": "Samvad Enterprise Communication & Ticketing Suite"
     }
   }
 }

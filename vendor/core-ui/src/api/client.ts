@@ -79,7 +79,17 @@ export interface TenantMetadata {
 
 export const getWorkspaceFromUrl = (): string => {
   if (typeof window !== 'undefined') {
-    // 1. Check URL query parameters (both standard query and hash query, e.g. ?workspace=synchx)
+    const appConfig = getAppConfig();
+
+    // 1. If URL resolution is disabled and defaultTenant is set, defaultTenant takes precedence
+    if (appConfig.defaultTenant && !appConfig.resolveTenantFromUrl) {
+      const defaultTenant = appConfig.defaultTenant;
+      localStorage.setItem('tenant_code', defaultTenant);
+      localStorage.setItem('workspace_code', defaultTenant);
+      return defaultTenant;
+    }
+
+    // 2. Check URL query parameters (both standard query and hash query, e.g. ?workspace=synchx)
     const searchParams = new URLSearchParams(window.location.search);
     let queryWs = searchParams.get('workspace') || searchParams.get('tenant') || searchParams.get('tenant_code');
 
@@ -96,28 +106,28 @@ export const getWorkspaceFromUrl = (): string => {
       return ws;
     }
 
-    // 2. Check Hostname subdomain (e.g. synchx.geeksman.co.in)
-    const host = window.location.hostname.toLowerCase();
-    const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
-    if (host && host !== 'localhost' && host !== '127.0.0.1' && !host.endsWith('.localhost') && !isIpAddress) {
-      const parts = host.split('.');
-      if (parts.length > 1 && parts[0] !== 'admin' && parts[0] !== 'platform' && parts[0] !== 'www') {
-        return parts[0];
-      }
-    }
-
-    // 3. If local development and resolveTenantFromUrl is false, defaultTenant should always take precedence
-    const appConfig = getAppConfig();
-    if (appConfig.defaultTenant && !appConfig.resolveTenantFromUrl) {
-      const defaultTenant = appConfig.defaultTenant;
-      localStorage.setItem('tenant_code', defaultTenant);
-      localStorage.setItem('workspace_code', defaultTenant);
-      return defaultTenant;
-    }
-
+    // 3. Saved tenant in localStorage (ignore if 'platform' and a specific non-platform defaultTenant is configured)
     const savedTenant = localStorage.getItem('tenant_code') || localStorage.getItem('workspace_code');
-    if (savedTenant) {
+    if (savedTenant && (savedTenant !== 'platform' || !appConfig.defaultTenant || appConfig.defaultTenant === 'platform')) {
       return savedTenant;
+    }
+
+    // 4. Check Hostname subdomain (e.g. synchx.geeksman.co.in) if URL resolution is enabled
+    if (appConfig.resolveTenantFromUrl) {
+      const host = window.location.hostname.toLowerCase();
+      const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
+      if (host && host !== 'localhost' && host !== '127.0.0.1' && !host.endsWith('.localhost') && !isIpAddress) {
+        const parts = host.split('.');
+        const appPrefixes = ['admin', 'platform', 'www', 'samwad', 'samvad', 'chat', 'staff', 'customer', 'portal', 'catalogue', 'catalog', 'app', 'api'];
+        if (parts.length > 1) {
+          if (!appPrefixes.includes(parts[0])) {
+            return parts[0];
+          } else if (parts.length > 2 && !appPrefixes.includes(parts[1])) {
+            // E.g. samwad.a3pl.in -> parts[1] is 'a3pl'
+            return parts[1];
+          }
+        }
+      }
     }
   }
   const appConfig = getAppConfig();
