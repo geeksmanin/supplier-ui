@@ -96,6 +96,12 @@ export type { MobileBottomNavWithTabsProps, MobileNavItemConfig } from './compon
 export { useMobileBottomNav, setMobileBottomNavVisibility } from './hooks/useMobileBottomNav';
 export { MobileBottomBanner } from './components/Mobile/MobileBottomBanner';
 export type { MobileBottomBannerProps } from './components/Mobile/MobileBottomBanner';
+export { MobileTable } from './components/Mobile/MobileTable';
+export type { MobileTableProps, MobileTableColumn } from './components/Mobile/MobileTable';
+export { MobileSearchBar } from './components/Mobile/MobileSearchBar';
+export type { MobileSearchBarProps } from './components/Mobile/MobileSearchBar';
+export { MobileFAB } from './components/Mobile/MobileFAB';
+export type { MobileFABProps } from './components/Mobile/MobileFAB';
 export { DataListMobile } from './components/DataList/DataListMobile';
 export type { DataListMobileProps, DataListFilterOption, DataListCardProps, DataListDetailSection, DataListDetailConfig } from './components/DataList/DataListMobile';
 export type { AppTab, AppFolderItem, AppFolderGroup } from './types/MobileTabTypes';
