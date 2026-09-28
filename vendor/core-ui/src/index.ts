@@ -139,3 +139,8 @@ export type { BranchSelectorProps } from './components/BranchSelector';
 export { BranchTeamStaffPicker } from './components/BranchTeamStaffPicker';
 export type { BranchTeamStaffPickerProps } from './components/BranchTeamStaffPicker';
 
+// Authentication & Current User Utilities
+export { getCurrentUser, setCurrentUser, clearCurrentUser, isMessageFromSelf } from './utils/auth';
+export type { CurrentUser } from './utils/auth';
+
+

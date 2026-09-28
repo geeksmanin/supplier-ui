@@ -307,4 +307,97 @@ input:hover, textarea:hover, select:hover {
   border-color: #6366f1 !important;
 }
 
+/* Bounding Box Highlight Pattern:
+   When inputs are inside a composite container (e.g. search bars, compound inputs),
+   the outer bounding box receives the focus ring highlight while the inner input
+   remains unbordered and clean without an awkward nested rectangular box. */
+.bounding-box:focus-within,
+[data-bounding-box]:focus-within,
+.search-box:focus-within,
+.searchBox:focus-within,
+.searchBar:focus-within,
+.searchPill:focus-within,
+.searchBarContainer:focus-within,
+.search-bar-container:focus-within,
+.search-input-container:focus-within,
+.searchRow:focus-within,
+.inputBox:focus-within,
+.desktopInputBox:focus-within {
+  border-color: #4f46e5 !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25) !important;
+}
+
+/* WhatsApp / Teal Theme Bounding Box variant */
+.wa-bounding-box:focus-within,
+[data-wa-bounding-box]:focus-within {
+  border-color: #00a884 !important;
+  box-shadow: 0 0 0 3px rgba(0, 168, 132, 0.22) !important;
+}
+
+/* Suppress inner rectangular focus ring & background override on inputs inside bounding boxes */
+.bounding-box input:focus,
+.bounding-box input:focus-visible,
+.bounding-box textarea:focus,
+.bounding-box textarea:focus-visible,
+[data-bounding-box] input:focus,
+[data-bounding-box] input:focus-visible,
+[data-bounding-box] textarea:focus,
+[data-bounding-box] textarea:focus-visible,
+.wa-bounding-box input:focus,
+.wa-bounding-box input:focus-visible,
+[data-wa-bounding-box] input:focus,
+[data-wa-bounding-box] input:focus-visible,
+.search-box input:focus,
+.search-box input:focus-visible,
+.searchBox input:focus,
+.searchBox input:focus-visible,
+.searchBar input:focus,
+.searchBar input:focus-visible,
+.searchPill input:focus,
+.searchPill input:focus-visible,
+.searchBarContainer input:focus,
+.searchBarContainer input:focus-visible,
+.search-bar-container input:focus,
+.search-bar-container input:focus-visible,
+.search-input-container input:focus,
+.search-input-container input:focus-visible,
+.inputBox input:focus,
+.inputBox input:focus-visible,
+.desktopInputBox input:focus,
+.desktopInputBox input:focus-visible,
+.searchRow input:focus,
+.searchRow input:focus-visible,
+input.bare-input:focus,
+input.bare-input:focus-visible,
+textarea.bare-input:focus,
+textarea.bare-input:focus-visible,
+input[data-bare-input]:focus,
+input[data-bare-input]:focus-visible {
+  outline: none !important;
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+.bounding-box input:hover,
+[data-bounding-box] input:hover,
+.wa-bounding-box input:hover,
+[data-wa-bounding-box] input:hover,
+.search-box input:hover,
+.searchBox input:hover,
+.searchBar input:hover,
+.searchPill input:hover,
+.searchBarContainer input:hover,
+.search-bar-container input:hover,
+.search-input-container input:hover,
+.inputBox input:hover,
+.desktopInputBox input:hover,
+.searchRow input:hover,
+input.bare-input:hover,
+textarea.bare-input:hover,
+input[data-bare-input]:hover {
+  border-color: transparent !important;
+}
+
 

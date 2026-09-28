@@ -33,17 +33,21 @@ export const MobileSearchBar: React.FC<MobileSearchBarProps> = ({
       boxSizing: 'border-box',
     }}>
       {/* Search Input Container */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        alignItems: 'center',
-        backgroundColor: '#f1f5f9',
-        borderRadius: '10px',
-        padding: '0 10px',
-        height: '38px',
-        border: '1px solid #e2e8f0',
-        transition: 'border-color 0.15s ease',
-      }}>
+      <div
+        className="search-input-container bounding-box"
+        data-bounding-box="true"
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          backgroundColor: '#f1f5f9',
+          borderRadius: '10px',
+          padding: '0 10px',
+          height: '38px',
+          border: '1px solid #e2e8f0',
+          transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+        }}
+      >
         {/* Search SVG Icon */}
         <svg
           width="16"
@@ -66,6 +70,8 @@ export const MobileSearchBar: React.FC<MobileSearchBarProps> = ({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
+          className="bare-input"
+          data-bare-input="true"
           style={{
             flex: 1,
             border: 'none',
