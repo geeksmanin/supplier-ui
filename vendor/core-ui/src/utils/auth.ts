@@ -118,7 +118,12 @@ export function isMessageFromSelf(
   const { userId, userEmail, userName } = user;
 
   // 1. Direct ID comparison
-  const msgSenderId = msg.sender_id || msg.senderId || msg.created_by_id || msg.CreatedByID;
+  const msgSenderId =
+    msg.sender_id ||
+    msg.senderId ||
+    msg.created_by_id ||
+    msg.CreatedByID ||
+    (typeof msg.created_by === 'object' ? msg.created_by?.id : undefined);
   if (userId && userId !== 'usr-self' && msgSenderId) {
     if (String(msgSenderId).toLowerCase() === String(userId).toLowerCase()) {
       return true;
@@ -126,7 +131,11 @@ export function isMessageFromSelf(
   }
 
   // 2. Email comparison
-  const msgEmail = msg.sender_email || msg.senderEmail || msg.email;
+  const msgEmail =
+    msg.sender_email ||
+    msg.senderEmail ||
+    msg.email ||
+    (typeof msg.created_by === 'object' ? msg.created_by?.email : undefined);
   if (userEmail && msgEmail) {
     if (String(msgEmail).toLowerCase() === String(userEmail).toLowerCase()) {
       return true;
