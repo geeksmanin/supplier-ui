@@ -90,13 +90,7 @@ export const Orders3DIcon: React.FC<Icon3DProps> = ({
           <stop offset="100%" stopColor="#064E3B" stopOpacity="0" />
         </radialGradient>
 
-        {/* Drop Shadow Filter */}
-        <filter id="ord3dShadow" x="-30%" y="-30%" width="160%" height="160%">
-          <feDropShadow dx="0" dy="8" stdDeviation="7" floodColor="#022C22" floodOpacity="0.55" />
-        </filter>
-        <filter id="ord3dCheckShadow" x="-40%" y="-40%" width="180%" height="180%">
-          <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#064E3B" floodOpacity="0.5" />
-        </filter>
+
       </defs>
 
       {/* Ground Ambient Reflection */}
@@ -131,7 +125,7 @@ export const Orders3DIcon: React.FC<Icon3DProps> = ({
       </g>
 
       {/* 3D Basket Solid Body with Depth */}
-      <g filter="url(#ord3dShadow)">
+      <g>
         {/* Basket Back Lip & Depth Floor */}
         <path
           d="M24 44 L110 44 L102 90 L36 90 Z"
@@ -214,7 +208,7 @@ export const Orders3DIcon: React.FC<Icon3DProps> = ({
       <circle cx="17" cy="30" r="3" fill="#FFFFFF" />
 
       {/* Floating 3D Verified Check Badge */}
-      <g filter="url(#ord3dCheckShadow)">
+      <g>
         <circle cx="102" cy="36" r="16" fill="#064E3B" />
         <circle cx="101" cy="35" r="15" fill="#10B981" />
         <circle cx="101" cy="35" r="12" stroke="#A7F3D0" strokeWidth="1.5" fill="none" />

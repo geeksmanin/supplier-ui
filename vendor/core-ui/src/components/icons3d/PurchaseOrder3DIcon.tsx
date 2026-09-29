@@ -58,10 +58,6 @@ export const PurchaseOrder3DIcon: React.FC<Icon3DProps> = ({
           <stop offset="100%" stopColor="#172554" stopOpacity="0" />
         </radialGradient>
 
-        {/* Soft Drop Shadow */}
-        <filter id="poShadow" x="-40%" y="-40%" width="180%" height="180%">
-          <feDropShadow dx="0" dy="10" stdDeviation="8" floodColor="#172554" floodOpacity="0.45" />
-        </filter>
       </defs>
 
       {/* Ground Soft Glow */}
@@ -78,7 +74,7 @@ export const PurchaseOrder3DIcon: React.FC<Icon3DProps> = ({
       />
 
       {/* 3D Bag Solid Body */}
-      <g filter="url(#poShadow)">
+      <g>
         {/* Left Depth Fold (Gusset) */}
         <path
           d="M32 46 L46 46 L40 126 L22 122 Z"
