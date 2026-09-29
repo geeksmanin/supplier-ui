@@ -102,7 +102,23 @@ export const sendDocumentMessage = async (data: {
   template_name?: string;
   template_params?: string[];
   payment_url?: string;
+  buttons?: { type: string; index: number; text?: string; payload?: string }[];
   account_id?: string;
 }) => {
   return await metaWaPost('/send-document', data);
+};
+
+export const sendTemplateMessage = async (data: {
+  account_id?: string;
+  recipient_phone: string;
+  template_name: string;
+  template_params?: string[];
+  buttons?: { type: string; index: number; text?: string; payload?: string }[];
+  payment_url?: string;
+  text_content?: string;
+  media_url?: string;
+  media_filename?: string;
+  force_template?: boolean;
+}) => {
+  return await metaWaPost('/meta-whatsapp/send', data);
 };

@@ -42,6 +42,7 @@ export const MetaWhatsAppMobile: React.FC = () => {
     message_type: 'TEMPLATE' as 'TEMPLATE' | 'SESSION_TEXT' | 'SESSION_MEDIA',
     template_name: 'hello_world',
     template_params: '',
+    dynamic_url_param: '',
     text_content: '',
     media_url: '',
   });
@@ -109,6 +110,7 @@ export const MetaWhatsAppMobile: React.FC = () => {
         recipient_phone: testPayload.recipient_phone,
         template_name: testPayload.template_name,
         template_params: paramsArray,
+        payment_url: testPayload.dynamic_url_param?.trim() || undefined,
         text_content: testPayload.text_content,
         media_url: testPayload.media_url,
         force_template: testPayload.message_type === 'TEMPLATE',
@@ -368,17 +370,39 @@ export const MetaWhatsAppMobile: React.FC = () => {
               </div>
 
               {testPayload.message_type === 'TEMPLATE' && (
-                <div>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 700 }}>Template Name</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="hello_world"
-                    value={testPayload.template_name}
-                    onChange={(e) => setTestPayload({ ...testPayload, template_name: e.target.value })}
-                    style={{ width: '100%', padding: '0.55rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop: '4px' }}
-                  />
-                </div>
+                <>
+                  <div>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700 }}>Template Name</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="hello_world"
+                      value={testPayload.template_name}
+                      onChange={(e) => setTestPayload({ ...testPayload, template_name: e.target.value })}
+                      style={{ width: '100%', padding: '0.55rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop: '4px' }}
+                    />
+                  </div>
+                  <div style={{ marginTop: '0.65rem' }}>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700 }}>Body Variables (Comma-separated)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. John, 1002"
+                      value={testPayload.template_params}
+                      onChange={(e) => setTestPayload({ ...testPayload, template_params: e.target.value })}
+                      style={{ width: '100%', padding: '0.55rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop: '4px' }}
+                    />
+                  </div>
+                  <div style={{ marginTop: '0.65rem' }}>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700 }}>Dynamic URL Button Parameter (Required if template has dynamic URL)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 12345 or order-id-slug"
+                      value={testPayload.dynamic_url_param}
+                      onChange={(e) => setTestPayload({ ...testPayload, dynamic_url_param: e.target.value })}
+                      style={{ width: '100%', padding: '0.55rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop: '4px' }}
+                    />
+                  </div>
+                </>
               )}
 
               {testPayload.message_type === 'SESSION_TEXT' && (

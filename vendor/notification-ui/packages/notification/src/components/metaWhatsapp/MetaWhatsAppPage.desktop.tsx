@@ -29,10 +29,26 @@ const labelStyle: React.CSSProperties = {
   display: 'block',
 };
 
+interface ParsedTemplateButton {
+  type: string;
+  text?: string;
+  url?: string;
+  phone_number?: string;
+}
+
 interface ParsedTemplateComponent {
   type: string;
   format?: string;
   text?: string;
+  buttons?: ParsedTemplateButton[];
+}
+
+export interface DynamicUrlButtonDef {
+  index: number;
+  text: string;
+  url: string;
+  variableName: string;
+  prefix: string;
 }
 
 export const extractTemplateVariables = (componentsRaw: any): {
@@ -42,6 +58,7 @@ export const extractTemplateVariables = (componentsRaw: any): {
   footerText: string;
   bodyVariables: string[];
   headerVariables: string[];
+  dynamicUrlButtons: DynamicUrlButtonDef[];
 } => {
   let headerText = '';
   let headerFormat = '';
@@ -49,8 +66,9 @@ export const extractTemplateVariables = (componentsRaw: any): {
   let footerText = '';
   let bodyVariables: string[] = [];
   let headerVariables: string[] = [];
+  let dynamicUrlButtons: DynamicUrlButtonDef[] = [];
 
-  if (!componentsRaw) return { headerText, headerFormat, bodyText, footerText, bodyVariables, headerVariables };
+  if (!componentsRaw) return { headerText, headerFormat, bodyText, footerText, bodyVariables, headerVariables, dynamicUrlButtons };
 
   try {
     const components: ParsedTemplateComponent[] = typeof componentsRaw === 'string'
@@ -59,7 +77,8 @@ export const extractTemplateVariables = (componentsRaw: any): {
 
     if (Array.isArray(components)) {
       for (const comp of components) {
-        if (comp.type === 'HEADER') {
+        const compType = comp.type?.toUpperCase();
+        if (compType === 'HEADER') {
           if (comp.format) {
             headerFormat = comp.format.toUpperCase();
           }
@@ -70,7 +89,7 @@ export const extractTemplateVariables = (componentsRaw: any): {
               headerVariables = Array.from(new Set(matches.map((m) => m.replace(/[{}]/g, ''))));
             }
           }
-        } else if (comp.type === 'BODY' && comp.text) {
+        } else if (compType === 'BODY' && comp.text) {
           bodyText = comp.text;
           const matches = comp.text.match(/\{\{(\d+)\}\}/g);
           if (matches) {
@@ -78,8 +97,22 @@ export const extractTemplateVariables = (componentsRaw: any): {
               (a, b) => Number(a) - Number(b)
             );
           }
-        } else if (comp.type === 'FOOTER' && comp.text) {
+        } else if (compType === 'FOOTER' && comp.text) {
           footerText = comp.text;
+        } else if (compType === 'BUTTONS' && Array.isArray(comp.buttons)) {
+          comp.buttons.forEach((btn, idx) => {
+            if (btn.type?.toUpperCase() === 'URL' && btn.url && btn.url.includes('{{')) {
+              const varMatch = btn.url.match(/\{\{(\d+)\}\}/);
+              const prefix = btn.url.includes('{{') ? btn.url.substring(0, btn.url.indexOf('{{')) : '';
+              dynamicUrlButtons.push({
+                index: idx,
+                text: btn.text || `Button ${idx + 1}`,
+                url: btn.url,
+                variableName: varMatch ? varMatch[1] : '1',
+                prefix,
+              });
+            }
+          });
         }
       }
     }
@@ -87,7 +120,7 @@ export const extractTemplateVariables = (componentsRaw: any): {
     // ignore parse errors
   }
 
-  return { headerText, headerFormat, bodyText, footerText, bodyVariables, headerVariables };
+  return { headerText, headerFormat, bodyText, footerText, bodyVariables, headerVariables, dynamicUrlButtons };
 };
 
 const renderBodyWithHighlights = (text: string, values: Record<string, string>) => {
@@ -186,6 +219,7 @@ export const MetaWhatsAppDesktop: React.FC = () => {
 
   // Dynamic variable values map for templates (e.g. { '1': 'John', '2': '#1024' })
   const [templateVariableValues, setTemplateVariableValues] = useState<Record<string, string>>({});
+  const [buttonVariableValues, setButtonVariableValues] = useState<Record<number, string>>({});
 
   // Create Template modal states
   const [isCreateTemplateModalOpen, setIsCreateTemplateModalOpen] = useState<boolean>(false);
@@ -276,7 +310,19 @@ export const MetaWhatsAppDesktop: React.FC = () => {
     } else {
       setTemplateVariableValues({});
     }
-  }, [parsedTemplate.bodyVariables]);
+
+    if (parsedTemplate.dynamicUrlButtons.length > 0) {
+      setButtonVariableValues((prev) => {
+        const next: Record<number, string> = {};
+        parsedTemplate.dynamicUrlButtons.forEach((b) => {
+          next[b.index] = prev[b.index] || '';
+        });
+        return next;
+      });
+    } else {
+      setButtonVariableValues({});
+    }
+  }, [parsedTemplate.bodyVariables, parsedTemplate.dynamicUrlButtons]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -345,6 +391,8 @@ export const MetaWhatsAppDesktop: React.FC = () => {
     try {
       const isTemplate = testPayload.message_type === 'TEMPLATE';
       let paramsArray: string[] = [];
+      let buttonsPayload: { type: string; index: number; text: string }[] | undefined = undefined;
+
       if (isTemplate) {
         // Enforce required header media (IMAGE, DOCUMENT, VIDEO)
         if (parsedTemplate.headerFormat && parsedTemplate.headerFormat !== 'TEXT') {
@@ -359,13 +407,33 @@ export const MetaWhatsAppDesktop: React.FC = () => {
         if (parsedTemplate.bodyVariables.length > 0) {
           const missing = parsedTemplate.bodyVariables.filter((v) => !templateVariableValues[v]?.trim());
           if (missing.length > 0) {
-            showToast(`Template "${testPayload.template_name}" requires all variables. Missing: {{${missing.join('}}, {{')}}}`, 'error');
+            showToast(`Template "${testPayload.template_name}" requires all body variables. Missing: {{${missing.join('}}, {{')}}}`, 'error');
             setSendLoading(false);
             return;
           }
           paramsArray = parsedTemplate.bodyVariables.map((v) => templateVariableValues[v] || '');
         } else if (testPayload.template_params) {
           paramsArray = testPayload.template_params.split(',').map((s) => s.trim());
+        }
+
+        // Enforce required dynamic URL button parameters
+        if (parsedTemplate.dynamicUrlButtons.length > 0) {
+          const missingBtn = parsedTemplate.dynamicUrlButtons.find(
+            (b) => !buttonVariableValues[b.index]?.trim()
+          );
+          if (missingBtn) {
+            showToast(
+              `Button "${missingBtn.text}" requires a dynamic URL parameter (e.g. order ID/tracking ID).`,
+              'error'
+            );
+            setSendLoading(false);
+            return;
+          }
+          buttonsPayload = parsedTemplate.dynamicUrlButtons.map((b) => ({
+            type: 'url',
+            index: b.index,
+            text: buttonVariableValues[b.index]?.trim() || '',
+          }));
         }
       }
 
@@ -374,6 +442,7 @@ export const MetaWhatsAppDesktop: React.FC = () => {
         recipient_phone: testPayload.recipient_phone,
         template_name: isTemplate ? testPayload.template_name : '',
         template_params: paramsArray,
+        buttons: buttonsPayload,
         text_content: testPayload.text_content,
         media_url: testPayload.media_url,
         force_template: isTemplate,
@@ -1684,12 +1753,12 @@ export const MetaWhatsAppDesktop: React.FC = () => {
                         ))}
                       </div>
                     </div>
-                  ) : selectedTemplate ? (
+                  ) : selectedTemplate && parsedTemplate.dynamicUrlButtons.length === 0 ? (
                     <div style={{ padding: '0.65rem 0.85rem', borderRadius: '8px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', fontSize: '0.8rem', color: '#166534', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span>✓</span>
                       <span>This template has no dynamic variable placeholders.</span>
                     </div>
-                  ) : (
+                  ) : !selectedTemplate ? (
                     <div>
                       <label style={labelStyle}>Template Parameters (Comma-separated)</label>
                       <input
@@ -1700,10 +1769,46 @@ export const MetaWhatsAppDesktop: React.FC = () => {
                         style={inputStyle}
                       />
                     </div>
+                  ) : null}
+
+                  {/* Dynamic URL Button Parameters (Required by Meta API) */}
+                  {parsedTemplate.dynamicUrlButtons.length > 0 && (
+                    <div style={{ backgroundColor: '#f0f9ff', padding: '0.85rem', borderRadius: '10px', border: '1px solid #bae6fd', marginTop: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <label style={{ ...labelStyle, color: '#0369a1', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                          <span>🔗</span> Dynamic URL Button Parameters ({parsedTemplate.dynamicUrlButtons.length})
+                        </label>
+                        <span style={{ fontSize: '0.72rem', color: '#0284c7', fontWeight: 600 }}>
+                          Required by Meta API
+                        </span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: parsedTemplate.dynamicUrlButtons.length > 1 ? '1fr 1fr' : '1fr', gap: '0.65rem' }}>
+                        {parsedTemplate.dynamicUrlButtons.map((btn) => (
+                          <div key={btn.index}>
+                            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#0f172a', display: 'block', marginBottom: '2px' }}>
+                              Button &quot;{btn.text}&quot; URL Parameter
+                            </span>
+                            <input
+                              type="text"
+                              required
+                              placeholder="e.g. 12345 or order-tracking-id"
+                              value={buttonVariableValues[btn.index] || ''}
+                              onChange={(e) => setButtonVariableValues({ ...buttonVariableValues, [btn.index]: e.target.value })}
+                              style={inputStyle}
+                            />
+                            {btn.url && (
+                              <span style={{ fontSize: '0.68rem', color: '#64748b', display: 'block', marginTop: '2px', wordBreak: 'break-all' }}>
+                                Template URL: {btn.url}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
 
                   {/* Live WhatsApp Chat Preview */}
-                  {(parsedTemplate.bodyText || parsedTemplate.headerText) && (
+                  {(parsedTemplate.bodyText || parsedTemplate.headerText || parsedTemplate.dynamicUrlButtons.length > 0) && (
                     <div>
                       <label style={{ ...labelStyle, marginBottom: '6px' }}>Live WhatsApp Chat Preview</label>
                       <div
@@ -1745,6 +1850,39 @@ export const MetaWhatsAppDesktop: React.FC = () => {
                           <div style={{ textAlign: 'right', fontSize: '0.65rem', color: '#94a3b8', marginTop: '4px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '3px' }}>
                             Just now <span style={{ color: META_BLUE, fontWeight: 700 }}>✓✓</span>
                           </div>
+
+                          {/* Dynamic URL Button Previews */}
+                          {parsedTemplate.dynamicUrlButtons.length > 0 && (
+                            <div style={{ marginTop: '8px', borderTop: '1px solid #f1f5f9', paddingTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              {parsedTemplate.dynamicUrlButtons.map((btn) => {
+                                const val = buttonVariableValues[btn.index];
+                                const previewUrl = val ? (btn.prefix ? btn.prefix + val : val) : btn.url;
+                                return (
+                                  <div
+                                    key={btn.index}
+                                    style={{
+                                      backgroundColor: '#f8fafc',
+                                      color: '#0284c7',
+                                      padding: '6px 10px',
+                                      borderRadius: '6px',
+                                      fontSize: '0.78rem',
+                                      fontWeight: 600,
+                                      textAlign: 'center',
+                                      border: '1px solid #e2e8f0',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '6px',
+                                    }}
+                                  >
+                                    <span>🔗</span>
+                                    <span>{btn.text}</span>
+                                    <span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>({previewUrl})</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
