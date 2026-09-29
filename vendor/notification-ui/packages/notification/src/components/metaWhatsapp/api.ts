@@ -101,6 +101,7 @@ export const sendDocumentMessage = async (data: {
   caption?: string;
   template_name?: string;
   template_params?: string[];
+  named_params?: Record<string, string>;
   payment_url?: string;
   buttons?: { type: string; index: number; text?: string; payload?: string }[];
   account_id?: string;
@@ -113,6 +114,7 @@ export const sendTemplateMessage = async (data: {
   recipient_phone: string;
   template_name: string;
   template_params?: string[];
+  named_params?: Record<string, string>;
   buttons?: { type: string; index: number; text?: string; payload?: string }[];
   payment_url?: string;
   text_content?: string;

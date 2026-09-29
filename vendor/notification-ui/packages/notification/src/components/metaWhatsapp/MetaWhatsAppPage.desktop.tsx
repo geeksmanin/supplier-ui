@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { apiClient, useToast, DataTable, Column, Select, ConfirmModal } from '@geeksman/core-ui';
+import { apiClient, useToast, DataTable, Column, Select, ConfirmModal, DeleteIcon } from '@geeksman/core-ui';
 import {
   META_BLUE,
   WHATSAPP_GREEN,
@@ -36,10 +36,20 @@ interface ParsedTemplateButton {
   phone_number?: string;
 }
 
+interface ParsedTemplateNamedParam {
+  param_name: string;
+  example?: string;
+}
+
 interface ParsedTemplateComponent {
   type: string;
   format?: string;
   text?: string;
+  example?: {
+    header_handle?: string[];
+    body_text?: string[][];
+    body_text_named_params?: ParsedTemplateNamedParam[];
+  };
   buttons?: ParsedTemplateButton[];
 }
 
@@ -84,25 +94,41 @@ export const extractTemplateVariables = (componentsRaw: any): {
           }
           if (comp.text) {
             headerText = comp.text;
-            const matches = comp.text.match(/\{\{(\d+)\}\}/g);
+            const matches = comp.text.match(/\{\{([a-zA-Z0-9_]+)\}\}/g);
             if (matches) {
               headerVariables = Array.from(new Set(matches.map((m) => m.replace(/[{}]/g, ''))));
             }
           }
         } else if (compType === 'BODY' && comp.text) {
           bodyText = comp.text;
-          const matches = comp.text.match(/\{\{(\d+)\}\}/g);
+          const matches = comp.text.match(/\{\{([a-zA-Z0-9_]+)\}\}/g);
+          const varsFound: string[] = [];
           if (matches) {
-            bodyVariables = Array.from(new Set(matches.map((m) => m.replace(/[{}]/g, '')))).sort(
-              (a, b) => Number(a) - Number(b)
-            );
+            matches.forEach((m) => {
+              const clean = m.replace(/[{}]/g, '');
+              if (!varsFound.includes(clean)) {
+                varsFound.push(clean);
+              }
+            });
           }
+          if (comp.example?.body_text_named_params && Array.isArray(comp.example.body_text_named_params)) {
+            comp.example.body_text_named_params.forEach((item) => {
+              if (item.param_name && !varsFound.includes(item.param_name)) {
+                varsFound.push(item.param_name);
+              }
+            });
+          }
+          const allNumeric = varsFound.every((v) => !isNaN(Number(v)));
+          if (allNumeric) {
+            varsFound.sort((a, b) => Number(a) - Number(b));
+          }
+          bodyVariables = varsFound;
         } else if (compType === 'FOOTER' && comp.text) {
           footerText = comp.text;
         } else if (compType === 'BUTTONS' && Array.isArray(comp.buttons)) {
           comp.buttons.forEach((btn, idx) => {
             if (btn.type?.toUpperCase() === 'URL' && btn.url && btn.url.includes('{{')) {
-              const varMatch = btn.url.match(/\{\{(\d+)\}\}/);
+              const varMatch = btn.url.match(/\{\{([a-zA-Z0-9_]+)\}\}/);
               const prefix = btn.url.includes('{{') ? btn.url.substring(0, btn.url.indexOf('{{')) : '';
               dynamicUrlButtons.push({
                 index: idx,
@@ -125,12 +151,12 @@ export const extractTemplateVariables = (componentsRaw: any): {
 
 const renderBodyWithHighlights = (text: string, values: Record<string, string>) => {
   if (!text) return null;
-  const parts = text.split(/(\{\{\d+\}\})/g);
+  const parts = text.split(/(\{\{[a-zA-Z0-9_]+\}\})/g);
   return parts.map((part, idx) => {
-    const match = part.match(/^\{\{(\d+)\}\}$/);
+    const match = part.match(/^\{\{([a-zA-Z0-9_]+)\}\}$/);
     if (match) {
-      const vNum = match[1];
-      const val = values[vNum];
+      const vName = match[1];
+      const val = values[vName];
       if (val && val.trim()) {
         return (
           <span
@@ -391,6 +417,7 @@ export const MetaWhatsAppDesktop: React.FC = () => {
     try {
       const isTemplate = testPayload.message_type === 'TEMPLATE';
       let paramsArray: string[] = [];
+      let namedParamsObj: Record<string, string> = {};
       let buttonsPayload: { type: string; index: number; text: string }[] | undefined = undefined;
 
       if (isTemplate) {
@@ -412,6 +439,11 @@ export const MetaWhatsAppDesktop: React.FC = () => {
             return;
           }
           paramsArray = parsedTemplate.bodyVariables.map((v) => templateVariableValues[v] || '');
+          parsedTemplate.bodyVariables.forEach((v) => {
+            if (templateVariableValues[v]) {
+              namedParamsObj[v] = templateVariableValues[v].trim();
+            }
+          });
         } else if (testPayload.template_params) {
           paramsArray = testPayload.template_params.split(',').map((s) => s.trim());
         }
@@ -442,6 +474,7 @@ export const MetaWhatsAppDesktop: React.FC = () => {
         recipient_phone: testPayload.recipient_phone,
         template_name: isTemplate ? testPayload.template_name : '',
         template_params: paramsArray,
+        named_params: Object.keys(namedParamsObj).length > 0 ? namedParamsObj : undefined,
         buttons: buttonsPayload,
         text_content: testPayload.text_content,
         media_url: testPayload.media_url,
@@ -842,10 +875,12 @@ export const MetaWhatsAppDesktop: React.FC = () => {
       },
     },
     {
-      key: 'id',
+      key: 'actions',
       label: 'Actions',
+      align: 'center' as const,
+      width: '140px',
       render: (_, row) => (
-        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
           <button
             type="button"
             onClick={() => {
@@ -857,19 +892,30 @@ export const MetaWhatsAppDesktop: React.FC = () => {
               }));
               setIsTestModalOpen(true);
             }}
+            title="Test Send Template"
             style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
               backgroundColor: '#eff6ff',
               color: '#1d4ed8',
               border: '1px solid #bfdbfe',
               borderRadius: '6px',
-              padding: '3px 8px',
+              padding: '4px 8px',
               fontSize: '0.72rem',
               fontWeight: 700,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease-in-out',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#dbeafe';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#eff6ff';
             }}
           >
-            🚀 Test Send
+            <span>🚀</span> Test Send
           </button>
           <button
             type="button"
@@ -877,19 +923,33 @@ export const MetaWhatsAppDesktop: React.FC = () => {
               setTemplateToDelete({ name: row.name, accountId: row.account_id });
               setIsDeleteConfirmOpen(true);
             }}
+            title="Delete Template"
             style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '28px',
+              height: '28px',
+              padding: '0',
               backgroundColor: '#fef2f2',
               color: '#dc2626',
-              border: '1px solid #fecaca',
+              border: '1px solid #fca5a5',
               borderRadius: '6px',
-              padding: '3px 8px',
-              fontSize: '0.72rem',
-              fontWeight: 700,
               cursor: 'pointer',
-              whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease-in-out',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#fee2e2';
+              e.currentTarget.style.color = '#b91c1c';
+              e.currentTarget.style.borderColor = '#f87171';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#fef2f2';
+              e.currentTarget.style.color = '#dc2626';
+              e.currentTarget.style.borderColor = '#fca5a5';
             }}
           >
-            🗑️ Delete
+            <DeleteIcon width={15} height={15} />
           </button>
         </div>
       ),
@@ -1739,7 +1799,7 @@ export const MetaWhatsAppDesktop: React.FC = () => {
                         {parsedTemplate.bodyVariables.map((vNum) => (
                           <div key={vNum}>
                             <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: '2px' }}>
-                              Variable {'{{' + vNum + '}}'}
+                              {isNaN(Number(vNum)) ? `Parameter {{${vNum}}}` : `Variable {{${vNum}}}`}
                             </span>
                             <input
                               type="text"
@@ -1753,7 +1813,7 @@ export const MetaWhatsAppDesktop: React.FC = () => {
                         ))}
                       </div>
                     </div>
-                  ) : selectedTemplate && parsedTemplate.dynamicUrlButtons.length === 0 ? (
+                  ) : selectedTemplate && parsedTemplate.bodyVariables.length === 0 && parsedTemplate.dynamicUrlButtons.length === 0 ? (
                     <div style={{ padding: '0.65rem 0.85rem', borderRadius: '8px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', fontSize: '0.8rem', color: '#166534', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span>✓</span>
                       <span>This template has no dynamic variable placeholders.</span>
