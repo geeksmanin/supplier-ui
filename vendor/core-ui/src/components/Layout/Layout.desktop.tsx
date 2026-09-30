@@ -32,6 +32,7 @@ import {
   Product3DIcon,
   Variant3DIcon,
   Integrations3DIcon,
+  Subscription3DIcon,
 } from '../icons3d';
 
 
@@ -129,6 +130,9 @@ export const LayoutDesktop: React.FC<any> = ({
     }
     if (p.includes('crm') || p.includes('lead')) {
       return <CRM3DIcon size={16} />;
+    }
+    if (p.includes('subscription') || p.includes('license')) {
+      return <Subscription3DIcon size={16} />;
     }
     if (p.includes('sales') || p.includes('quote') || p.includes('challan') || p.includes('quotation')) {
       return <Sales3DIcon size={16} />;
@@ -1385,6 +1389,11 @@ export const LayoutDesktop: React.FC<any> = ({
                       return isActive 
                         ? { bg: 'linear-gradient(to bottom, #f0fdf4, #dcfce7)', text: '#15803d', borderTop: '2.5px solid #16a34a' }
                         : { bg: '#bbf7d0', text: '#166534', borderTop: '2.5px solid transparent' };
+                    }
+                    if (p.includes('subscription') || p.includes('license')) {
+                      return isActive 
+                        ? { bg: 'linear-gradient(to bottom, #eff6ff, #dbeafe)', text: '#1d4ed8', borderTop: '2.5px solid #2563eb' }
+                        : { bg: '#bfdbfe', text: '#1e40af', borderTop: '2.5px solid transparent' };
                     }
                     if (p.includes('sales')) {
                       return isActive 

@@ -30,12 +30,28 @@ interface AppInstallerPluginInterface {
 
 const getAppPlugin = () => {
   const cap = getCapacitor();
-  return cap?.Plugins?.App || (typeof window !== 'undefined' ? (window as any).App : null);
+  if (cap?.Plugins?.App) return cap.Plugins.App;
+  if (typeof cap?.registerPlugin === 'function') {
+    try {
+      return cap.registerPlugin('App');
+    } catch (e) {
+      console.warn('Failed to dynamically register App plugin:', e);
+    }
+  }
+  return typeof window !== 'undefined' ? (window as any).App : null;
 };
 
 const getFilesystemPlugin = () => {
   const cap = getCapacitor();
-  return cap?.Plugins?.Filesystem || (typeof window !== 'undefined' ? (window as any).Filesystem : null);
+  if (cap?.Plugins?.Filesystem) return cap.Plugins.Filesystem;
+  if (typeof cap?.registerPlugin === 'function') {
+    try {
+      return cap.registerPlugin('Filesystem');
+    } catch (e) {
+      console.warn('Failed to dynamically register Filesystem plugin:', e);
+    }
+  }
+  return typeof window !== 'undefined' ? (window as any).Filesystem : null;
 };
 
 const getAppInstallerPlugin = (): AppInstallerPluginInterface | null => {
@@ -104,9 +120,11 @@ export const useAppUpdater = (options: UseAppUpdaterOptions = {}) => {
           if (AppPlugin && typeof AppPlugin.getInfo === 'function') {
             const info = await AppPlugin.getInfo();
             if (mounted && info) {
-              setInstalledVersion(info.version || fallbackVersion);
+              if (info.version) {
+                setInstalledVersion(info.version);
+              }
               const buildNum = parseInt(info.build, 10);
-              if (!isNaN(buildNum)) {
+              if (!isNaN(buildNum) && buildNum > 0) {
                 setInstalledBuild(buildNum);
               }
             }
@@ -139,14 +157,42 @@ export const useAppUpdater = (options: UseAppUpdaterOptions = {}) => {
 
       setVersionInfo(data);
 
+      // Resolve live native app version directly to avoid initial render race conditions
+      let currentVersion = installedVersion;
+      let currentBuild = installedBuild;
+      if (isNativePlatform()) {
+        try {
+          const AppPlugin = getAppPlugin();
+          if (AppPlugin && typeof AppPlugin.getInfo === 'function') {
+            const info = await AppPlugin.getInfo();
+            if (info) {
+              if (info.version) {
+                currentVersion = info.version;
+                setInstalledVersion(info.version);
+              }
+              const buildNum = parseInt(info.build, 10);
+              if (!isNaN(buildNum) && buildNum > 0) {
+                currentBuild = buildNum;
+                setInstalledBuild(buildNum);
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to get native App info during update check:', err);
+        }
+      }
+
       // Check if remote version is newer than installed version
-      const semverDiff = compareSemver(data.version, installedVersion);
+      const semverDiff = compareSemver(data.version, currentVersion);
       let isNewer = semverDiff > 0;
 
       // Also check build/version_code if available
-      if (data.version_code && installedBuild > 0) {
-        if (data.version_code > installedBuild) {
+      if (data.version_code && currentBuild > 0) {
+        if (data.version_code > currentBuild) {
           isNewer = true;
+        } else if (data.version_code <= currentBuild && semverDiff <= 0) {
+          // Explicit safeguard: if remote build is <= installed build and semver is not newer, do not trigger update
+          isNewer = false;
         }
       }
 
@@ -156,10 +202,10 @@ export const useAppUpdater = (options: UseAppUpdaterOptions = {}) => {
         // Check if mandatory:
         // Either force_update is explicitly true, or installed version is lower than min_version
         let mandatory = !!data.force_update;
-        if (data.min_version && compareSemver(data.min_version, installedVersion) > 0) {
+        if (data.min_version && compareSemver(data.min_version, currentVersion) > 0) {
           mandatory = true;
         }
-        if (data.min_version_code && installedBuild > 0 && data.min_version_code > installedBuild) {
+        if (data.min_version_code && currentBuild > 0 && data.min_version_code > currentBuild) {
           mandatory = true;
         }
         setIsMandatory(mandatory);

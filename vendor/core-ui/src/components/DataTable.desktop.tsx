@@ -833,7 +833,7 @@ export const DataTable: React.FC<DataTableProps> = ({
         }}
         style={{
           overflowY: 'auto',
-          overflowX: 'hidden',
+          overflowX: 'auto',
           flex: 1,
           minHeight: 0,
           maxHeight: infiniteScroll ? 'none' : '600px',
@@ -847,7 +847,7 @@ export const DataTable: React.FC<DataTableProps> = ({
           <thead>
             <tr>
               {processedColumns.map((col) => {
-                const isAction = col.key === 'action';
+                const isAction = col.key === 'action' || col.key === 'actions';
                 return (
                   <th
                     key={col.key}
@@ -898,7 +898,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             {!hideFilterRow && processedColumns.some(col => (col.filterType && col.filterType !== 'none') || col.sortable) && (
               <tr style={{ backgroundColor: '#f1f5f9' }}>
                 {processedColumns.map((col) => {
-                  const isAction = col.key === 'action';
+                  const isAction = col.key === 'action' || col.key === 'actions';
                   const isSortActive = sortConfig?.key === col.key;
                   return (
                     <th
@@ -978,7 +978,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                         ))
                         }
 
-                        {col.filterType === 'date' && (
+                        {!col.filterRender && col.filterType === 'date' && (
                           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1 }}>
                             <input
                               type="date"
@@ -1028,7 +1028,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                           </div>
                         )}
 
-                        {col.filterType === 'select' && (
+                        {!col.filterRender && col.filterType === 'select' && (
                           <div className="select-dropdown-container" style={{ position: 'relative', flex: 1 }}>
                             <button
                               onClick={() => {
@@ -1453,7 +1453,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                       return (
                         <td
                           key={col.key}
-                          className={col.key === 'action' ? 'sticky-action-col' : undefined}
+                          className={(col.key === 'action' || col.key === 'actions') ? 'sticky-action-col' : undefined}
                           style={{
                             textAlign: col.align || 'left',
                             width: col.width,
@@ -1489,7 +1489,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                     {processedColumns.map((col) => (
                       <td
                         key={col.key}
-                        className={col.key === 'action' ? 'sticky-action-col' : undefined}
+                        className={(col.key === 'action' || col.key === 'actions') ? 'sticky-action-col' : undefined}
                         style={{ textAlign: col.align || 'left' }}
                       >
                         &nbsp;

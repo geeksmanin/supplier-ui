@@ -48,6 +48,20 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
 }
 
+/* SearchableEntitySelect Input Resets */
+.searchable-entity-select-input,
+.searchable-entity-select-input:focus,
+.searchable-entity-select-input:focus-visible,
+.searchable-entity-select-input:active {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  background-color: transparent !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
 /* Animations */
 @keyframes fadeIn {
   from {

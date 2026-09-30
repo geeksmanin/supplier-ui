@@ -30,8 +30,11 @@ export type { RouteConfig, NavItemConfig, SearchItemConfig } from './registry/re
 export { DataTable } from './components/DataTable.desktop';
 export type { Column } from './components/DataTable.desktop';
 export { ToastProvider, useToast } from './components/Toast/Toast';
-export type { ToastType } from './components/Toast/Toast';export { Select } from './components/Select';
+export type { ToastType } from './components/Toast/Toast';
+export { Select } from './components/Select';
 export type { SelectProps, SelectOption, SelectAsyncConfig } from './components/Select';
+export { SearchableEntitySelect, normalizeSearchToken } from './components/SearchableEntitySelect';
+export type { SearchableEntitySelectProps } from './components/SearchableEntitySelect';
 export { ViewIcon, EditIcon, DeleteIcon } from './components/ActionIcons';
 export { TableRowActions } from './components/TableRowActions';
 export type { TableRowActionsProps } from './components/TableRowActions';
