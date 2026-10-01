@@ -679,13 +679,16 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
             });
           }
 
-          const convId = parsedMeta?.conversation_id || (parsedMeta?.entity_name === 'ticket' ? parsedMeta?.entity_id : undefined) || notif.entity_id;
-          const msgContent = parsedMeta?.content || notif.message || notif.body || '';
+          // Hydrate chat message into local store ONLY if explicit conversation_id or thread_id is set and notification is a chat type
+          const convId = parsedMeta?.conversation_id || parsedMeta?.thread_id;
+          const msgContent = parsedMeta?.content || parsedMeta?.text;
+          const notifType = String(notif.type || parsedMeta?.type || '').toLowerCase();
+          const isExplicitChat = notifType === 'chat_message' || notifType === 'thread_message' || notifType === 'mention' || Boolean(parsedMeta?.is_chat_message);
 
-          if (convId && msgContent) {
+          if (convId && msgContent && isExplicitChat) {
             const senderId = parsedMeta?.created_by?.id || parsedMeta?.sender_id || 'unknown';
             const senderName = parsedMeta?.created_by?.name || parsedMeta?.sender_name || 'User';
-            const msgId = parsedMeta?.id || notif.id;
+            const msgId = parsedMeta?.id || parsedMeta?.message_id || notif.id;
 
             saveChatMessage({
               id: msgId,
