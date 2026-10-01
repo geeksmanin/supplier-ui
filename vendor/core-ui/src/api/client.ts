@@ -106,13 +106,7 @@ export const getWorkspaceFromUrl = (): string => {
       return ws;
     }
 
-    // 3. Saved tenant in localStorage (ignore if 'platform' and a specific non-platform defaultTenant is configured)
-    const savedTenant = localStorage.getItem('tenant_code') || localStorage.getItem('workspace_code');
-    if (savedTenant && (savedTenant !== 'platform' || !appConfig.defaultTenant || appConfig.defaultTenant === 'platform')) {
-      return savedTenant;
-    }
-
-    // 4. Check Hostname subdomain (e.g. synchx.geeksman.co.in) if URL resolution is enabled
+    // 3. Check Hostname subdomain (e.g. synchx.geeksman.co.in) if URL resolution is enabled
     if (appConfig.resolveTenantFromUrl) {
       const host = window.location.hostname.toLowerCase();
       const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
@@ -128,6 +122,12 @@ export const getWorkspaceFromUrl = (): string => {
           }
         }
       }
+    }
+
+    // 4. Saved tenant in localStorage (ignore if 'platform' and a specific non-platform defaultTenant is configured)
+    const savedTenant = localStorage.getItem('tenant_code') || localStorage.getItem('workspace_code');
+    if (savedTenant && (savedTenant !== 'platform' || !appConfig.defaultTenant || appConfig.defaultTenant === 'platform')) {
+      return savedTenant;
     }
   }
   const appConfig = getAppConfig();
@@ -179,54 +179,43 @@ export const resolveTenantCodeFromServer = async (): Promise<string> => {
 
   const config = getAppConfig();
 
-  // If local development with a configured defaultTenant and URL resolution is disabled,
-  // honor config.defaultTenant unless a non-platform tenant is explicitly stored
-  if (config.defaultTenant && !config.resolveTenantFromUrl) {
-    const savedTenant = localStorage.getItem('tenant_code');
-    if (savedTenant && savedTenant !== 'platform') {
-      config.tenantCode = savedTenant;
-      return savedTenant;
+  // 1. If resolveTenantFromUrl is enabled, prioritize backend host resolution (GET /tenant/resolve?host=...)
+  if (config.resolveTenantFromUrl) {
+    try {
+      const response = await axios.get(`${getBaseUrl()}/tenant/resolve`, {
+        params: {
+          host: window.location.host,
+        },
+        headers: {
+          'X-Tenant-Code': 'platform',
+        }
+      });
+
+      const tenantCode = response.data?.data?.tenant_code;
+      if (tenantCode) {
+        config.tenantCode = tenantCode;
+        localStorage.setItem('tenant_code', tenantCode);
+        localStorage.setItem('workspace_code', tenantCode);
+        if (response.data?.data?.name) localStorage.setItem('tenant_name', response.data.data.name);
+        return tenantCode;
+      }
+    } catch (err) {
+      console.warn('Failed to resolve tenant from backend, falling back to stored/default:', err);
     }
-    const defaultTenant = config.defaultTenant;
-    config.tenantCode = defaultTenant;
-    localStorage.setItem('tenant_code', defaultTenant);
-    localStorage.setItem('workspace_code', defaultTenant);
-    return defaultTenant;
   }
 
+  // 2. Saved tenant in localStorage (fallback if URL resolution is disabled or returned no code)
   const savedTenant = localStorage.getItem('tenant_code');
   if (savedTenant) {
     config.tenantCode = savedTenant;
     return savedTenant;
   }
 
-  if (!config.resolveTenantFromUrl) {
-    const defaultTenant = config.defaultTenant || 'platform';
-    config.tenantCode = defaultTenant;
-    return defaultTenant;
-  }
-
-  try {
-    const response = await axios.get(`${getBaseUrl()}/tenant/resolve`, {
-      params: {
-        host: window.location.host,
-      },
-      headers: {
-        'X-Tenant-Code': 'platform',
-      }
-    });
-
-    const tenantCode = response.data?.data?.tenant_code;
-    if (tenantCode) {
-      config.tenantCode = tenantCode;
-      return tenantCode;
-    }
-  } catch (err) {
-    console.warn('Failed to resolve tenant from backend, falling back to default:', err);
-  }
-
+  // 3. Fallback to default tenant or 'platform'
   const fallbackTenant = config.defaultTenant || 'platform';
   config.tenantCode = fallbackTenant;
+  localStorage.setItem('tenant_code', fallbackTenant);
+  localStorage.setItem('workspace_code', fallbackTenant);
   return fallbackTenant;
 };
 
