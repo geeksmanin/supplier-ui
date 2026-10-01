@@ -7,6 +7,7 @@ export interface StreamEventRecord {
   seq: number;
   tenant_code: string;
   user_id: string;
+  module?: string;
   type: string;
   title?: string;
   message?: string;
@@ -62,7 +63,7 @@ export interface MetaRecord {
 }
 
 export type EventBusActionType =
-  | 'EVENT_APPENDED'
+  | 'EVENT_APPENDED'           // ← new: a notification was saved to stream_events IDB
   | 'READ_STATE_CHANGED'
   | 'READ_ALL_STATE_CHANGED'
   | 'OUTBOX_MUTATION'

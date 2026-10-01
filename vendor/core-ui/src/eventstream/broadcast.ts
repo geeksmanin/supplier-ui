@@ -1,4 +1,4 @@
-import { EventBusMessage, EventBusActionType } from './types';
+import { EventBusMessage, EventBusActionType, StreamEventRecord } from './types';
 
 const CHANNEL_NAME = 'geeksman_event_bus';
 const FALLBACK_STORAGE_KEY = 'geeksman_event_bus_msg';
@@ -85,5 +85,74 @@ export function subscribeBroadcast(handler: (msg: EventBusMessage) => void): () 
   subscribers.add(handler);
   return () => {
     subscribers.delete(handler);
+  };
+}
+
+export type NotificationConsumerHandler = (event: StreamEventRecord) => void;
+export type NotificationConsumerFilter = string | ((event: StreamEventRecord) => boolean);
+
+interface RegisteredConsumer {
+  module?: string;
+  filter?: (event: StreamEventRecord) => boolean;
+  handler: NotificationConsumerHandler;
+}
+
+const registeredConsumers = new Set<RegisteredConsumer>();
+let isDispatcherRegistered = false;
+
+function ensureConsumerDispatcher() {
+  if (isDispatcherRegistered) return;
+  isDispatcherRegistered = true;
+
+  subscribeBroadcast((busMsg) => {
+    if (busMsg.type !== 'EVENT_APPENDED' || !busMsg.payload) return;
+    const event = busMsg.payload as StreamEventRecord;
+
+    registeredConsumers.forEach((consumer) => {
+      try {
+        let matches = true;
+
+        if (consumer.module && consumer.module !== '*') {
+          const evMod = (event.module || '').toLowerCase();
+          if (evMod !== consumer.module.toLowerCase()) {
+            matches = false;
+          }
+        }
+
+        if (matches && consumer.filter) {
+          matches = consumer.filter(event);
+        }
+
+        if (matches) {
+          consumer.handler(event);
+        }
+      } catch (err) {
+        console.error('Error in registered notification consumer:', err);
+      }
+    });
+  });
+}
+
+/**
+ * Register a module consumer on the central notification broadcast stream.
+ * Receives complete notification payloads and allows each module to decide whether to process or discard.
+ *
+ * @param moduleOrFilter The target module name (e.g. 'samwad', 'ticketing') or custom filter function. Pass '*' to receive all.
+ * @param handler Callback receiving the complete notification payload.
+ * @returns Unsubscribe function to unregister the consumer.
+ */
+export function registerNotificationConsumer(
+  moduleOrFilter: NotificationConsumerFilter,
+  handler: NotificationConsumerHandler
+): () => void {
+  ensureConsumerDispatcher();
+  const consumer: RegisteredConsumer = {
+    module: typeof moduleOrFilter === 'string' ? moduleOrFilter : undefined,
+    filter: typeof moduleOrFilter === 'function' ? moduleOrFilter : undefined,
+    handler,
+  };
+  registeredConsumers.add(consumer);
+  return () => {
+    registeredConsumers.delete(consumer);
   };
 }

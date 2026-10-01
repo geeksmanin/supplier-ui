@@ -5,7 +5,13 @@ import {
   markStreamEventsRead,
   markAllStreamEventsRead,
 } from './db';
-import { subscribeBroadcast, broadcastEvent } from './broadcast';
+import {
+  subscribeBroadcast,
+  broadcastEvent,
+  registerNotificationConsumer,
+  NotificationConsumerFilter,
+  NotificationConsumerHandler,
+} from './broadcast';
 import { enqueueChatMessage, processOutbox } from './OutboxWorker';
 import { syncCatchUp, rebuildFromBootstrap, syncReadStatesToBackend } from './syncEngine';
 import { ChatMessageRecord, StreamEventRecord, EventBusMessage } from './types';
@@ -324,4 +330,22 @@ export function useNotificationList(options?: UseNotificationListOptions) {
     syncStream,
     reload: loadNotifications,
   };
+}
+
+/**
+ * React hook to register a module consumer on the central notification stream.
+ * Receives the complete notification payload and cleans up automatically on unmount.
+ */
+export function useNotificationConsumer(
+  moduleOrFilter: NotificationConsumerFilter,
+  handler: NotificationConsumerHandler
+): void {
+  const handlerRef = useRef(handler);
+  handlerRef.current = handler;
+
+  useEffect(() => {
+    return registerNotificationConsumer(moduleOrFilter, (event) => {
+      handlerRef.current(event);
+    });
+  }, [typeof moduleOrFilter === 'string' ? moduleOrFilter : null]);
 }

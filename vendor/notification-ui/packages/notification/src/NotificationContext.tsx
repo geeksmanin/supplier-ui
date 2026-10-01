@@ -642,6 +642,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
           saveWatermark(tenantCode, userId, eventSeq).catch(() => {});
         }
 
+        // Extract originating module directly from metadata
+        const moduleName: string = parsedMeta?.module || '';
+
         // Save incoming notification directly to IndexedDB local store
         if (tenantCode && userId) {
           saveStreamEvents([
@@ -650,6 +653,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
               seq: eventSeq || Date.now(),
               tenant_code: tenantCode,
               user_id: userId,
+              module: moduleName,
               type: notif.type || 'notification',
               title: notif.title,
               message: notif.message || notif.body || '',
@@ -658,15 +662,26 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
               is_read: Boolean(notif.is_read),
               created_at: notif.created_at || new Date().toISOString(),
             },
-          ]).catch(() => {});
-
-          // Extract complete chat message if present in metadata and populate chat_messages independently
-          let parsedMeta: any = notif.metadata;
-          if (typeof parsedMeta === 'string') {
-            try {
-              parsedMeta = JSON.parse(parsedMeta);
-            } catch (e) {}
-          }
+          ]).then(() => {
+            // Broadcast to all tabs so module consumers (samwad-ui, ticketing-ui)
+            // can filter by module / event_type and build their own domain stores.
+            broadcastEvent('EVENT_APPENDED', {
+              tenant_code: tenantCode,
+              user_id: userId,
+              payload: {
+                id: notif.id,
+                seq: eventSeq || 0,
+                module: moduleName,
+                type: notif.type || 'notification',
+                title: notif.title,
+                message: notif.message || notif.body || '',
+                link: notif.link,
+                metadata: notif.metadata,
+                is_read: Boolean(notif.is_read),
+                created_at: notif.created_at || new Date().toISOString(),
+              },
+            });
+          }).catch(() => {});
 
           // Directly hydrate and create ticket entity in conversations store if ticket object is embedded
           if (parsedMeta?.ticket && parsedMeta.ticket.id) {
@@ -681,9 +696,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
 
           // Hydrate chat message into local store ONLY if explicit conversation_id or thread_id is set and notification is a chat type
           const convId = parsedMeta?.conversation_id || parsedMeta?.thread_id;
-          const msgContent = parsedMeta?.content || parsedMeta?.text;
-          const notifType = String(notif.type || parsedMeta?.type || '').toLowerCase();
-          const isExplicitChat = notifType === 'chat_message' || notifType === 'thread_message' || notifType === 'mention' || Boolean(parsedMeta?.is_chat_message);
+          const msgContent = parsedMeta?.content || parsedMeta?.message || parsedMeta?.text;
+          const notifType = String(notif.type || parsedMeta?.type || parsedMeta?.event_type || '').toLowerCase();
+          // Recognise all samwad chat notification types as explicit chat messages
+          const isExplicitChat = [
+            'chat_message', 'thread_message', 'mention',
+            'samwad_message', 'samwad_mention',   // ← canonical samwad types
+          ].includes(notifType) || Boolean(parsedMeta?.is_chat_message);
 
           if (convId && msgContent && isExplicitChat) {
             const senderId = parsedMeta?.created_by?.id || parsedMeta?.sender_id || 'unknown';
