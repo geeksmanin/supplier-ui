@@ -146,4 +146,7 @@ export type { BranchTeamStaffPickerProps } from './components/BranchTeamStaffPic
 export { getCurrentUser, setCurrentUser, clearCurrentUser, isMessageFromSelf } from './utils/auth';
 export type { CurrentUser } from './utils/auth';
 
+// Common App Installation & Update Notice System
+export * from './components/AppNotice';
+
 

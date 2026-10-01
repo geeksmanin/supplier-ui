@@ -698,10 +698,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
           const convId = parsedMeta?.conversation_id || parsedMeta?.thread_id;
           const msgContent = parsedMeta?.content || parsedMeta?.message || parsedMeta?.text;
           const notifType = String(notif.type || parsedMeta?.type || parsedMeta?.event_type || '').toLowerCase();
-          // Recognise all samwad chat notification types as explicit chat messages
+          // Recognise all samwad chat notification types as explicit chat messages.
+          // samwad_silent_sync carries the sender's own message for multi-device sync —
+          // also hydrate it into the local chat store so the sender sees their own message in real-time.
           const isExplicitChat = [
             'chat_message', 'thread_message', 'mention',
             'samwad_message', 'samwad_mention',   // ← canonical samwad types
+            'samwad_silent_sync',                  // ← sender's own-device sync event
           ].includes(notifType) || Boolean(parsedMeta?.is_chat_message);
 
           if (convId && msgContent && isExplicitChat) {
