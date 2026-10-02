@@ -55,6 +55,8 @@ export const AppNotice: React.FC<AppNoticeProps> = ({
           isOpen={showUpdate}
           onClose={() => setUpdateDismissed(true)}
           onUpdateNow={handleUpdateNow}
+          apkDownloadUrl={apkDownloadUrl}
+          onDownloadApk={onDownloadApk}
         />
       )}
 

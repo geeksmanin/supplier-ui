@@ -70,4 +70,7 @@ export interface AppUpdateBannerProps {
   changelog?: string;
   isDownloading?: boolean;
   downloadProgress?: number;
+  updateType?: 'ota' | 'apk' | 'auto';
+  apkDownloadUrl?: string;
+  onDownloadApk?: () => void;
 }
