@@ -1,5 +1,5 @@
 import React from 'react';
-import { UIRegistry } from '@geeksman/core-ui';
+import { UIRegistry, resolveMediaUrl } from '@geeksman/core-ui';
 import { Notification } from './types';
 
 interface NotificationDrawerMobileProps {
@@ -199,7 +199,35 @@ export const NotificationDrawerMobile: React.FC<NotificationDrawerMobileProps> =
                 {!item.is_read && <div style={styles.unreadDot} />}
                 <div style={styles.itemContent}>
                   <div style={styles.itemTitle}>{item.title}</div>
-                  <div style={styles.itemBody}>{item.body}</div>
+                  {(() => {
+                    let mediaUrl = '';
+                    try {
+                      const meta = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata;
+                      mediaUrl = meta?.media_url || meta?.image || (item as any)?.image || (item as any)?.media_url || '';
+                    } catch (e) {}
+
+                    if (mediaUrl) {
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                          <div style={{ ...styles.itemBody, marginTop: 0, flex: 1 }}>{item.body}</div>
+                          <img
+                            src={resolveMediaUrl(mediaUrl)}
+                            alt="Notification preview"
+                            style={{
+                              width: '36px',
+                              height: '36px',
+                              objectFit: 'cover',
+                              borderRadius: '4px',
+                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                              flexShrink: 0,
+                            }}
+                            loading="lazy"
+                          />
+                        </div>
+                      );
+                    }
+                    return <div style={styles.itemBody}>{item.body}</div>;
+                  })()}
                   <div style={styles.itemTime}>
                     {new Date(item.created_at).toLocaleDateString([], {
                       month: 'short',

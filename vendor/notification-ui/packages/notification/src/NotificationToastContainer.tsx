@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
-import { UIRegistry } from '@geeksman/core-ui';
+import { UIRegistry, resolveMediaUrl } from '@geeksman/core-ui';
 import { Notification } from './types';
 
 interface Toast {
@@ -107,7 +107,37 @@ export const NotificationToastContainer: React.FC<{ onNavigate?: (link: string) 
                 &times;
               </button>
             </div>
-            <div style={styles.body}>{toast.notification.body}</div>
+            {(() => {
+              let mediaUrl = '';
+              try {
+                const meta = typeof toast.notification.metadata === 'string'
+                  ? JSON.parse(toast.notification.metadata)
+                  : toast.notification.metadata;
+                mediaUrl = meta?.media_url || meta?.image || (toast.notification as any)?.image || (toast.notification as any)?.media_url || '';
+              } catch (e) {}
+
+              if (mediaUrl) {
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                    <div style={{ ...styles.body, marginTop: 0, flex: 1 }}>{toast.notification.body}</div>
+                    <img
+                      src={resolveMediaUrl(mediaUrl)}
+                      alt="Notification preview"
+                      style={{
+                        width: '38px',
+                        height: '38px',
+                        objectFit: 'cover',
+                        borderRadius: '4px',
+                        border: '1px solid #e2e8f0',
+                        flexShrink: 0,
+                      }}
+                      loading="lazy"
+                    />
+                  </div>
+                );
+              }
+              return <div style={styles.body}>{toast.notification.body}</div>;
+            })()}
           </div>
         </div>
       ))}

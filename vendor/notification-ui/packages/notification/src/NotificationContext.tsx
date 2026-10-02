@@ -579,6 +579,28 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
           const syncNotif = envelope.payload || { type: 'silent_sync', link: envelope.link };
           const customEvent = new CustomEvent('notification_received', { detail: syncNotif });
           window.dispatchEvent(customEvent);
+
+          let meta = syncNotif.metadata;
+          if (typeof meta === 'string') {
+            try { meta = JSON.parse(meta); } catch {}
+          }
+          const mod = meta?.module || 'samwad';
+          broadcastEvent('EVENT_APPENDED', {
+            tenant_code: tenantCode,
+            user_id: userId,
+            payload: {
+              id: syncNotif.id || `sync-${Date.now()}`,
+              seq: 0,
+              module: mod,
+              type: 'silent_sync',
+              title: syncNotif.title || '',
+              message: syncNotif.message || syncNotif.body || '',
+              link: syncNotif.link,
+              metadata: syncNotif.metadata,
+              is_read: true,
+              created_at: syncNotif.created_at || new Date().toISOString(),
+            },
+          });
           return;
         }
 
