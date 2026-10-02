@@ -108,6 +108,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   );
 
   const eventSourceRef = useRef<EventSource | null>(null);
+  const isConnectingRef = useRef(false);
   const reconnectTimeoutRef = useRef<number | null>(null);
   const backoffRef = useRef(1000);
   const tabIdRef = useRef(Math.random().toString(36).substring(2, 11));
@@ -487,52 +488,63 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   };
 
   const connectSSE = async () => {
-    if (eventSourceRef.current) return;
+    if (eventSourceRef.current || isConnectingRef.current) return;
+    isConnectingRef.current = true;
 
-    const tokenVal = token || localStorage.getItem('token') || '';
-    if (!tokenVal) return;
-
-    // Check if token is expired
     try {
-      const payload = JSON.parse(atob(tokenVal.split('.')[1]));
-      if (payload && payload.exp && Date.now() >= payload.exp * 1000) {
-        console.warn('JWT token has expired, cleaning up SSE...');
-        cleanupSSE();
-        localStorage.removeItem('token');
-        localStorage.removeItem('user_email');
-        return;
-      }
-    } catch (e) {
-      // Ignore parse errors and let the server handle it
-    }
+      const tokenVal = token || localStorage.getItem('token') || '';
+      if (!tokenVal) return;
 
-    const cleanBaseUrl = (baseUrl || '').replace(/\/$/, '');
-    let streamUrl = `${cleanBaseUrl}/notification/stream?userId=${encodeURIComponent(userId || '')}`;
-    if (tenantCode) {
-      streamUrl += `&tenant_code=${encodeURIComponent(tenantCode)}`;
-    }
-    if (tokenVal) {
-      streamUrl += `&token=${encodeURIComponent(tokenVal)}`;
-    }
-
-    // Pass sequence watermark for BadgerDB catch-up scan, or fallback to lastEventId
-    try {
-      const watermark = tenantCode && userId ? await getWatermark(tenantCode, userId) : 0;
-      if (watermark > 0) {
-        streamUrl += `&since_seq=${watermark}`;
-      } else if (lastEventIdRef.current) {
-        streamUrl += `&lastEventId=${lastEventIdRef.current}`;
+      // Check if token is expired
+      try {
+        const payload = JSON.parse(atob(tokenVal.split('.')[1]));
+        if (payload && payload.exp && Date.now() >= payload.exp * 1000) {
+          console.warn('JWT token has expired, cleaning up SSE...');
+          cleanupSSE();
+          localStorage.removeItem('token');
+          localStorage.removeItem('user_email');
+          return;
+        }
+      } catch (e) {
+        // Ignore parse errors and let the server handle it
       }
-    } catch (e) {
-      if (lastEventIdRef.current) {
-        streamUrl += `&lastEventId=${lastEventIdRef.current}`;
-      }
-    }
 
-    const es = new EventSource(streamUrl);
-    eventSourceRef.current = es;
-    setSseActive(true);
-    resetHeartbeatTimeout();
+      const cleanBaseUrl = (baseUrl || '').replace(/\/$/, '');
+      let streamUrl = `${cleanBaseUrl}/notification/stream?userId=${encodeURIComponent(userId || '')}`;
+      if (tenantCode) {
+        streamUrl += `&tenant_code=${encodeURIComponent(tenantCode)}`;
+      }
+      if (tokenVal) {
+        streamUrl += `&token=${encodeURIComponent(tokenVal)}`;
+      }
+
+      // Pass sequence watermark for BadgerDB catch-up scan, or fallback to lastEventId
+      try {
+        const watermark = tenantCode && userId ? await getWatermark(tenantCode, userId) : 0;
+        if (watermark > 0) {
+          streamUrl += `&since_seq=${watermark}`;
+        } else if (lastEventIdRef.current) {
+          streamUrl += `&lastEventId=${lastEventIdRef.current}`;
+        }
+      } catch (e) {
+        if (lastEventIdRef.current) {
+          streamUrl += `&lastEventId=${lastEventIdRef.current}`;
+        }
+      }
+
+      // If connection was cancelled/cleaned up while awaiting watermark, exit
+      if (!isConnectingRef.current) return;
+
+      // Ensure any existing connection is safely closed before creating a new one
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+
+      const es = new EventSource(streamUrl);
+      eventSourceRef.current = es;
+      setSseActive(true);
+      resetHeartbeatTimeout();
 
     es.addEventListener('connected', () => {
       backoffRef.current = 1000;
@@ -806,9 +818,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         }
       }, backoffRef.current);
     };
+    } finally {
+      isConnectingRef.current = false;
+    }
   };
 
   const cleanupSSE = () => {
+    isConnectingRef.current = false;
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;

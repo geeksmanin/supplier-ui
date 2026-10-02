@@ -107,3 +107,75 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
   // Fallback when running relative without absolute host
   return `${cleanBase}/media/file/${uploadId}${queryString}`;
 }
+
+/**
+ * toRelativeMediaUrl normalizes any media URL or upload ID to a consistent relative API path
+ * (e.g. "/media/file/samwad/photo.png"). Absolute origins (http://...) are stripped so that
+ * all URLs persisted to databases and payloads remain clean, relative paths.
+ */
+export function toRelativeMediaUrl(urlOrId: string): string {
+  if (!urlOrId) return '';
+  const trimmed = urlOrId.trim();
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed;
+  }
+
+  // If it's an absolute URL, strip the origin
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    try {
+      const parsed = new URL(trimmed);
+      let path = parsed.pathname;
+      if (path.startsWith('/api/v1/')) {
+        path = path.slice(7);
+      }
+      return `${path}${parsed.search}`;
+    } catch {
+      return trimmed;
+    }
+  }
+
+  // If already starts with /
+  if (trimmed.startsWith('/')) {
+    const [pathPart, searchPart] = trimmed.split('?');
+    let path = pathPart;
+    if (path.startsWith('/api/v1/')) {
+      path = path.slice(7);
+    }
+    return searchPart ? `${path}?${searchPart}` : path;
+  }
+
+  // If raw upload ID (e.g. "samwad/photo.png")
+  return `/media/file/${trimmed}`;
+}
+
+/**
+ * uploadMediaFile uploads a File to the central Core media service (/media/upload).
+ * Returns the RELATIVE media path (e.g. /media/file/samwad/photo.png) so database records
+ * store relative paths. Use resolveMediaUrl / useMedia on the frontend to resolve for display.
+ */
+export async function uploadMediaFile(file: File, folder: string = 'samwad'): Promise<string> {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('bucket', folder);
+
+    const res = await apiClient.post('/media/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    const d = res.data?.data || res.data;
+    const rawUrl = d?.relative_url || d?.upload_id || d?.uploadId || d?.media_url || d?.url;
+    if (rawUrl) {
+      return toRelativeMediaUrl(String(rawUrl));
+    }
+  } catch (err) {
+    console.warn('Core media upload error, using local file URL fallback:', err);
+  }
+
+  // Fallback: Read file as Data URL
+  return new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.readAsDataURL(file);
+  });
+}
+

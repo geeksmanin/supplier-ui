@@ -3,6 +3,10 @@ export type { TenantMetadata } from './api/client';
 export { useMediaQuery, useIsMobile } from './hooks/useMediaQuery';
 export { useRefreshOnVisible } from './hooks/useRefreshOnVisible';
 export { useClipboardImageUpload } from './hooks/useClipboardImageUpload';
+export { useMediaUpload } from './hooks/useMediaUpload';
+export type { UseMediaUploadOptions, UseMediaUploadReturn } from './hooks/useMediaUpload';
+export { useMedia } from './hooks/useMedia';
+export type { UseMediaOptions, UseMediaReturn } from './hooks/useMedia';
 
 // Native Bridge & Push Notifications (Capacitor)
 export { usePushNotifications, isNativePlatform, getNativePlatform, getCapacitor, checkNotificationPermission, useNotificationPermission } from './native/usePushNotifications';
@@ -84,7 +88,7 @@ export { useFormDraft, DraftBanner, discardFormAndCloseTab } from './hooks/useFo
 export type { UseFormDraftOptions, UseFormDraftReturn, DraftBannerProps } from './hooks/useFormDraft';
 export { DraftBanner as DraftBannerComponent } from './components/DraftBanner';
 export { isMobileDevice } from './utils/device';
-export { resolveMediaUrl } from './utils/media';
+export { resolveMediaUrl, uploadMediaFile, toRelativeMediaUrl } from './utils/media';
 export type { ResolveMediaOptions } from './utils/media';
 export { ImageThumbnailWithZoom } from './components/ImageThumbnailWithZoom';
 export type { ImageThumbnailWithZoomProps } from './components/ImageThumbnailWithZoom';
