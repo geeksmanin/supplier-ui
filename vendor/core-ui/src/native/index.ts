@@ -4,5 +4,6 @@ export * from './useNativeDevice';
 export * from './useBarcodeScanner';
 export * from './useAppUpdater';
 export * from './AppUpdateModal';
+export * from './AppUpdateBanner';
 export * from './InstallChoiceModal';
 export * from './NativeContainer';

@@ -19,6 +19,8 @@ export { useAppUpdater } from './native/useAppUpdater';
 export type { AppVersionInfo, UseAppUpdaterOptions } from './native/useAppUpdater';
 export { AppUpdateModal } from './native/AppUpdateModal';
 export type { AppUpdateModalProps } from './native/AppUpdateModal';
+export { AppUpdateBanner } from './native/AppUpdateBanner';
+export type { AppUpdateBannerProps } from './native/AppUpdateBanner';
 export { InstallChoiceModal } from './native/InstallChoiceModal';
 export type { InstallChoiceModalProps } from './native/InstallChoiceModal';
 export { NativeContainer } from './native/NativeContainer';

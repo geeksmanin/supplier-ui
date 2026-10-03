@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAppUpdater, UseAppUpdaterOptions } from './useAppUpdater';
+import { AppUpdateBanner } from './AppUpdateBanner';
 
 export interface AppUpdateModalProps extends UseAppUpdaterOptions {
   appName?: string;
@@ -24,7 +25,6 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
     downloadProgress,
     error,
     downloadAndInstall,
-    dismissUpdate,
   } = updater;
 
   if (!updateAvailable) {
@@ -240,145 +240,11 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
     );
   }
 
-  // 2. Non-Mandatory Top Update Notification Card
+  // 2. Non-Mandatory → delegate to the common bottom banner
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: '12px',
-        left: '16px',
-        right: '16px',
-        maxWidth: '460px',
-        margin: '0 auto',
-        backgroundColor: '#ffffff',
-        borderRadius: '16px',
-        border: '1px solid #bfdbfe',
-        boxShadow: '0 12px 30px -5px rgba(37, 99, 235, 0.25)',
-        zIndex: 99999,
-        padding: '0.9rem 1rem',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.65rem',
-        fontFamily: '"Outfit", "Inter", system-ui, -apple-system, sans-serif',
-        animation: 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-          <div
-            style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              flexShrink: 0,
-            }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
-              <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-3.05 11a22.35 22.35 0 0 1-3.95 2z"></path>
-            </svg>
-          </div>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#0f172a' }}>
-              Update Available (v{latestVersion})
-            </div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-              A new version of {appName} is ready to install
-            </div>
-          </div>
-        </div>
-
-        <button
-          onClick={dismissUpdate}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#94a3b8',
-            cursor: 'pointer',
-            padding: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          title="Dismiss"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-
-      {isDownloading ? (
-        <div style={{ marginTop: '0.2rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, color: '#334155', marginBottom: '0.3rem' }}>
-            <span>Downloading...</span>
-            <span>{downloadProgress}%</span>
-          </div>
-          <div
-            style={{
-              width: '100%',
-              height: '6px',
-              backgroundColor: '#e2e8f0',
-              borderRadius: '999px',
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                height: '100%',
-                width: `${downloadProgress}%`,
-                background: 'linear-gradient(90deg, #2563eb, #3b82f6)',
-                borderRadius: '999px',
-                transition: 'width 0.2s ease',
-              }}
-            />
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
-          <button
-            onClick={downloadAndInstall}
-            style={{
-              flex: 1,
-              padding: '0.55rem 0.85rem',
-              borderRadius: '10px',
-              background: '#2563eb',
-              color: '#ffffff',
-              border: 'none',
-              fontWeight: 700,
-              fontSize: '0.82rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.4rem',
-            }}
-          >
-            <span>Update Now</span>
-          </button>
-          <button
-            onClick={dismissUpdate}
-            style={{
-              padding: '0.55rem 0.85rem',
-              borderRadius: '10px',
-              background: '#f1f5f9',
-              color: '#475569',
-              border: 'none',
-              fontWeight: 600,
-              fontSize: '0.82rem',
-              cursor: 'pointer',
-            }}
-          >
-            Later
-          </button>
-        </div>
-      )}
-    </div>
+    <AppUpdateBanner
+      appName={appName}
+      updater={updater}
+    />
   );
 };

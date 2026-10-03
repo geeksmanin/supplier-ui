@@ -68,6 +68,41 @@ const getAppInstallerPlugin = (): AppInstallerPluginInterface | null => {
 };
 
 /**
+ * openExternalUrl
+ * Opens a URL outside the WebView in the most reliable way available.
+ * Priority: Capacitor App.openUrl → Capacitor Browser.open → window.open(_blank)
+ * This is the correct replacement for window.open(url, '_system') which silently
+ * fails to trigger the Android package installer in many Capacitor environments.
+ */
+async function openExternalUrl(url: string): Promise<void> {
+  const cap = getCapacitor();
+  // 1. Try Capacitor App.openUrl (triggers system intent — opens APK installer on Android)
+  const AppPlugin = getAppPlugin();
+  if (AppPlugin && typeof AppPlugin.openUrl === 'function') {
+    try {
+      await AppPlugin.openUrl({ url });
+      return;
+    } catch (e) {
+      console.warn('App.openUrl failed, trying Browser:', e);
+    }
+  }
+  // 2. Try Capacitor Browser plugin
+  const BrowserPlugin = cap?.Plugins?.Browser ||
+    (typeof cap?.registerPlugin === 'function' ? (() => { try { return cap.registerPlugin('Browser'); } catch { return null; } })() : null) ||
+    (typeof window !== 'undefined' ? (window as any).CapacitorBrowser : null);
+  if (BrowserPlugin && typeof BrowserPlugin.open === 'function') {
+    try {
+      await BrowserPlugin.open({ url });
+      return;
+    } catch (e) {
+      console.warn('Browser.open failed, falling back to window.open:', e);
+    }
+  }
+  // 3. Last resort
+  window.open(url, '_blank');
+}
+
+/**
  * Compare two semver strings (e.g. "1.0.2" vs "1.0.1").
  * Returns >0 if v1 > v2, <0 if v1 < v2, and 0 if equal.
  */
@@ -331,8 +366,8 @@ export const useAppUpdater = (options: UseAppUpdaterOptions = {}) => {
 
       const Filesystem = getFilesystemPlugin();
       if (!Filesystem || typeof Filesystem.writeFile !== 'function') {
-        // Fallback: open system browser
-        window.open(resolvedUrl, '_system');
+        // Filesystem plugin unavailable — open directly via external intent
+        await openExternalUrl(resolvedUrl);
         return;
       }
 
@@ -355,17 +390,17 @@ export const useAppUpdater = (options: UseAppUpdaterOptions = {}) => {
         try {
           await AppInstaller.installApk({ filePath: uriResult.uri });
         } catch (nativeErr: any) {
-          console.warn('Native AppInstaller plugin failed, falling back to system browser:', nativeErr);
-          window.open(resolvedUrl, '_system');
+          console.warn('Native AppInstaller plugin failed, falling back to external URL:', nativeErr);
+          await openExternalUrl(resolvedUrl);
         }
       } else {
-        window.open(resolvedUrl, '_system');
+        // AppInstaller plugin not registered — open APK URL via system intent
+        await openExternalUrl(resolvedUrl);
       }
     } catch (err: any) {
       console.error('In-app download & install failed:', err);
       setError(err?.message || 'Download failed');
-      // Fallback: open system browser to download APK directly
-      window.open(resolvedUrl, '_system');
+      await openExternalUrl(resolvedUrl);
     } finally {
       setIsDownloading(false);
     }
