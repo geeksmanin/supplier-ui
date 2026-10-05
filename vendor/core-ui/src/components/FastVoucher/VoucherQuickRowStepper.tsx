@@ -5,6 +5,7 @@ import {
   VoucherPackagingOption 
 } from './FastVoucherEntryLayout.types';
 import { Check, X, Layers, Calendar, Tag, Percent } from 'lucide-react';
+import { Select } from '../Select';
 
 interface VoucherQuickRowStepperProps {
   isOpen: boolean;
@@ -263,11 +264,10 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
             <Layers size={11} /> Unit / Pack
           </label>
           {item.packagings && item.packagings.length > 1 ? (
-            <select
-              ref={packagingSelectRef}
+            <Select
               value={packagingName}
-              onChange={(e) => {
-                const opt = item.packagings?.find((p) => p.name === e.target.value);
+              onChange={(val) => {
+                const opt = item.packagings?.find((p) => p.name === String(val));
                 if (opt) handlePackagingChange(opt);
               }}
               onKeyDown={(e) => {
@@ -280,22 +280,12 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
                   }
                 }
               }}
-              style={{
-                width: '100%',
-                padding: '7px 10px',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                borderRadius: '6px',
-                border: '1px solid #cbd5e1',
-                backgroundColor: '#ffffff',
-              }}
-            >
-              {item.packagings.map((p) => (
-                <option key={p.name} value={p.name}>
-                  {p.name} ({p.size > 1 ? `${p.size} pcs` : 'Unit'})
-                </option>
-              ))}
-            </select>
+              options={(item.packagings || []).map((p) => ({
+                value: p.name,
+                label: `${p.name} (${p.size > 1 ? `${p.size} pcs` : 'Unit'})`
+              }))}
+              style={{ fontSize: '0.8rem' }}
+            />
           ) : (
             <input
               type="text"
@@ -321,36 +311,22 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
             <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
               <Tag size={11} /> Batch (FEFO)
             </label>
-            <select
-              ref={batchInputRef as any}
+            <Select
               value={batchCode}
-              onChange={(e) => handleBatchSelect(e.target.value)}
+              onChange={(val) => handleBatchSelect(String(val))}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
                   rateInputRef.current?.focus();
                 }
               }}
-              style={{
-                width: '100%',
-                padding: '7px 10px',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                borderRadius: '6px',
-                border: '1px solid #cbd5e1',
-                backgroundColor: '#ffffff',
-              }}
-            >
-              {stockBatches.length > 0 ? (
-                stockBatches.map((b) => (
-                  <option key={b.batch_code} value={b.batch_code}>
-                    {b.batch_code} {b.expiry_date ? `(Exp: ${b.expiry_date})` : ''} {b.available_quantity != null ? `• Avail: ${b.available_quantity}` : ''}
-                  </option>
-                ))
-              ) : (
-                <option value="">No stock batches</option>
-              )}
-            </select>
+              options={stockBatches.map((b) => ({
+                value: b.batch_code,
+                label: `${b.batch_code} ${b.expiry_date ? `(Exp: ${b.expiry_date})` : ''} ${b.available_quantity != null ? `• Avail: ${b.available_quantity}` : ''}`.trim()
+              }))}
+              placeholder="-- Select Batch --"
+              style={{ fontSize: '0.8rem' }}
+            />
           </div>
         )}
 

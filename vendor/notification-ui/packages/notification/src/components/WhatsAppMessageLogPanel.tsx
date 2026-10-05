@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DataTable, Column, Button, useToast } from '@geeksman/core-ui';
+import { DataTable, Column, Button, useToast, Select } from '@geeksman/core-ui';
 import { waApiGet, waApiPost } from './WhatsAppIntegrationPage.desktop';
 
 export interface WhatsAppMessageLog {
@@ -245,17 +245,18 @@ export const WhatsAppMessageLogPanel: React.FC<WhatsAppMessageLogPanelProps> = (
 
         <div>
           <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Status Filter</label>
-          <select
+          <Select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', backgroundColor: '#ffffff' }}
-          >
-            <option value="">All Statuses</option>
-            <option value="SENT">SENT</option>
-            <option value="DELIVERED">DELIVERED</option>
-            <option value="FAILED">FAILED</option>
-            <option value="PERMANENTLY_FAILED">PERMANENTLY_FAILED</option>
-          </select>
+            onChange={(val) => setStatusFilter(String(val))}
+            options={[
+              { value: '', label: 'All Statuses' },
+              { value: 'SENT', label: 'SENT' },
+              { value: 'DELIVERED', label: 'DELIVERED' },
+              { value: 'FAILED', label: 'FAILED' },
+              { value: 'PERMANENTLY_FAILED', label: 'PERMANENTLY_FAILED' },
+            ]}
+            placeholder="All Statuses"
+          />
         </div>
 
         <div>

@@ -95,7 +95,34 @@ export function clearCurrentUser(): void {
   localStorage.removeItem('user_name');
   localStorage.removeItem('erp_username');
   localStorage.removeItem('token');
+  localStorage.removeItem('access_token');
 }
+
+/**
+ * Retrieves the stored JWT authentication token.
+ */
+export function getAuthToken(): string {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem('token') || localStorage.getItem('access_token') || '';
+}
+
+/**
+ * Saves authentication token to localStorage.
+ */
+export function setAuthToken(token: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('token', token);
+}
+
+/**
+ * Removes authentication token from localStorage.
+ */
+export function clearAuthToken(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('token');
+  localStorage.removeItem('access_token');
+}
+
 
 /**
  * Robust helper to check if a message/comment was authored by the current logged-in user.

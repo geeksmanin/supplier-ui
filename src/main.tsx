@@ -93,16 +93,12 @@ const applyDynamicBranding = async (target: 'staff' | 'customer') => {
 resolveTenantCodeFromServer().then(async () => {
   await applyDynamicBranding('customer');
   ReactDOM.createRoot(document.getElementById('root')!).render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
+    <App />
   );
 }).catch((err) => {
   console.error('Failed to bootstrap application:', err);
   // Mount anyway so the user sees a UI
   ReactDOM.createRoot(document.getElementById('root')!).render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
+    <App />
   );
 });

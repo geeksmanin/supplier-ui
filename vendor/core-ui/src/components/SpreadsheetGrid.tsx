@@ -212,19 +212,18 @@ export const SpreadsheetGrid: React.FC<SpreadsheetGridProps> = ({
                   >
                     {isEditing ? (
                       col.type === 'select' ? (
-                        <select
-                          value={value}
-                          onChange={(e) => handleCellChange(rIdx, col.key, e.target.value)}
-                          onBlur={() => setEditingCell(null)}
-                          autoFocus
-                          style={{ width: '100%', border: 'none', outline: 'none', fontSize: '0.85rem', background: 'transparent' }}
-                        >
-                          {col.options?.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50, backgroundColor: '#ffffff' }}>
+                          <Select
+                            value={value}
+                            onChange={(val) => {
+                              handleCellChange(rIdx, col.key, String(val));
+                              setEditingCell(null);
+                            }}
+                            options={col.options || []}
+                            defaultOpen
+                            style={{ height: '100%' }}
+                          />
+                        </div>
                       ) : col.type === 'async-select' && col.async ? (
                         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50, backgroundColor: '#ffffff' }}>
                           <Select

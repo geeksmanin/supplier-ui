@@ -60,7 +60,7 @@ export interface SelectProps {
   disabled?: boolean;
   leftIcon?: React.ReactNode;
   /** Custom renderer for each option row. */
-  renderOption?: (option: SelectOption, isSelected: boolean) => React.ReactNode;
+  renderOption?: (option: SelectOption, isSelected: boolean, isHighlighted?: boolean) => React.ReactNode;
   /** Max dropdown height in pixels. Defaults to 260. */
   maxHeight?: number;
   /** Label shown above selected chips in multi mode. */
@@ -84,6 +84,8 @@ export interface SelectProps {
   clearable?: boolean;
   /** Custom styles for the dropdown popover menu (e.g. zIndex, minWidth). */
   dropdownStyle?: React.CSSProperties;
+  /** Custom keydown listener forwarded from the trigger/input. */
+  onKeyDown?: (e: React.KeyboardEvent<any>) => void;
 }
 
 // ─── Spinner helper ──────────────────────────────────────────────────────────
@@ -133,6 +135,7 @@ export const Select: React.FC<SelectProps> = ({
   hideDropdownSearch = false,
   clearable = false,
   dropdownStyle,
+  onKeyDown,
 }) => {
   const isAsync = Boolean(asyncConfig);
   const hasRefresh = isAsync || Boolean(onRefresh);
@@ -195,6 +198,10 @@ export const Select: React.FC<SelectProps> = ({
   }, [highlightedIndex]);
 
   const handleKeyDown = (e: React.KeyboardEvent<any>) => {
+    if (onKeyDown) {
+      onKeyDown(e);
+      if (e.defaultPrevented) return;
+    }
     if (!isOpen) return;
 
     const hasCreateNew = Boolean(onCreateOption);
@@ -537,6 +544,11 @@ export const Select: React.FC<SelectProps> = ({
         }}
         placeholder={isOpen && selectedLabel ? selectedLabel : placeholder}
         disabled={disabled}
+        onKeyDown={(e) => {
+          if (!isOpen && onKeyDown) {
+            onKeyDown(e);
+          }
+        }}
         style={{
           border: 'none',
           outline: 'none',
@@ -616,6 +628,10 @@ export const Select: React.FC<SelectProps> = ({
         onKeyDown={(e) => {
           if (disabled) return;
           if (!isOpen) {
+            if (onKeyDown) {
+              onKeyDown(e);
+              if (e.defaultPrevented) return;
+            }
             if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
               setIsOpen(true);
               e.preventDefault();
@@ -956,10 +972,12 @@ export const Select: React.FC<SelectProps> = ({
                       color: sel || isHighlighted ? 'var(--primary, #6d28d9)' : 'var(--text-primary, #111827)',
                       fontWeight: sel || isHighlighted ? 600 : 400,
                       backgroundColor: sel ? '#ede9fe' : (isHighlighted ? '#f5f3ff' : 'transparent'),
+                      border: sel ? '1.5px solid var(--primary, #6d28d9)' : (isHighlighted ? '1.5px solid #c4b5fd' : '1.5px solid transparent'),
+                      boxShadow: isHighlighted ? '0 0 0 1px #c4b5fd, 0 2px 6px rgba(109, 40, 217, 0.12)' : 'none',
                       borderRadius: '7px',
                       cursor: 'pointer',
                       userSelect: 'none',
-                      transition: 'background-color 0.1s ease',
+                      transition: 'all 0.1s ease',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -972,7 +990,7 @@ export const Select: React.FC<SelectProps> = ({
                       if (!sel && !isHighlighted) e.currentTarget.style.backgroundColor = 'transparent';
                     }}
                   >
-                    {renderOption ? renderOption(opt, sel) : <span>{opt.label}</span>}
+                    {renderOption ? renderOption(opt, sel, isHighlighted) : <span>{opt.label}</span>}
                     {/* checkmark for multi */}
                     {multi && (
                       <div

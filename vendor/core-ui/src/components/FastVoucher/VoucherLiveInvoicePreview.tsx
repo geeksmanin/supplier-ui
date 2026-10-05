@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   VoucherLineItem, 
   VoucherSummary, 
@@ -32,6 +32,7 @@ export interface VoucherLiveInvoicePreviewProps {
   companyStateCode?: string;
   items: VoucherLineItem[];
   summary?: VoucherSummary;
+  onSummaryChange?: (summary: VoucherSummary) => void;
   documentDiscountAmount?: number;
   documentDiscountPercent?: number;
   onDocumentDiscountChange?: (amount: number, percent: number) => void;
@@ -57,6 +58,7 @@ export const VoucherLiveInvoicePreview: React.FC<VoucherLiveInvoicePreviewProps>
   companyStateCode = '',
   items,
   summary: externalSummary,
+  onSummaryChange,
   documentDiscountAmount = 0,
   documentDiscountPercent = 0,
   onDocumentDiscountChange,
@@ -88,7 +90,13 @@ export const VoucherLiveInvoicePreview: React.FC<VoucherLiveInvoicePreviewProps>
     isRoundOffEnabled,
   });
 
-  const activeSummary = externalSummary || computed;
+  // Prioritize live computed calculations whenever line items exist
+  const activeSummary = items.length > 0 ? computed : (externalSummary || computed);
+
+  // Keep parent in sync with latest calculations
+  useEffect(() => {
+    onSummaryChange?.(activeSummary);
+  }, [activeSummary, onSummaryChange]);
   const slabsList = Object.values(computed.taxSlabs).filter((s) => s.taxableAmount > 0 || s.taxAmount > 0);
 
   return (

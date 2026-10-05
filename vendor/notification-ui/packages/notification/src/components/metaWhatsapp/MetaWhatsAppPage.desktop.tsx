@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { apiClient, useToast, DataTable, Column, Select, ConfirmModal, DeleteIcon } from '@geeksman/core-ui';
+import { apiClient, useToast, DataTable, Column, Select, ConfirmModal, DeleteIcon, Loader } from '@geeksman/core-ui';
 import {
   META_BLUE,
   WHATSAPP_GREEN,
@@ -1234,7 +1234,11 @@ export const MetaWhatsAppDesktop: React.FC = () => {
       {/* ── Tab Content: Connected Accounts (Visual Card Grid) ── */}
       {activeTab === 'accounts' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '1.25rem' }}>
-          {accounts.length === 0 ? (
+          {loading ? (
+            <div style={{ gridColumn: '1 / -1', padding: '4rem 2rem', textAlign: 'center', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+              <Loader message="Loading Meta WhatsApp accounts..." size="sm" variant="spinner" />
+            </div>
+          ) : accounts.length === 0 ? (
             <div style={{ gridColumn: '1 / -1', padding: '3.5rem 2rem', textAlign: 'center', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
               <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📱</div>
               <h3 style={{ margin: '0 0 0.5rem', color: '#0f172a', fontSize: '1.2rem', fontWeight: 800 }}>

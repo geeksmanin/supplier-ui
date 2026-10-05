@@ -123,7 +123,8 @@ export interface FastVoucherEntryLayoutProps {
   onRemoveItem: (index: number) => void;
 
   // Summary & Totals
-  summary: VoucherSummary;
+  summary?: VoucherSummary;
+  onSummaryChange?: (summary: VoucherSummary) => void;
   onUpdateSummaryField?: (field: 'shipping_charges' | 'discount_total', value: number) => void;
   documentDiscountAmount?: number;
   documentDiscountPercent?: number;

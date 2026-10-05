@@ -4,6 +4,7 @@ import { apiClient } from '../../api/client';
 import { useToast } from '../Toast/Toast';
 import { SpreadsheetGrid, SpreadsheetColumn } from '../SpreadsheetGrid';
 import { Button } from '../Button';
+import { Select } from '../Select';
 import { downloadFile } from '../../utils/downloader';
 
 interface FieldSpec {
@@ -841,24 +842,17 @@ export const ImportWizard: React.FC<ImportWizardProps> = ({
 															{field.description}
 														</span>
 													</div>
-													<select
-														value={selectedHeader}
-														onChange={(e) => handleMapChange(sheetSpec.name, field.name, e.target.value)}
-														style={{
-															padding: '6px 12px',
-															borderRadius: '6px',
-															border: '1px solid #cbd5e1',
-															fontSize: '0.85rem',
-															minWidth: '180px',
-															outline: 'none',
-															backgroundColor: '#ffffff'
-														}}
-													>
-														<option value="">-- Ignore Field --</option>
-														{headers.map(header => (
-															<option key={header} value={header}>{header}</option>
-														))}
-													</select>
+													<div style={{ minWidth: '220px' }}>
+														<Select
+															value={selectedHeader}
+															onChange={(val) => handleMapChange(sheetSpec.name, field.name, String(val))}
+															options={[
+																{ value: '', label: '-- Ignore Field --' },
+																...headers.map(header => ({ value: header, label: header }))
+															]}
+															placeholder="-- Ignore Field --"
+														/>
+													</div>
 												</div>
 											);
 										})}

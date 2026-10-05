@@ -50,6 +50,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
   onUpdateItem,
   onRemoveItem,
   summary,
+  onSummaryChange,
   onUpdateSummaryField,
   documentDiscountAmount = 0,
   documentDiscountPercent = 0,
@@ -787,10 +788,11 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                   backgroundColor: '#ffffff',
                   border: '1px solid #cbd5e1',
                   borderRadius: '10px',
-                  boxShadow: '0 12px 30px rgba(0, 0, 0, 0.12)',
+                  boxShadow: '0 12px 30px rgba(0, 0, 0, 0.14)',
                   zIndex: 45,
-                  maxHeight: '300px',
+                  maxHeight: '320px',
                   overflowY: 'auto',
+                  padding: '6px',
                 }}
               >
                 {searchResults.map((res, idx) => {
@@ -808,44 +810,56 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: '8px 12px',
+                        padding: '11px 14px',
+                        margin: '4px 2px',
+                        borderRadius: '8px',
                         cursor: 'pointer',
-                        backgroundColor: isSelected ? '#eff6ff' : 'transparent',
-                        borderLeft: isSelected ? '3px solid #2563eb' : '3px solid transparent',
+                        backgroundColor: isSelected ? '#eff6ff' : '#ffffff',
+                        border: isSelected ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                        boxShadow: isSelected
+                          ? '0 0 0 2px rgba(37, 99, 235, 0.25), 0 4px 14px rgba(37, 99, 235, 0.18)'
+                          : '0 1px 2px rgba(0, 0, 0, 0.02)',
+                        transform: isSelected ? 'scale(1.002)' : 'none',
+                        transition: 'all 0.15s ease-in-out',
                       }}
                       onMouseEnter={() => setSelectedResultIndex(idx)}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div
                           style={{
-                            width: '24px',
-                            height: '24px',
-                            borderRadius: '4px',
-                            backgroundColor: '#f1f5f9',
+                            width: '26px',
+                            height: '26px',
+                            borderRadius: '6px',
+                            backgroundColor: isSelected ? '#2563eb' : '#f1f5f9',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            color: '#64748b',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
+                            color: isSelected ? '#ffffff' : '#64748b',
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            transition: 'all 0.15s ease',
                           }}
                         >
                           {idx + 1}
                         </div>
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e293b' }}>{pName}</div>
-                          <div style={{ fontSize: '0.7rem', color: '#64748b', fontFamily: 'monospace' }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.875rem', color: isSelected ? '#1e40af' : '#1e293b' }}>
+                            {pName}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b', fontFamily: 'monospace', marginTop: '2px' }}>
                             SKU: {sku || '-'} {res.tax_percent ? `• Tax: ${res.tax_percent}%` : ''}
                           </div>
                         </div>
                       </div>
 
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontWeight: 800, fontSize: '0.875rem', color: '#2563eb' }}>
+                        <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#2563eb' }}>
                           ₹{Number(price).toFixed(2)}
                         </div>
                         {isSelected && (
-                          <div style={{ fontSize: '0.65rem', color: '#2563eb', fontWeight: 700 }}>Press Enter ↵</div>
+                          <div style={{ fontSize: '0.68rem', color: '#1d4ed8', fontWeight: 700, marginTop: '2px' }}>
+                            Press Enter ↵
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1085,6 +1099,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
               companyStateCode={companyStateCode}
               items={items}
               summary={summary}
+              onSummaryChange={onSummaryChange}
               documentDiscountAmount={documentDiscountAmount}
               documentDiscountPercent={documentDiscountPercent}
               onDocumentDiscountChange={onDocumentDiscountChange}
