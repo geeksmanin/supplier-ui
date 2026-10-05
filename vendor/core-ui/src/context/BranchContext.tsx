@@ -41,6 +41,65 @@ function decodeJwtPayload(token: string): any {
   }
 }
 
+/**
+ * Triggers a smart window reload on branch switch.
+ * If the user is currently viewing/editing a specific record (e.g., /module/:id or /module/:id/edit),
+ * that record might belong exclusively to the previous branch and return 404/403.
+ * We safely fallback to the root list route (/module) before triggering the reload.
+ */
+export function performBranchSwitchReload() {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const hash = window.location.hash || '';
+    const pathname = window.location.pathname || '';
+
+    // Check hash-based routing first (e.g., #/inventory/items/123/edit or #/purchase/orders/123)
+    if (hash.startsWith('#/')) {
+      const cleanPath = hash.slice(2).split('?')[0]; // remove '#/' and query params
+      const segments = cleanPath.split('/').filter(Boolean);
+
+      // If we are on a detail/edit/sub-action page (e.g. ['orders', '123', 'edit'] or ['orders', '123'])
+      if (segments.length >= 2) {
+        const last = segments[segments.length - 1];
+        const isAction = ['edit', 'view', 'details', 'show'].includes(last.toLowerCase());
+        const idCandidate = isAction ? segments[segments.length - 2] : last;
+
+        if (idCandidate && !['new', 'create', 'list', 'all', 'settings'].includes(idCandidate.toLowerCase())) {
+          const fallbackSegments = isAction ? segments.slice(0, segments.length - 2) : segments.slice(0, segments.length - 1);
+          if (fallbackSegments.length > 0) {
+            window.location.hash = `#/${fallbackSegments.join('/')}`;
+            window.location.reload();
+            return;
+          }
+        }
+      }
+    } else if (pathname && pathname !== '/') {
+      // Path-based routing fallback
+      const cleanPath = pathname.startsWith('/') ? pathname.slice(1) : pathname;
+      const segments = cleanPath.split('/').filter(Boolean);
+      if (segments.length >= 2) {
+        const last = segments[segments.length - 1];
+        const isAction = ['edit', 'view', 'details', 'show'].includes(last.toLowerCase());
+        const idCandidate = isAction ? segments[segments.length - 2] : last;
+
+        if (idCandidate && !['new', 'create', 'list', 'all', 'settings'].includes(idCandidate.toLowerCase())) {
+          const fallbackSegments = isAction ? segments.slice(0, segments.length - 2) : segments.slice(0, segments.length - 1);
+          if (fallbackSegments.length > 0) {
+            window.location.pathname = `/${fallbackSegments.join('/')}`;
+            window.location.reload();
+            return;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Error during branch switch route fallback:', e);
+  }
+
+  window.location.reload();
+}
+
 export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeBranch, setActiveBranchState] = useState<string>(() => {
     return localStorage.getItem('active_branch') || '';
@@ -136,9 +195,12 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const setActiveBranch = useCallback((code: string) => {
+    const current = localStorage.getItem('active_branch');
+    if (code === current) return;
     setActiveBranchState(code);
     localStorage.setItem('active_branch', code);
     window.dispatchEvent(new CustomEvent('branch_change_event', { detail: { branch: code } }));
+    performBranchSwitchReload();
   }, []);
 
   useEffect(() => {
@@ -205,8 +267,11 @@ export const useBranch = (): BranchContextType => {
       loading: false,
       setActiveBranch: (code: string) => {
         if (typeof window !== 'undefined') {
+          const current = localStorage.getItem('active_branch');
+          if (code === current) return;
           localStorage.setItem('active_branch', code);
           window.dispatchEvent(new CustomEvent('branch_change_event', { detail: { branch: code } }));
+          performBranchSwitchReload();
         }
       },
       refreshBranches: async () => {},
