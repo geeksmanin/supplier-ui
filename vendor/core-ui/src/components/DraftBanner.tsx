@@ -3,21 +3,30 @@ import React from 'react';
 // ─── DraftBanner Component ────────────────────────────────────────────────────
 
 export interface DraftBannerProps {
+  /** Optional flag indicating if draft is active (if false, banner does not render) */
+  hasDraft?: boolean;
   /** Time string to display, e.g. "3:42 PM" */
   draftTime?: string | null;
   /** Called when user clicks "Restore Draft" (optional — if omitted, no Restore button is shown) */
   onRestore?: () => void;
   /** Called when user clicks "Dismiss" */
-  onDiscard: () => void;
+  onDiscard?: () => void;
+  /** Alias for onDiscard */
+  onDismiss?: () => void;
   // Legacy compat — same as onDiscard
   onKeep?: () => void;
 }
 
 export const DraftBanner: React.FC<DraftBannerProps> = ({
+  hasDraft,
   draftTime,
   onRestore,
   onDiscard,
+  onDismiss,
 }) => {
+  if (hasDraft === false) return null;
+  const handleDiscard = onDiscard || onDismiss || (() => {});
+
   return (
     <div
       role="status"
@@ -57,7 +66,7 @@ export const DraftBanner: React.FC<DraftBannerProps> = ({
       <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
         <button
           type="button"
-          onClick={onDiscard}
+          onClick={handleDiscard}
           style={{
             border: '1px solid #fcd34d',
             backgroundColor: '#ffffff',
