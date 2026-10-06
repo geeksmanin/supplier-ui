@@ -54,19 +54,36 @@ export function performBranchSwitchReload() {
     const hash = window.location.hash || '';
     const pathname = window.location.pathname || '';
 
+    const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+    const isNumericId = (str: string) => /^\d+$/.test(str);
+
     // Check hash-based routing first (e.g., #/inventory/items/123/edit or #/purchase/orders/123)
     if (hash.startsWith('#/')) {
       const cleanPath = hash.slice(2).split('?')[0]; // remove '#/' and query params
       const segments = cleanPath.split('/').filter(Boolean);
 
-      // If we are on a detail/edit/sub-action page (e.g. ['orders', '123', 'edit'] or ['orders', '123'])
-      if (segments.length >= 2) {
-        const last = segments[segments.length - 1];
-        const isAction = ['edit', 'view', 'details', 'show'].includes(last.toLowerCase());
-        const idCandidate = isAction ? segments[segments.length - 2] : last;
+      // Settings routes (e.g. #/settings/branches) must never be stripped to #/settings
+      if (segments.length > 0 && segments[0].toLowerCase() === 'settings') {
+        window.location.reload();
+        return;
+      }
 
-        if (idCandidate && !['new', 'create', 'list', 'all', 'settings'].includes(idCandidate.toLowerCase())) {
-          const fallbackSegments = isAction ? segments.slice(0, segments.length - 2) : segments.slice(0, segments.length - 1);
+      // If we are on a detail/edit/sub-action page (e.g. ['orders', '123', 'edit'] or ['orders', 'UUID'])
+      if (segments.length >= 2) {
+        const last = segments[segments.length - 1].toLowerCase();
+        const isAction = ['edit', 'view', 'details', 'show'].includes(last);
+
+        if (isAction) {
+          // e.g. #/sales/orders/UUID/edit -> fallback to #/sales/orders
+          const fallbackSegments = segments.slice(0, segments.length - 2);
+          if (fallbackSegments.length > 0) {
+            window.location.hash = `#/${fallbackSegments.join('/')}`;
+            window.location.reload();
+            return;
+          }
+        } else if (isUUID(last) || isNumericId(last)) {
+          // e.g. #/sales/orders/UUID -> fallback to #/sales/orders
+          const fallbackSegments = segments.slice(0, segments.length - 1);
           if (fallbackSegments.length > 0) {
             window.location.hash = `#/${fallbackSegments.join('/')}`;
             window.location.reload();
@@ -78,13 +95,25 @@ export function performBranchSwitchReload() {
       // Path-based routing fallback
       const cleanPath = pathname.startsWith('/') ? pathname.slice(1) : pathname;
       const segments = cleanPath.split('/').filter(Boolean);
-      if (segments.length >= 2) {
-        const last = segments[segments.length - 1];
-        const isAction = ['edit', 'view', 'details', 'show'].includes(last.toLowerCase());
-        const idCandidate = isAction ? segments[segments.length - 2] : last;
 
-        if (idCandidate && !['new', 'create', 'list', 'all', 'settings'].includes(idCandidate.toLowerCase())) {
-          const fallbackSegments = isAction ? segments.slice(0, segments.length - 2) : segments.slice(0, segments.length - 1);
+      if (segments.length > 0 && segments[0].toLowerCase() === 'settings') {
+        window.location.reload();
+        return;
+      }
+
+      if (segments.length >= 2) {
+        const last = segments[segments.length - 1].toLowerCase();
+        const isAction = ['edit', 'view', 'details', 'show'].includes(last);
+
+        if (isAction) {
+          const fallbackSegments = segments.slice(0, segments.length - 2);
+          if (fallbackSegments.length > 0) {
+            window.location.pathname = `/${fallbackSegments.join('/')}`;
+            window.location.reload();
+            return;
+          }
+        } else if (isUUID(last) || isNumericId(last)) {
+          const fallbackSegments = segments.slice(0, segments.length - 1);
           if (fallbackSegments.length > 0) {
             window.location.pathname = `/${fallbackSegments.join('/')}`;
             window.location.reload();

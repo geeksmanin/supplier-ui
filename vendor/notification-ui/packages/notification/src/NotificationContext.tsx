@@ -401,10 +401,14 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
       const reg = await navigator.serviceWorker.ready;
       const subscription = await reg.pushManager.getSubscription();
       if (subscription) {
-        await subscription.unsubscribe();
-        await api.post('/unsubscribe', {
-          endpoint: subscription.endpoint,
-        });
+        try {
+          await api.post('/unsubscribe', {
+            endpoint: subscription.endpoint,
+          });
+        } catch (apiErr) {
+          console.warn('Failed to call /unsubscribe on server:', apiErr);
+        }
+        await subscription.unsubscribe().catch(() => {});
         console.log('Successfully unsubscribed from Web Push on backend and browser.');
       }
     } catch (err) {
@@ -973,19 +977,37 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   }, [baseUrl, userId, tenantCode, token]);
 
   useEffect(() => {
-    if (!userId) return;
-
     const handlePermissionGranted = () => {
-      registerPushSubscription();
+      if (userId) {
+        registerPushSubscription();
+      }
     };
-    window.addEventListener('notification-permission-granted', handlePermissionGranted);
 
-    if ('Notification' in window && window.Notification.permission === 'granted') {
+    const handleLogin = () => {
+      if (userId && 'Notification' in window && window.Notification.permission === 'granted') {
+        registerPushSubscription();
+      }
+    };
+
+    const handleLogout = async () => {
+      await unsubscribePush().catch(() => {});
+      cleanupSSE();
+      setNotifications([]);
+      setUnreadCount(0);
+    };
+
+    window.addEventListener('notification-permission-granted', handlePermissionGranted);
+    window.addEventListener('app_login_event', handleLogin);
+    window.addEventListener('app_logout_event', handleLogout);
+
+    if (userId && 'Notification' in window && window.Notification.permission === 'granted') {
       registerPushSubscription();
     }
 
     return () => {
       window.removeEventListener('notification-permission-granted', handlePermissionGranted);
+      window.removeEventListener('app_login_event', handleLogin);
+      window.removeEventListener('app_logout_event', handleLogout);
     };
   }, [userId]);
 

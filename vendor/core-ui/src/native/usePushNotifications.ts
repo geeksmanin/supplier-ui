@@ -189,8 +189,9 @@ export const usePushNotifications = (
   const registerDeviceTokenWithBackend = useCallback(async (deviceToken: string) => {
     // Always store token locally
     localStorage.setItem('fcm_device_token', deviceToken);
+    localStorage.setItem('last_fcm_device_token', deviceToken);
 
-    const token = localStorage.getItem('token') || localStorage.getItem('staff_token');
+    const token = localStorage.getItem('token') || localStorage.getItem('staff_token') || localStorage.getItem('erp_user_token');
     if (!token) return; // Wait until user is authenticated
 
     try {
@@ -215,26 +216,32 @@ export const usePushNotifications = (
           Authorization: `Bearer ${token}`,
         },
       });
+      localStorage.setItem('fcm_token_registered', 'true');
     } catch (err) {
       console.warn('Failed to register native device token with backend:', err);
     }
   }, [options?.userType]);
 
   const unregisterDeviceToken = useCallback(async () => {
-    const savedToken = localStorage.getItem('fcm_device_token');
+    const savedToken = localStorage.getItem('fcm_device_token') || localStorage.getItem('last_fcm_device_token');
     if (!savedToken) return;
 
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('staff_token');
-      await apiClient.post('/notification/devices/unregister', {
-        device_token: savedToken,
-      }, {
-        headers: {
-          'X-Tenant-Code': getWorkspaceFromUrl(),
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-      localStorage.removeItem('fcm_device_token');
+      const token = localStorage.getItem('token') || localStorage.getItem('staff_token') || localStorage.getItem('erp_user_token');
+      if (token) {
+        await apiClient.post('/notification/devices/unregister', {
+          device_token: savedToken,
+        }, {
+          headers: {
+            'X-Tenant-Code': getWorkspaceFromUrl(),
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+      localStorage.removeItem('fcm_token_registered');
+      // NOTE: We deliberately do NOT remove fcm_device_token or last_fcm_device_token here.
+      // On Android native, the device token is tied to the physical installation and persists.
+      // Retaining it allows the token to immediately re-register for the next authenticated user.
     } catch (err) {
       console.warn('Failed to unregister native device token:', err);
     }
@@ -408,8 +415,8 @@ export const usePushNotifications = (
       }
 
       // 4. Auto-register saved token if authenticated
-      const initialSavedToken = localStorage.getItem('fcm_device_token');
-      const initialAuthToken = localStorage.getItem('token') || localStorage.getItem('staff_token');
+      const initialSavedToken = localStorage.getItem('fcm_device_token') || localStorage.getItem('last_fcm_device_token');
+      const initialAuthToken = localStorage.getItem('token') || localStorage.getItem('staff_token') || localStorage.getItem('erp_user_token');
       if (initialSavedToken && initialAuthToken) {
         registerDeviceTokenWithBackend(initialSavedToken);
       }
@@ -418,13 +425,29 @@ export const usePushNotifications = (
     init();
 
     // 5. Re-register token on login event
-    const handleLoginEvent = () => {
-      const savedToken = localStorage.getItem('fcm_device_token');
+    const handleLoginEvent = async () => {
+      const savedToken = localStorage.getItem('fcm_device_token') || localStorage.getItem('last_fcm_device_token');
       if (savedToken) {
-        registerDeviceTokenWithBackend(savedToken);
+        await registerDeviceTokenWithBackend(savedToken);
+      }
+      // On native platform, re-prompt PushNotifications.register() to ensure token is fresh
+      const Push = getPushNotifications();
+      if (Push && isNativePlatform() && typeof Push.register === 'function') {
+        try {
+          await Push.register();
+        } catch (e) {
+          console.warn('PushNotifications.register() on login failed:', e);
+        }
       }
     };
+
+    // 6. Automatically unregister push notifications on logout event
+    const handleLogoutEvent = async () => {
+      await unregisterPushNotifications();
+    };
+
     window.addEventListener('app_login_event', handleLoginEvent);
+    window.addEventListener('app_logout_event', handleLogoutEvent);
 
     return () => {
       unmounted = true;
@@ -441,6 +464,7 @@ export const usePushNotifications = (
         else if (typeof receivedListener.then === 'function') receivedListener.then((h: any) => h?.remove?.()).catch(() => {});
       }
       window.removeEventListener('app_login_event', handleLoginEvent);
+      window.removeEventListener('app_logout_event', handleLogoutEvent);
     };
   }, [registerDeviceTokenWithBackend, onNavigate, recheck]);
 
@@ -448,10 +472,96 @@ export const usePushNotifications = (
     isNative: isNativePlatform(),
     platform: getNativePlatform(),
     unregisterDeviceToken,
+    unregisterPushNotifications,
     requestPermission,
     permission,
     isPhone,
     isDeniedOnPhone,
     recheckPermission: recheck,
   };
+};
+
+/**
+ * Robust standalone push unsubscription helper for both Native Capacitor (Android/iOS) and Web Push.
+ * Must be awaited BEFORE clearCurrentUser() or clearAuthToken() so that backend authentication headers are valid.
+ */
+export const unregisterPushNotifications = async (customApiClient?: any): Promise<void> => {
+  if (typeof window === 'undefined') return;
+
+  const token =
+    localStorage.getItem('token') ||
+    localStorage.getItem('staff_token') ||
+    localStorage.getItem('erp_user_token') ||
+    '';
+  const client = customApiClient || apiClient;
+  const tenantCode = getWorkspaceFromUrl();
+
+  const promises: Promise<any>[] = [];
+
+  // 1. Unregister Native FCM Device Token if available
+  const savedFcmToken =
+    localStorage.getItem('fcm_device_token') || localStorage.getItem('last_fcm_device_token');
+
+  if (savedFcmToken && token) {
+    promises.push(
+      client
+        .post(
+          '/notification/devices/unregister',
+          { device_token: savedFcmToken },
+          {
+            headers: {
+              'X-Tenant-Code': tenantCode,
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
+        .then(() => {
+          localStorage.removeItem('fcm_token_registered');
+          console.log('[Push] Successfully unregistered native push device token on backend.');
+        })
+        .catch((err: any) => {
+          console.warn('[Push] Failed to unregister native device token on backend:', err);
+        })
+    );
+  }
+
+  // 2. Unsubscribe Web Push (Browser PushManager + Backend)
+  if ('serviceWorker' in navigator && 'PushManager' in window) {
+    promises.push(
+      (async () => {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          const subscription = await reg.pushManager.getSubscription();
+          if (subscription) {
+            if (token) {
+              await client
+                .post(
+                  '/notification/unsubscribe',
+                  { endpoint: subscription.endpoint },
+                  {
+                    headers: {
+                      'X-Tenant-Code': tenantCode,
+                      Authorization: `Bearer ${token}`,
+                    },
+                  }
+                )
+                .catch((e: any) => {
+                  console.warn('[Push] Failed to call /notification/unsubscribe on backend:', e);
+                });
+            }
+            await subscription.unsubscribe().catch(() => {});
+            console.log('[Push] Successfully unsubscribed from Web Push on backend and browser.');
+          }
+        } catch (err) {
+          console.warn('[Push] Error unsubscribing web push:', err);
+        }
+      })()
+    );
+  }
+
+  // Max 2-second timeout so network lag never freezes UI during logout
+  await Promise.race([
+    Promise.all(promises),
+    new Promise((resolve) => setTimeout(resolve, 2000)),
+  ]);
 };

@@ -9,7 +9,7 @@ export { useMedia } from './hooks/useMedia';
 export type { UseMediaOptions, UseMediaReturn } from './hooks/useMedia';
 
 // Native Bridge & Push Notifications (Capacitor)
-export { usePushNotifications, isNativePlatform, getNativePlatform, getCapacitor, checkNotificationPermission, useNotificationPermission } from './native/usePushNotifications';
+export { usePushNotifications, unregisterPushNotifications, isNativePlatform, getNativePlatform, getCapacitor, checkNotificationPermission, useNotificationPermission } from './native/usePushNotifications';
 export type { NotificationPermissionState, UsePushNotificationsOptions } from './native/usePushNotifications';
 export { useNativeDevice } from './native/useNativeDevice';
 export type { UseNativeDeviceOptions } from './native/useNativeDevice';
