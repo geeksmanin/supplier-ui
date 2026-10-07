@@ -267,13 +267,15 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
 
 
   // Sort navItems so that 'Settings' is always last
-  const sortedNavItems = [...navItems].sort((a, b) => {
-    const isASettings = a.id === 'tenant-settings' || a.label.toLowerCase() === 'settings';
-    const isBSettings = b.id === 'tenant-settings' || b.label.toLowerCase() === 'settings';
-    if (isASettings && !isBSettings) return 1;
-    if (!isASettings && isBSettings) return -1;
-    return 0;
-  });
+  const sortedNavItems = React.useMemo(() => {
+    return [...navItems].sort((a, b) => {
+      const isASettings = a.section === 'settings' || a.id === 'tenant-settings' || a.label.toLowerCase() === 'settings';
+      const isBSettings = b.section === 'settings' || b.id === 'tenant-settings' || b.label.toLowerCase() === 'settings';
+      if (isASettings && !isBSettings) return 1;
+      if (!isASettings && isBSettings) return -1;
+      return 0;
+    });
+  }, [navItems]);
 
   // Fallback default items if registry is empty.
   // Memoized so the array reference is stable across renders — prevents the tab
@@ -283,8 +285,7 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
       { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: '📊', section: 'main' as const },
       { id: 'tenant-setup', label: 'New Tenant', path: '/tenant-setup', icon: '🏢', section: 'main' as const },
     ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortedNavItems.length, userPermissions, registryNavItems]);
+  }, [sortedNavItems]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
