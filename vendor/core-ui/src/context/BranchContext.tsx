@@ -192,6 +192,11 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       setAvailableBranches(filtered);
 
+      const assignedCodesHeader = isAdmin || hasWildcard
+        ? 'ALL'
+        : filtered.map(b => b.code).join(',');
+      localStorage.setItem('allowed_branches', assignedCodesHeader);
+
       // Validate or resolve activeBranch
       const storedBranch = localStorage.getItem('active_branch');
       let targetBranch = storedBranch || userBusinessCode;

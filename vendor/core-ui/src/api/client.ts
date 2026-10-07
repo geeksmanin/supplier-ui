@@ -317,6 +317,10 @@ export const createApiClient = (options: CreateClientOptions) => {
       if (activeBranch) {
         config.headers['X-Business-Code'] = activeBranch;
       }
+      const assignBusiness = localStorage.getItem('allowed_branches');
+      if (assignBusiness) {
+        config.headers['X-Assign-Business'] = assignBusiness;
+      }
     }
     return config;
   }, (error) => {
