@@ -35,7 +35,7 @@ export { UIRegistry } from './registry/registry';
 export type { RouteConfig, NavItemConfig, SearchItemConfig } from './registry/registry';
 export { DataTable } from './components/DataTable.desktop';
 export type { Column } from './components/DataTable.desktop';
-export { ToastProvider, useToast } from './components/Toast/Toast';
+export { ToastProvider, useToast, dispatchGlobalToast } from './components/Toast/Toast';
 export type { ToastType } from './components/Toast/Toast';
 export { Select } from './components/Select';
 export type { SelectProps, SelectOption, SelectAsyncConfig } from './components/Select';
@@ -162,5 +162,13 @@ export type { CurrentUser } from './utils/auth';
 
 // Common App Installation & Update Notice System
 export * from './components/AppNotice';
+
+// Universal Document & Invoicing Template Engine
+export * from './template-engine';
+
+// Unified Multi-Tenant Login & Workspace Switching System
+export * from './components/Login';
+export { useLogin, useLogout } from './hooks/useAuth';
+export type { LoginParams, LoginResult, UseLoginReturn, LogoutOptions, UseLogoutReturn, AuthRole } from './hooks/useAuth';
 
 

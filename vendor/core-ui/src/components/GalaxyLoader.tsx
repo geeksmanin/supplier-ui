@@ -1,28 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import {
-  Location3DIcon,
-  Contacts3DIcon,
-  Catalogue3DIcon,
-  Sales3DIcon,
-  PurchaseOrder3DIcon,
-  Invoices3DIcon,
-  Accounts3DIcon,
-  Inventory3DIcon,
-  WMS3DIcon,
-  CRM3DIcon,
-  Chat3DIcon,
-  Settings3DIcon,
-  Dashboard3DIcon,
-  Tenant3DIcon,
-  Automations3DIcon,
-  HR3DIcon,
-  Backupsync3DIcon,
-  Pricing3DIcon,
-  Requisition3DIcon,
-  RFQ3DIcon,
-  Product3DIcon,
-  Variant3DIcon
-} from './icons3d';
+import React, { useEffect, useRef, useState } from 'react';
+import { GEEKSMAN_LOGO_POINTS, GEEKSMAN_LOGO_ASPECT } from './logoPoints';
 
 export interface GalaxyLoaderProps {
   fullscreen?: boolean;
@@ -31,15 +8,26 @@ export interface GalaxyLoaderProps {
   statusMessage?: string;
   statusList?: string[];
   logoUrl?: string;
-  theme?: 'cosmic' | 'light' | 'dark';
+  theme?: 'light' | 'dark' | 'cosmic';
   scale?: number;
 }
 
-interface SatelliteApp3D {
-  id: string;
-  name: string;
-  glow: string;
-  icon: React.ReactNode;
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  scatterX: number;
+  scatterY: number;
+  targetX: number;
+  targetY: number;
+  radius: number;
+  color: string;
+  alpha: number;
+  baseAlpha: number;
+  pulseSpeed: number;
+  pulsePhase: number;
+  isShape: boolean;
 }
 
 export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
@@ -49,737 +37,312 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
   statusMessage,
   statusList = [
     'Initializing ecosystem modules...',
-    'Connecting workspace...',
-    'Synchronizing business registry...',
-    'Loading intelligent workflows...',
+    'Resolving workspace registry...',
+    'Synchronizing multi-tenant store...',
+    'Loading application runtime...',
     'Preparing enterprise dashboard...',
   ],
-  logoUrl,
-  theme = 'dark',
-  scale = 1,
+  theme = 'light',
 }) => {
-  const [currentStatusIndex, setCurrentStatusIndex] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
+  const [statusIndex, setStatusIndex] = useState(0);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const mouseRef = useRef<{ x: number; y: number; active: boolean }>({ x: -1000, y: -1000, active: false });
 
   useEffect(() => {
-    const checkMobile = () => {
-      if (typeof window !== 'undefined') {
-        setIsMobile(window.innerWidth < 768 || window.innerHeight < 700);
-      }
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  useEffect(() => {
-    if (statusList && statusList.length > 1) {
-      const interval = setInterval(() => {
-        setCurrentStatusIndex((prev) => (prev + 1) % statusList.length);
-      }, 2400);
-      return () => clearInterval(interval);
-    }
-  }, [statusList]);
-
-  const activeMessage = statusMessage || (statusList ? statusList[currentStatusIndex] : 'Loading...');
-
-  const innerIconSize = isMobile ? 24 : 44;
-  const middleIconSize = isMobile ? 28 : 46;
-  const outerIconSize = isMobile ? 32 : 48;
-
-  // -------------------------------------------------------------------------
-  // ALL 20 3D VOLUMETRIC ICONS SPREAD ACROSS 3 CONCENTRIC GALAXY ORBITS
-  // -------------------------------------------------------------------------
-
-  // 1. Inner Orbit (6 Core Master Modules)
-  const innerOrbitApps: SatelliteApp3D[] = [
-    {
-      id: 'locations',
-      name: 'Locations & Warehouses',
-      glow: 'rgba(16, 185, 129, 0.65)',
-      icon: <Location3DIcon size={innerIconSize} />,
-    },
-    {
-      id: 'catalogue',
-      name: 'Product Catalogue',
-      glow: 'rgba(236, 72, 153, 0.65)',
-      icon: <Catalogue3DIcon size={innerIconSize} />,
-    },
-    {
-      id: 'accounts',
-      name: 'Financial Accounts & Ledgers',
-      glow: 'rgba(16, 185, 129, 0.65)',
-      icon: <Accounts3DIcon size={innerIconSize} />,
-    },
-    {
-      id: 'contacts',
-      name: 'Contacts & Parties',
-      glow: 'rgba(245, 158, 11, 0.65)',
-      icon: <Contacts3DIcon size={innerIconSize} />,
-    },
-    {
-      id: 'invoices',
-      name: 'Invoices & Billing',
-      glow: 'rgba(6, 182, 212, 0.65)',
-      icon: <Invoices3DIcon size={innerIconSize} />,
-    },
-    {
-      id: 'dashboard',
-      name: 'Dashboard Analytics',
-      glow: 'rgba(59, 130, 246, 0.65)',
-      icon: <Dashboard3DIcon size={innerIconSize} />,
-    },
-  ];
-
-  // 2. Middle Orbit (7 Commercial & Ops Modules)
-  const middleOrbitApps: SatelliteApp3D[] = [
-    {
-      id: 'sales',
-      name: 'Sales & Quotations',
-      glow: 'rgba(59, 130, 246, 0.65)',
-      icon: <Sales3DIcon size={middleIconSize} />,
-    },
-    {
-      id: 'purchaseorder',
-      name: 'Purchase Orders & Vendor',
-      glow: 'rgba(139, 92, 246, 0.65)',
-      icon: <PurchaseOrder3DIcon size={middleIconSize} />,
-    },
-    {
-      id: 'inventory',
-      name: 'Stock & Inventory',
-      glow: 'rgba(16, 185, 129, 0.65)',
-      icon: <Inventory3DIcon size={middleIconSize} />,
-    },
-    {
-      id: 'wms',
-      name: 'WMS & Fulfillment',
-      glow: 'rgba(168, 85, 247, 0.65)',
-      icon: <WMS3DIcon size={middleIconSize} />,
-    },
-    {
-      id: 'crm',
-      name: 'CRM & Pipeline',
-      glow: 'rgba(245, 158, 11, 0.65)',
-      icon: <CRM3DIcon size={middleIconSize} />,
-    },
-    {
-      id: 'chat',
-      name: 'Staff Chat & Comms',
-      glow: 'rgba(59, 130, 246, 0.65)',
-      icon: <Chat3DIcon size={middleIconSize} />,
-    },
-    {
-      id: 'pricing',
-      name: 'Pricing & Rules',
-      glow: 'rgba(244, 63, 94, 0.65)',
-      icon: <Pricing3DIcon size={middleIconSize} />,
-    },
-  ];
-
-  // 3. Outer Orbit (7 Enterprise & Workflow Modules)
-  const outerOrbitApps: SatelliteApp3D[] = [
-    {
-      id: 'automations',
-      name: 'Automations & Rules',
-      glow: 'rgba(56, 189, 248, 0.65)',
-      icon: <Automations3DIcon size={outerIconSize} />,
-    },
-    {
-      id: 'settings',
-      name: 'System Config',
-      glow: 'rgba(148, 163, 184, 0.65)',
-      icon: <Settings3DIcon size={outerIconSize} />,
-    },
-    {
-      id: 'tenant',
-      name: 'Tenant Onboarding',
-      glow: 'rgba(16, 185, 129, 0.65)',
-      icon: <Tenant3DIcon size={outerIconSize} />,
-    },
-    {
-      id: 'hr',
-      name: 'HR & People Hierarchy',
-      glow: 'rgba(99, 102, 241, 0.65)',
-      icon: <HR3DIcon size={outerIconSize} />,
-    },
-    {
-      id: 'backupsync',
-      name: 'Backupsync & Cloud',
-      glow: 'rgba(168, 85, 247, 0.65)',
-      icon: <Backupsync3DIcon size={outerIconSize} />,
-    },
-    {
-      id: 'requisitions',
-      name: 'Requisitions & Indents',
-      glow: 'rgba(16, 185, 129, 0.65)',
-      icon: <Requisition3DIcon size={outerIconSize} />,
-    },
-    {
-      id: 'rfqs',
-      name: 'RFQs & Quotes',
-      glow: 'rgba(139, 92, 246, 0.65)',
-      icon: <RFQ3DIcon size={outerIconSize} />,
-    },
-  ];
+    if (statusMessage) return;
+    const interval = setInterval(() => {
+      setStatusIndex((prev) => (prev + 1) % statusList.length);
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [statusList, statusMessage]);
 
   const isLight = theme === 'light';
+  const bgColor = isLight ? '#ffffff' : '#0a0e17';
+  const textColor = isLight ? '#0f172a' : '#f8fafc';
+  const subtextColor = isLight ? '#64748b' : '#94a3b8';
+  const trackBg = isLight ? 'rgba(15, 23, 42, 0.08)' : 'rgba(255, 255, 255, 0.08)';
 
-  // CSS Animations & Keyframes
-  const galaxyStyles = `
-    @keyframes galaxy-core-pulse {
-      0%, 100% {
-        transform: scale(1);
-        filter: drop-shadow(0 0 28px rgba(59, 130, 246, 0.55));
+  const activeStatus = statusMessage || statusList[statusIndex];
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+    let width = (canvas.width = canvas.parentElement?.clientWidth || window.innerWidth);
+    let height = (canvas.height = canvas.parentElement?.clientHeight || window.innerHeight);
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const handleResize = () => {
+      if (!canvas || !canvas.parentElement) return;
+      width = canvas.parentElement.clientWidth || window.innerWidth;
+      height = canvas.parentElement.clientHeight || window.innerHeight;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.scale(dpr, dpr);
+      updateTargetPoints();
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    const blueShades = isLight
+      ? ['#1d4ed8', '#2563eb', '#3b82f6', '#1e40af']
+      : ['#60a5fa', '#38bdf8', '#3b82f6', '#93c5fd'];
+
+    const ambientDots = isLight
+      ? ['#0f172a', '#334155', '#64748b', '#94a3b8']
+      : ['#475569', '#64748b', '#334155', '#1e293b'];
+
+    let particles: Particle[] = [];
+
+    const getLogoDimensions = () => {
+      const cx = width / 2;
+      const cy = height / 2;
+      const maxWByHeight = (height * 0.72) / GEEKSMAN_LOGO_ASPECT;
+      const logoW = Math.min(width * 0.75, Math.min(500, maxWByHeight));
+      const logoH = logoW * GEEKSMAN_LOGO_ASPECT;
+      return { cx, cy, logoW, logoH };
+    };
+
+    const initParticles = () => {
+      particles = [];
+      const { cx, cy, logoW, logoH } = getLogoDimensions();
+      const dotRadius = Math.max(1.2, Math.min(1.45, width / 700));
+
+      // 1. Create shape particles - INITIALLY FULLY FORMED AT LOGO POSITION!
+      GEEKSMAN_LOGO_POINTS.forEach(([nx, ny]) => {
+        const tx = cx + nx * logoW;
+        const ty = cy + ny * logoH;
+        const sx = Math.random() * width;
+        const sy = Math.random() * height;
+        const color = blueShades[Math.floor(Math.random() * blueShades.length)];
+        const baseAlpha = 0.8 + Math.random() * 0.2;
+
+        particles.push({
+          x: tx, // Formed initially!
+          y: ty,
+          vx: 0,
+          vy: 0,
+          scatterX: sx,
+          scatterY: sy,
+          targetX: tx,
+          targetY: ty,
+          radius: dotRadius,
+          color,
+          alpha: baseAlpha,
+          baseAlpha,
+          pulseSpeed: 1.5 + Math.random() * 2.5,
+          pulsePhase: Math.random() * Math.PI * 2,
+          isShape: true,
+        });
+      });
+
+      // 2. Ambient drifting particles across background
+      const ambCount = Math.floor((width * height) / 6000);
+      for (let i = 0; i < ambCount; i++) {
+        const ax = Math.random() * width;
+        const ay = Math.random() * height;
+        const isBlue = Math.random() < 0.25;
+        const color = isBlue
+          ? blueShades[Math.floor(Math.random() * blueShades.length)]
+          : ambientDots[Math.floor(Math.random() * ambientDots.length)];
+        const baseAlpha = isBlue ? 0.4 : 0.15 + Math.random() * 0.25;
+
+        particles.push({
+          x: ax,
+          y: ay,
+          vx: (Math.random() - 0.5) * 0.35,
+          vy: (Math.random() - 0.5) * 0.35,
+          scatterX: ax,
+          scatterY: ay,
+          targetX: ax,
+          targetY: ay,
+          radius: 1.0 + Math.random() * 0.8,
+          color,
+          alpha: baseAlpha,
+          baseAlpha,
+          pulseSpeed: 1.0 + Math.random() * 2.5,
+          pulsePhase: Math.random() * Math.PI * 2,
+          isShape: false,
+        });
       }
-      50% {
-        transform: scale(1.08);
-        filter: drop-shadow(0 0 42px rgba(99, 102, 241, 0.8));
+    };
+
+    const updateTargetPoints = () => {
+      const { cx, cy, logoW, logoH } = getLogoDimensions();
+      let shapeIdx = 0;
+      particles.forEach((p) => {
+        if (p.isShape && shapeIdx < GEEKSMAN_LOGO_POINTS.length) {
+          const [nx, ny] = GEEKSMAN_LOGO_POINTS[shapeIdx++];
+          p.targetX = cx + nx * logoW;
+          p.targetY = cy + ny * logoH;
+        }
+      });
+    };
+
+    initParticles();
+
+    let startTime = performance.now();
+    const CYCLE_DURATION = 6800; // 6.8 second full choreographic loop
+
+    const render = (now: number) => {
+      const elapsed = now - startTime;
+      const cycleTime = elapsed % CYCLE_DURATION;
+
+      // Choreography:
+      // 0ms - 2200ms: Phase 1: FORMED - Logo is sharply assembled and gently breathing
+      // 2200ms - 3800ms: Phase 2: SCATTER - Particles scatter & explode outward
+      // 3800ms - 4800ms: Phase 3: AMBIENT DRIFT - Floating in space
+      // 4800ms - 6400ms: Phase 4: RE-CREATE - Magnetic attraction pulls particles back into the logo
+      // 6400ms - 6800ms: Phase 5: SETTLE - Settled back into formed logo
+      let formWeight = 1;
+      if (cycleTime < 2200) {
+        formWeight = 1;
+      } else if (cycleTime < 3800) {
+        // Disperse
+        const t = (cycleTime - 2200) / 1600;
+        formWeight = 1 - Math.sin((t * Math.PI) / 2);
+      } else if (cycleTime < 4800) {
+        // Ambient drift
+        formWeight = 0;
+      } else if (cycleTime < 6400) {
+        // Re-assemble with cubic spring easing
+        const t = (cycleTime - 4800) / 1600;
+        formWeight = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      } else {
+        formWeight = 1;
       }
-    }
 
-    @keyframes galaxy-energy-ring {
-      0% {
-        transform: scale(0.85);
-        opacity: 0.85;
+      ctx.clearRect(0, 0, width, height);
+
+      const mouse = mouseRef.current;
+      const mouseDistThreshold = 85;
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+
+        if (p.isShape) {
+          // Dynamic destination based on formWeight
+          const breatheX = Math.sin(now * 0.002 + p.pulsePhase) * 1.0;
+          const breatheY = Math.cos(now * 0.002 + p.pulsePhase) * 1.0;
+
+          const destX = p.scatterX + (p.targetX + breatheX - p.scatterX) * formWeight;
+          const destY = p.scatterY + (p.targetY + breatheY - p.scatterY) * formWeight;
+
+          const dx = destX - p.x;
+          const dy = destY - p.y;
+
+          const spring = formWeight > 0.4 ? 0.07 : 0.025;
+          const damp = formWeight > 0.4 ? 0.15 : 0.08;
+          p.vx += dx * spring - p.vx * damp;
+          p.vy += dy * spring - p.vy * damp;
+        } else {
+          // Ambient background float
+          p.vx += (Math.random() - 0.5) * 0.04;
+          p.vy += (Math.random() - 0.5) * 0.04;
+          p.vx *= 0.96;
+          p.vy *= 0.96;
+
+          if (p.x < 0) p.x = width;
+          if (p.x > width) p.x = 0;
+          if (p.y < 0) p.y = height;
+          if (p.y > height) p.y = 0;
+        }
+
+        // Mouse cursor interaction
+        if (mouse.active) {
+          const mdx = p.x - mouse.x;
+          const mdy = p.y - mouse.y;
+          const mdist = Math.hypot(mdx, mdy);
+          if (mdist < mouseDistThreshold && mdist > 0) {
+            const force = (1 - mdist / mouseDistThreshold) * 4.0;
+            p.vx += (mdx / mdist) * force;
+            p.vy += (mdy / mdist) * force;
+          }
+        }
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // Blinking alpha
+        const blink = Math.sin(now * 0.003 * p.pulseSpeed + p.pulsePhase);
+        p.alpha = Math.max(0.1, Math.min(1, p.baseAlpha + blink * 0.25));
+
+        // Draw particle dot
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.alpha;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
       }
-      50% {
-        transform: scale(1.22);
-        opacity: 0.28;
-      }
-      100% {
-        transform: scale(1.5);
-        opacity: 0;
-      }
-    }
 
-    @keyframes galaxy-orbit-cw {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
+      ctx.globalAlpha = 1;
+      animId = requestAnimationFrame(render);
+    };
 
-    @keyframes galaxy-orbit-ccw {
-      from { transform: rotate(360deg); }
-      to { transform: rotate(0deg); }
-    }
+    animId = requestAnimationFrame(render);
 
-    @keyframes galaxy-counter-cw {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(-360deg); }
-    }
-
-    @keyframes galaxy-counter-ccw {
-      from { transform: rotate(-360deg); }
-      to { transform: rotate(0deg); }
-    }
-
-    @keyframes galaxy-star-twinkle {
-      0%, 100% { opacity: 0.2; transform: scale(0.8); }
-      50% { opacity: 0.95; transform: scale(1.3); }
-    }
-
-    @keyframes galaxy-laser-scan {
-      0% { transform: translateX(-100%); }
-      100% { transform: translateX(250%); }
-    }
-
-    @keyframes galaxy-fade-in {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .galaxy-free-floating-icon {
-      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), filter 0.25s ease;
-    }
-    .galaxy-free-floating-icon:hover {
-      transform: scale(1.35) !important;
-      z-index: 99;
-    }
-  `;
-
-  // Cosmic Dark Background Configuration
-  const bgStyle: React.CSSProperties = fullscreen
-    ? {
-        position: 'fixed',
-        inset: 0,
-        width: '100vw',
-        height: '100vh',
-        zIndex: 999999,
-        backgroundColor: isLight ? '#f8fafc' : '#070a13',
-        backgroundImage: isLight
-          ? 'radial-gradient(circle at 50% 50%, #ffffff 0%, #f1f5f9 100%)'
-          : 'radial-gradient(circle at 50% 45%, rgba(30, 58, 138, 0.32) 0%, rgba(15, 23, 42, 0.65) 45%, #05070e 85%)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-        fontFamily: "'Outfit', 'Inter', system-ui, -apple-system, sans-serif",
-        userSelect: 'none',
-      }
-    : {
-        position: 'relative',
-        width: '100%',
-        minHeight: '600px',
-        backgroundColor: isLight ? '#f8fafc' : '#070a13',
-        backgroundImage: isLight
-          ? 'radial-gradient(circle at 50% 50%, #ffffff 0%, #f1f5f9 100%)'
-          : 'radial-gradient(circle at 50% 45%, rgba(30, 58, 138, 0.28) 0%, rgba(15, 23, 42, 0.55) 50%, #05070e 90%)',
-        borderRadius: '24px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-        fontFamily: "'Outfit', 'Inter', system-ui, -apple-system, sans-serif",
-        userSelect: 'none',
+    const handlePointerMove = (e: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      mouseRef.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+        active: true,
       };
+    };
 
-  // Concentric Orbit Radii (px)
-  const innerRadius = isMobile ? 65 : 120;
-  const middleRadius = isMobile ? 115 : 195;
-  const outerRadius = isMobile ? 165 : 270;
+    const handlePointerLeave = () => {
+      mouseRef.current.active = false;
+    };
 
-  const innerOrbitSize = innerRadius * 2;
-  const middleOrbitSize = middleRadius * 2;
-  const outerOrbitSize = outerRadius * 2;
+    canvas.addEventListener('pointermove', handlePointerMove);
+    canvas.addEventListener('pointerleave', handlePointerLeave);
 
-  // Starfield Dust Particles
-  const stars = [
-    { top: '6%', left: '12%', size: 2.5, delay: '0.2s' },
-    { top: '12%', left: '85%', size: 3, delay: '1.4s' },
-    { top: '18%', left: '26%', size: 1.8, delay: '2.1s' },
-    { top: '24%', left: '72%', size: 2.2, delay: '0.8s' },
-    { top: '75%', left: '14%', size: 3.2, delay: '1.9s' },
-    { top: '80%', left: '88%', size: 2.4, delay: '0.5s' },
-    { top: '35%', left: '6%', size: 2, delay: '2.8s' },
-    { top: '65%', left: '94%', size: 2.8, delay: '1.1s' },
-    { top: '88%', left: '30%', size: 2.2, delay: '1.6s' },
-    { top: '92%', left: '68%', size: 3.5, delay: '0.3s' },
-    { top: '10%', left: '50%', size: 2, delay: '2.4s' },
-    { top: '55%', left: '3%', size: 1.5, delay: '1.7s' },
-  ];
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', handleResize);
+      canvas.removeEventListener('pointermove', handlePointerMove);
+      canvas.removeEventListener('pointerleave', handlePointerLeave);
+    };
+  }, [isLight]);
 
   return (
-    <div style={bgStyle}>
-      <style dangerouslySetInnerHTML={{ __html: galaxyStyles }} />
-
-      {/* 1. Celestial Ambient Starfield & Nebula Fields */}
-      {!isLight && (
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-          <div
-            style={{
-              position: 'absolute',
-              top: '20%',
-              left: '30%',
-              width: isMobile ? '280px' : '520px',
-              height: isMobile ? '280px' : '520px',
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(99, 102, 241, 0.16) 0%, rgba(59, 130, 246, 0.08) 50%, transparent 72%)',
-              filter: 'blur(55px)',
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              top: '38%',
-              left: '52%',
-              width: isMobile ? '240px' : '450px',
-              height: isMobile ? '240px' : '450px',
-              borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, rgba(236, 72, 153, 0.06) 55%, transparent 72%)',
-              filter: 'blur(50px)',
-            }}
-          />
-
-          {stars.map((star, idx) => (
-            <div
-              key={idx}
-              style={{
-                position: 'absolute',
-                top: star.top,
-                left: star.left,
-                width: `${star.size}px`,
-                height: `${star.size}px`,
-                backgroundColor: '#ffffff',
-                borderRadius: '50%',
-                boxShadow: '0 0 10px #93c5fd, 0 0 4px #ffffff',
-                animation: 'galaxy-star-twinkle 3.2s ease-in-out infinite',
-                animationDelay: star.delay,
-              }}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* 2. Main Galaxy Revolution System (3 Concentric Orbits) */}
-      <div
+    <div
+      style={{
+        position: fullscreen ? 'fixed' : 'relative',
+        inset: fullscreen ? 0 : 'auto',
+        width: '100%',
+        height: fullscreen ? '100vh' : '100%',
+        minHeight: fullscreen ? '100vh' : '360px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: bgColor,
+        zIndex: fullscreen ? 99999 : 1,
+        fontFamily: "'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        userSelect: 'none',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Interactive Geodesic Dome Particles Canvas */}
+      <canvas
+        ref={canvasRef}
         style={{
-          position: 'relative',
-          width: `${outerOrbitSize + (isMobile ? 40 : 90)}px`,
-          height: `${outerOrbitSize + (isMobile ? 40 : 90)}px`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transform: `scale(${scale})`,
-          transition: 'transform 0.3s ease',
-          maxWidth: '100vw',
-          maxHeight: isMobile ? '50vh' : '75vh',
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'auto',
+          zIndex: 1,
         }}
-      >
-        {/* Core Ambient Energy Glow */}
-        <div
-          style={{
-            position: 'absolute',
-            width: isMobile ? '180px' : '320px',
-            height: isMobile ? '180px' : '320px',
-            borderRadius: '50%',
-            background: isLight
-              ? 'radial-gradient(circle, rgba(59, 130, 246, 0.14) 0%, rgba(99, 102, 241, 0.05) 55%, transparent 70%)'
-              : 'radial-gradient(circle, rgba(59, 130, 246, 0.32) 0%, rgba(99, 102, 241, 0.18) 45%, rgba(147, 51, 234, 0.08) 65%, transparent 75%)',
-            filter: 'blur(32px)',
-            pointerEvents: 'none',
-          }}
-        />
-
-        {/* ------------------------------------------------------------- */}
-        {/* 2A. OUTER ORBIT */}
-        {/* ------------------------------------------------------------- */}
-        <div
-          style={{
-            position: 'absolute',
-            width: `${outerOrbitSize}px`,
-            height: `${outerOrbitSize}px`,
-            borderRadius: '50%',
-            border: isLight
-              ? '1.5px dashed rgba(99, 102, 241, 0.28)'
-              : '1.5px dashed rgba(99, 102, 241, 0.32)',
-            boxShadow: isLight
-              ? '0 0 16px rgba(99, 102, 241, 0.04)'
-              : '0 0 32px rgba(99, 102, 241, 0.12), inset 0 0 32px rgba(99, 102, 241, 0.08)',
-            animation: 'galaxy-orbit-cw 48s linear infinite',
-            pointerEvents: 'none',
-          }}
-        >
-          {outerOrbitApps.map((app, index) => {
-            const angle = (index * 360) / outerOrbitApps.length;
-            const rad = (angle * Math.PI) / 180;
-            const halfIcon = outerIconSize / 2;
-            const x = outerRadius + outerRadius * Math.cos(rad) - halfIcon;
-            const y = outerRadius + outerRadius * Math.sin(rad) - halfIcon;
-
-            return (
-              <div
-                key={app.id}
-                className="galaxy-free-floating-icon"
-                style={{
-                  position: 'absolute',
-                  left: `${x}px`,
-                  top: `${y}px`,
-                  width: `${outerIconSize}px`,
-                  height: `${outerIconSize}px`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  animation: 'galaxy-counter-cw 48s linear infinite',
-                  filter: `drop-shadow(0 12px 24px ${app.glow})`,
-                  cursor: 'pointer',
-                  pointerEvents: 'auto',
-                }}
-                title={app.name}
-              >
-                {app.icon}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* ------------------------------------------------------------- */}
-        {/* 2B. MIDDLE ORBIT */}
-        {/* ------------------------------------------------------------- */}
-        <div
-          style={{
-            position: 'absolute',
-            width: `${middleOrbitSize}px`,
-            height: `${middleOrbitSize}px`,
-            borderRadius: '50%',
-            border: isLight
-              ? '1.5px solid rgba(139, 92, 246, 0.28)'
-              : '1.5px solid rgba(139, 92, 246, 0.32)',
-            boxShadow: isLight
-              ? '0 0 20px rgba(139, 92, 246, 0.05)'
-              : '0 0 32px rgba(139, 92, 246, 0.16), inset 0 0 32px rgba(139, 92, 246, 0.1)',
-            animation: 'galaxy-orbit-ccw 34s linear infinite',
-            pointerEvents: 'none',
-          }}
-        >
-          {middleOrbitApps.map((app, index) => {
-            const angle = (index * 360) / middleOrbitApps.length;
-            const rad = (angle * Math.PI) / 180;
-            const halfIcon = middleIconSize / 2;
-            const x = middleRadius + middleRadius * Math.cos(rad) - halfIcon;
-            const y = middleRadius + middleRadius * Math.sin(rad) - halfIcon;
-
-            return (
-              <div
-                key={app.id}
-                className="galaxy-free-floating-icon"
-                style={{
-                  position: 'absolute',
-                  left: `${x}px`,
-                  top: `${y}px`,
-                  width: `${middleIconSize}px`,
-                  height: `${middleIconSize}px`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  animation: 'galaxy-counter-ccw 34s linear infinite',
-                  filter: `drop-shadow(0 10px 20px ${app.glow})`,
-                  cursor: 'pointer',
-                  pointerEvents: 'auto',
-                }}
-                title={app.name}
-              >
-                {app.icon}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* ------------------------------------------------------------- */}
-        {/* 2C. INNER ORBIT */}
-        {/* ------------------------------------------------------------- */}
-        <div
-          style={{
-            position: 'absolute',
-            width: `${innerOrbitSize}px`,
-            height: `${innerOrbitSize}px`,
-            borderRadius: '50%',
-            border: isLight
-              ? '1.5px dashed rgba(59, 130, 246, 0.35)'
-              : '1.5px dashed rgba(59, 130, 246, 0.42)',
-            boxShadow: isLight
-              ? '0 0 20px rgba(59, 130, 246, 0.06)'
-              : '0 0 32px rgba(59, 130, 246, 0.2), inset 0 0 32px rgba(59, 130, 246, 0.12)',
-            animation: 'galaxy-orbit-cw 22s linear infinite',
-            pointerEvents: 'none',
-          }}
-        >
-          {innerOrbitApps.map((app, index) => {
-            const angle = (index * 360) / innerOrbitApps.length;
-            const rad = (angle * Math.PI) / 180;
-            const halfIcon = innerIconSize / 2;
-            const x = innerRadius + innerRadius * Math.cos(rad) - halfIcon;
-            const y = innerRadius + innerRadius * Math.sin(rad) - halfIcon;
-
-            return (
-              <div
-                key={app.id}
-                className="galaxy-free-floating-icon"
-                style={{
-                  position: 'absolute',
-                  left: `${x}px`,
-                  top: `${y}px`,
-                  width: `${innerIconSize}px`,
-                  height: `${innerIconSize}px`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  animation: 'galaxy-counter-cw 22s linear infinite',
-                  filter: `drop-shadow(0 8px 18px ${app.glow})`,
-                  cursor: 'pointer',
-                  pointerEvents: 'auto',
-                }}
-                title={app.name}
-              >
-                {app.icon}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* 2D. EXPANDING NUCLEUS RIPPLES */}
-        {!isLight && (
-          <>
-            <div
-              style={{
-                position: 'absolute',
-                width: isMobile ? '60px' : '100px',
-                height: isMobile ? '60px' : '100px',
-                borderRadius: '50%',
-                border: '1.5px solid rgba(56, 189, 248, 0.65)',
-                animation: 'galaxy-energy-ring 3.6s cubic-bezier(0.16, 1, 0.3, 1) infinite',
-                pointerEvents: 'none',
-              }}
-            />
-            <div
-              style={{
-                position: 'absolute',
-                width: isMobile ? '60px' : '100px',
-                height: isMobile ? '60px' : '100px',
-                borderRadius: '50%',
-                border: '1.5px solid rgba(139, 92, 246, 0.55)',
-                animation: 'galaxy-energy-ring 3.6s cubic-bezier(0.16, 1, 0.3, 1) infinite',
-                animationDelay: '1.8s',
-                pointerEvents: 'none',
-              }}
-            />
-          </>
-        )}
-
-        {/* 2E. CENTER NUCLEUS CORE */}
-        <div
-          style={{
-            position: 'relative',
-            width: isMobile ? '60px' : '94px',
-            height: isMobile ? '60px' : '94px',
-            borderRadius: '50%',
-            background: isLight
-              ? 'rgba(255, 255, 255, 0.95)'
-              : 'radial-gradient(circle at 35% 35%, #1e293b 0%, #0a0f1d 85%)',
-            border: isLight
-              ? '2px solid rgba(59, 130, 246, 0.25)'
-              : '2px solid rgba(96, 165, 250, 0.45)',
-
-            boxShadow: isLight
-              ? '0 10px 25px rgba(37, 99, 235, 0.2)'
-              : '0 0 40px rgba(59, 130, 246, 0.5), 0 0 16px rgba(255, 255, 255, 0.1) inset',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 20,
-            animation: 'galaxy-core-pulse 3.6s ease-in-out infinite',
-            cursor: 'default',
-          }}
-        >
-          <img
-            src={logoUrl || '/logo.png'}
-            alt={appName || 'Geeksman'}
-            style={{
-              width: isMobile ? '40px' : '68px',
-              height: isMobile ? '40px' : '68px',
-              objectFit: 'contain',
-              filter: isLight ? 'none' : 'drop-shadow(0 2px 10px rgba(0, 0, 0, 0.7))',
-            }}
-
-            onError={(e) => {
-              const target = e.currentTarget;
-              if (target.src.indexOf('/favicon.png') === -1) {
-                target.src = '/favicon.png';
-              }
-            }}
-          />
-        </div>
-      </div>
-
-      {/* 3. Brand Identity & High-Tech Status Telemetry */}
-      <div
-        style={{
-          marginTop: '1.5rem',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '0.85rem',
-          textAlign: 'center',
-          maxWidth: '440px',
-          padding: '0 1.25rem',
-          zIndex: 30,
-        }}
-      >
-        {/* Title with Metallic Sheen */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'center' }}>
-          <h1
-            style={{
-              fontSize: '1.55rem',
-              fontWeight: 900,
-              margin: 0,
-              letterSpacing: '0.06em',
-              background: isLight
-                ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)'
-                : 'linear-gradient(135deg, #ffffff 0%, #e2e8f0 45%, #94a3b8 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              textTransform: 'uppercase',
-              textShadow: isLight ? 'none' : '0 2px 12px rgba(255, 255, 255, 0.15)',
-            }}
-          >
-            {appName}
-          </h1>
-          {tagline && (
-            <p
-              style={{
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                color: '#64748b',
-                margin: 0,
-                letterSpacing: '0.12em',
-                textTransform: 'uppercase',
-              }}
-            >
-              {tagline}
-            </p>
-          )}
-        </div>
-
-        {/* Animated Laser Progress Line */}
-        <div
-          style={{
-            width: '180px',
-            height: '3px',
-            backgroundColor: isLight ? '#e2e8f0' : 'rgba(255, 255, 255, 0.08)',
-            borderRadius: '9999px',
-            overflow: 'hidden',
-            position: 'relative',
-          }}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '60px',
-              height: '100%',
-              background: 'linear-gradient(90deg, transparent, #38bdf8, #818cf8, transparent)',
-              borderRadius: '9999px',
-              animation: 'galaxy-laser-scan 1.8s cubic-bezier(0.4, 0, 0.2, 1) infinite',
-            }}
-          />
-        </div>
-
-        {/* Live Phased Status Text Pill */}
-        <div
-          key={activeMessage}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.55rem',
-            padding: '0.35rem 0.95rem',
-            borderRadius: '9999px',
-            backgroundColor: isLight ? 'rgba(241, 245, 249, 0.85)' : 'rgba(15, 23, 42, 0.7)',
-            border: isLight ? '1px solid #e2e8f0' : '1px solid rgba(255, 255, 255, 0.1)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            fontSize: '0.84rem',
-            fontWeight: 500,
-            color: isLight ? '#334155' : '#cbd5e1',
-            animation: 'galaxy-fade-in 0.35s ease',
-            boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.04)' : '0 4px 12px rgba(0,0,0,0.35)',
-          }}
-        >
-          <span
-            style={{
-              width: '7px',
-              height: '7px',
-              borderRadius: '50%',
-              backgroundColor: '#38bdf8',
-              boxShadow: '0 0 8px #38bdf8, 0 0 16px #38bdf8',
-              display: 'inline-block',
-              flexShrink: 0,
-            }}
-          />
-          <span style={{ letterSpacing: '0.01em' }}>{activeMessage}</span>
-        </div>
-      </div>
+      />
     </div>
   );
 };

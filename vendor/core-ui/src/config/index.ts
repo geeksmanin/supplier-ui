@@ -18,7 +18,7 @@ export const getAppConfig = (): AppConfig => {
     const fallback = {
       apiBaseUrl: '',
       defaultTenant: 'platform',
-      resolveTenantFromUrl: true,
+      resolveTenantFromUrl: false,
     };
     (window as any).__geeksmanActiveConfig = fallback;
     return fallback;
@@ -26,7 +26,7 @@ export const getAppConfig = (): AppConfig => {
   return {
     apiBaseUrl: '',
     defaultTenant: 'platform',
-    resolveTenantFromUrl: true,
+    resolveTenantFromUrl: false,
   };
 };
 

@@ -4,5 +4,7 @@ export interface AppConfig {
   resolveTenantFromUrl: boolean;
   ticketingApiBaseUrl?: string;
   commentsApiBaseUrl?: string;
+  notificationApiBaseUrl?: string;
   tenantCode?: string;
 }
+

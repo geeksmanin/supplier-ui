@@ -34,6 +34,6 @@ export * from './Variant3DIcon';
 export * from './Integrations3DIcon';
 export * from './CloudSync3DIcon';
 export * from './Branch3DIcon';
-
-
-
+export * from './POS3DIcon';
+export * from './Samwad3DIcon';
+export * from './SamwadMiniIcon';

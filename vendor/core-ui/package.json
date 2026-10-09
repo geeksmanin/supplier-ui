@@ -9,12 +9,16 @@
   },
   "dependencies": {
     "@geeksman/notification": "file:../notification-ui/packages/notification",
+    "@types/qrcode": "^1.5.6",
+    "@wailsio/runtime": "^3.0.0-alpha.97",
     "axios": "^1.7.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.0.0",
-    "xlsx": "^0.18.5",
-    "@wailsio/runtime": "^3.0.0-alpha.97"
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

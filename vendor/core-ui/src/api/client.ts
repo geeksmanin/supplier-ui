@@ -81,15 +81,7 @@ export const getWorkspaceFromUrl = (): string => {
   if (typeof window !== 'undefined') {
     const appConfig = getAppConfig();
 
-    // 1. If URL resolution is disabled and defaultTenant is set, defaultTenant takes precedence
-    if (appConfig.defaultTenant && !appConfig.resolveTenantFromUrl) {
-      const defaultTenant = appConfig.defaultTenant;
-      localStorage.setItem('tenant_code', defaultTenant);
-      localStorage.setItem('workspace_code', defaultTenant);
-      return defaultTenant;
-    }
-
-    // 2. Check URL query parameters (both standard query and hash query, e.g. ?workspace=synchx)
+    // 1. Check URL query parameters (both standard query and hash query, e.g. ?workspace=synchx)
     const searchParams = new URLSearchParams(window.location.search);
     let queryWs = searchParams.get('workspace') || searchParams.get('tenant') || searchParams.get('tenant_code');
 
@@ -100,19 +92,19 @@ export const getWorkspaceFromUrl = (): string => {
     }
 
     if (queryWs) {
-      const ws = queryWs.trim();
+      const ws = queryWs.trim().toLowerCase();
       localStorage.setItem('tenant_code', ws);
       localStorage.setItem('workspace_code', ws);
       return ws;
     }
 
-    // 3. Check Hostname subdomain (e.g. synchx.geeksman.co.in) if URL resolution is enabled
+    // 2. Check Hostname subdomain (e.g. synchx.geeksman.co.in) if URL resolution is enabled
     if (appConfig.resolveTenantFromUrl) {
       const host = window.location.hostname.toLowerCase();
       const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
       if (host && host !== 'localhost' && host !== '127.0.0.1' && !host.endsWith('.localhost') && !isIpAddress) {
         const parts = host.split('.');
-        const appPrefixes = ['admin', 'platform', 'www', 'samwad', 'samvad', 'chat', 'staff', 'customer', 'portal', 'catalogue', 'catalog', 'app', 'api'];
+        const appPrefixes = ['admin', 'platform', 'www', 'samwad', 'samvad', 'chat', 'staff', 'customer', 'portal', 'catalogue', 'catalog', 'app', 'api', 'business'];
         if (parts.length > 1) {
           if (!appPrefixes.includes(parts[0])) {
             return parts[0];
@@ -124,10 +116,15 @@ export const getWorkspaceFromUrl = (): string => {
       }
     }
 
-    // 4. Saved tenant in localStorage (ignore if 'platform' and a specific non-platform defaultTenant is configured)
+    // 3. User-chosen or saved tenant in localStorage (survives reloads and explicit switches)
     const savedTenant = localStorage.getItem('tenant_code') || localStorage.getItem('workspace_code');
-    if (savedTenant && (savedTenant !== 'platform' || !appConfig.defaultTenant || appConfig.defaultTenant === 'platform')) {
+    if (savedTenant && savedTenant !== 'business') {
       return savedTenant;
+    }
+
+    // 4. Fallback to configured defaultTenant from AppConfig
+    if (appConfig.defaultTenant && appConfig.defaultTenant !== 'business') {
+      return appConfig.defaultTenant;
     }
   }
   const appConfig = getAppConfig();

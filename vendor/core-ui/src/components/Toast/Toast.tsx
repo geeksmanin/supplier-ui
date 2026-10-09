@@ -60,6 +60,16 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, 3000);
   }, []);
 
+  React.useEffect(() => {
+    const handleGlobalToast = (e: any) => {
+      if (e.detail?.message) {
+        showToast(e.detail.message, e.detail.type || 'info');
+      }
+    };
+    window.addEventListener('geeksman_global_toast', handleGlobalToast);
+    return () => window.removeEventListener('geeksman_global_toast', handleGlobalToast);
+  }, [showToast]);
+
   const getToastColors = (type: ToastType) => {
     switch (type) {
       case 'success':
@@ -140,4 +150,14 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       `}</style>
     </ToastContext.Provider>
   );
+};
+
+export const dispatchGlobalToast = (message: string, type: ToastType = 'info', title?: string) => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(
+      new CustomEvent('geeksman_global_toast', {
+        detail: { message, type, title }
+      })
+    );
+  }
 };

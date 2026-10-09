@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, matchPath, UNSAFE_RouteContext, UNSAFE_LocationContext } from 'react-router-dom';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { useLogout } from '../../hooks/useAuth';
 import { LayoutDesktop } from './Layout.desktop';
 import { LayoutMobile } from './Layout.mobile';
 import { UIRegistry, SearchItemConfig, RouteConfig } from '../../registry/registry';
@@ -287,10 +288,9 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
     ];
   }, [sortedNavItems]);
 
+  const { logout } = useLogout();
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user_email');
-    navigate('/login');
+    logout();
   };
 
   const [installPrompt, setInstallPrompt] = React.useState<any>(null);
@@ -492,14 +492,21 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
       });
     }
 
-    // Periodically check for updates via the REST API
+    // Periodically check for updates via the REST API (Desktop/Wails mode only)
+    const isDesktop = !!(window as any).wails ||
+                      window.location.hostname === 'wails' ||
+                      window.location.protocol === 'wails:' ||
+                      window.location.hostname.includes('wails');
+
+    if (!isDesktop) {
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      };
+    }
+
     const checkUpdates = async () => {
       const token = localStorage.getItem('token');
-      const isDesktop = !!(window as any).wails ||
-                        window.location.hostname === 'wails' ||
-                        window.location.protocol === 'wails:' ||
-                        window.location.hostname.includes('wails');
-      if (!token && !isDesktop) return;
+      if (!token) return;
       try {
         const res = await apiClient.get('/tenant/check-updates');
         if (res.data && res.data.data && res.data.data.update_available) {

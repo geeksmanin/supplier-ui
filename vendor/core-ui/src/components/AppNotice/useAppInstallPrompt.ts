@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { dispatchGlobalToast } from '../Toast/Toast';
 
 export interface UseAppInstallPromptOptions {
   dismissStorageKey?: string;
@@ -201,17 +202,34 @@ export const useAppInstallPrompt = (options: UseAppInstallPromptOptions = {}): U
     return false;
   }, [deferredPrompt, onInstallPwa]);
 
-  // Download APK helper
-  const downloadApk = useCallback(() => {
+  // Download APK helper with HTML fallback preflight check
+  const downloadApk = useCallback(async () => {
     if (onDownloadApk) onDownloadApk();
-    if (typeof document !== 'undefined') {
-      const link = document.createElement('a');
-      link.href = apkDownloadUrl;
-      link.setAttribute('download', apkDownloadUrl.split('/').pop() || 'app.apk');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    if (typeof document === 'undefined') return;
+
+    try {
+      // Preflight check: verify the target is actually an APK file and not an SPA index.html fallback
+      const res = await fetch(apkDownloadUrl, { method: 'HEAD' });
+      const contentType = res.headers.get('content-type') || '';
+      if (!res.ok || contentType.includes('text/html')) {
+        console.warn(`[APK Download] ${apkDownloadUrl} returned status ${res.status} (${contentType}). Blocking HTML download.`);
+        dispatchGlobalToast(
+          'Android APK package is currently building on GitHub Actions or not available in this environment. Please install as Web App for now.',
+          'warning',
+          'APK Not Ready'
+        );
+        return;
+      }
+    } catch (e) {
+      console.warn('[APK Download] Preflight check error, proceeding with direct download:', e);
     }
+
+    const link = document.createElement('a');
+    link.href = apkDownloadUrl;
+    link.setAttribute('download', apkDownloadUrl.split('/').pop() || 'app.apk');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }, [apkDownloadUrl, onDownloadApk]);
 
   // Dismiss install notice
