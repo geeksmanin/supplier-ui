@@ -29,6 +29,7 @@ interface NotificationContextType {
   fetchNotifications: () => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  markNotificationsForEntity: (entityOrThreadId: string) => Promise<void>;
   rebuildDatabase: () => Promise<void>;
   syncCatchUp: () => Promise<void>;
   unsubscribePush: () => Promise<void>;
@@ -87,6 +88,59 @@ const defaultShouldAlert = (item: Notification | any): boolean => {
   return item.type !== 'silent_sync' && item.type !== 'read_state_changed' && item.type !== 'read_all_state_changed';
 };
 
+export const matchesEntityOrThread = (n: Notification | any, targetId: string): boolean => {
+  if (!n || !targetId) return false;
+  const rawTarget = String(targetId).trim().toLowerCase();
+  const cleanTarget = rawTarget.replace(/^(tkt|ord|po|room|ticket|thr)-/, '');
+
+  let meta: any = n.metadata;
+  if (typeof meta === 'string') {
+    try { meta = JSON.parse(meta); } catch {}
+  }
+
+  const notifLink = String(n.link || '').toLowerCase();
+  const notifEntityId = String(n.entity_id || '').toLowerCase();
+  const metaEntityId = String(meta?.entity_id || '').toLowerCase();
+  const metaThreadId = String(meta?.thread_id || '').toLowerCase();
+  const metaConvId = String(meta?.conversation_id || '').toLowerCase();
+  const metaTicketId = String(meta?.ticket_id || '').toLowerCase();
+  const metaRefId = String(meta?.reference_id || '').toLowerCase();
+
+  const candidates = [
+    notifEntityId,
+    metaEntityId,
+    metaThreadId,
+    metaConvId,
+    metaTicketId,
+    metaRefId,
+  ].filter(Boolean);
+
+  // 1. Direct equality with rawTarget or cleanTarget
+  for (const c of candidates) {
+    const cleanCandidate = c.replace(/^(tkt|ord|po|room|ticket|thr)-/, '');
+    if (
+      c === rawTarget ||
+      c === cleanTarget ||
+      cleanCandidate === cleanTarget ||
+      cleanCandidate === rawTarget
+    ) {
+      return true;
+    }
+  }
+
+  // 2. Link containment check
+  if (notifLink) {
+    if (
+      (cleanTarget && notifLink.includes(cleanTarget)) ||
+      (rawTarget && notifLink.includes(rawTarget))
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   children,
   baseUrl,
@@ -98,6 +152,18 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   const alertCheck = shouldAlert || defaultShouldAlert;
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Exact derived unread count calculator
+  const computeUnreadCount = (items: Notification[]): number => {
+    return items.filter((n) => !n.is_read && alertCheck(n)).length;
+  };
+
+  // Keep unreadCount strictly synchronized with notifications array to prevent drift
+  useEffect(() => {
+    const nextCount = computeUnreadCount(notifications);
+    setUnreadCount(nextCount);
+  }, [notifications]);
+
   const [loading, setLoading] = useState(false);
   const [sseActive, setSseActive] = useState(false);
   const [tabLimitExceeded, setTabLimitExceeded] = useState(false);
@@ -319,10 +385,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
 
   const markAsRead = async (id: string) => {
     // Optimistic local state update immediately
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
-    );
-    setUnreadCount((prev) => Math.max(0, prev - 1));
+    setNotifications((prev) => {
+      const next = prev.map((n) => (n.id === id ? { ...n, is_read: true } : n));
+      setUnreadCount(computeUnreadCount(next));
+      return next;
+    });
 
     // Persist to IndexedDB and flush to BadgerDB stream
     markStreamEventsRead([id]).then(() => {
@@ -340,6 +407,73 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
       await api.post(`/${id}/read`);
     } catch (err) {
       console.error('Failed to mark notification as read on server:', err);
+    }
+  };
+
+  const markNotificationsForEntity = async (entityOrThreadId: string) => {
+    if (!entityOrThreadId) return;
+    const cleanId = String(entityOrThreadId).replace(/^(tkt|ord|po|room|ticket|thr)-/, '');
+
+    const matchingIds: string[] = [];
+    setNotifications((prev) => {
+      let changed = false;
+      const next = prev.map((n) => {
+        if (!n.is_read && matchesEntityOrThread(n, entityOrThreadId)) {
+          matchingIds.push(n.id);
+          changed = true;
+          return { ...n, is_read: true };
+        }
+        return n;
+      });
+
+      if (changed) {
+        setUnreadCount(computeUnreadCount(next));
+        return next;
+      }
+      return prev;
+    });
+
+    // Also inspect IndexedDB stream events to mark any cached unread matching events
+    if (tenantCode && userId) {
+      getStreamEvents({ tenant_code: tenantCode, user_id: userId }).then((cached) => {
+        if (!cached || cached.length === 0) return;
+        const unreadMatching = cached.filter(
+          (item: any) => !item.is_read && matchesEntityOrThread(item as any, entityOrThreadId)
+        );
+        if (unreadMatching.length > 0) {
+          const ids = unreadMatching.map((item: any) => item.id);
+          markStreamEventsRead(ids).then(() => {
+            syncReadStatesToBackend(api).catch(() => {});
+          }).catch(() => {});
+          ids.forEach((id) => {
+            if (!matchingIds.includes(id)) {
+              matchingIds.push(id);
+              api.post(`/${id}/read`).catch(() => {});
+            }
+          });
+        }
+      }).catch(() => {});
+    }
+
+    if (matchingIds.length > 0) {
+      markStreamEventsRead(matchingIds).then(() => {
+        syncReadStatesToBackend(api).catch(() => {});
+      }).catch(() => {});
+
+      matchingIds.forEach((id) => {
+        broadcastEvent('READ_STATE_CHANGED', {
+          tenant_code: tenantCode,
+          user_id: userId,
+          payload: { id },
+        });
+        api.post(`/${id}/read`).catch(() => {});
+      });
+    }
+
+    // Call server entity read endpoints to ensure backend DB clears all notifications for this conversation
+    api.post(`/entity/${encodeURIComponent(cleanId)}/read`).catch(() => {});
+    if (cleanId !== entityOrThreadId) {
+      api.post(`/entity/${encodeURIComponent(entityOrThreadId)}/read`).catch(() => {});
     }
   };
 
@@ -386,7 +520,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
       const cached = await getStreamEvents({ tenant_code: tenantCode, user_id: userId });
       if (cached && cached.length > 0) {
         setNotifications(cached as any);
-        setUnreadCount(cached.filter((n) => !n.is_read).length);
+        setUnreadCount(computeUnreadCount(cached as any));
       }
     } catch (err) {
       console.warn('Catch-up sync error:', err);
@@ -566,10 +700,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         
         if (envelope.type === 'read_state_changed') {
           const targetId = envelope.payload?.id || envelope.event_id;
-          setNotifications((prev) =>
-            prev.map((n) => (n.id === targetId ? { ...n, is_read: true } : n))
-          );
-          setUnreadCount((prev) => Math.max(0, prev - 1));
+          setNotifications((prev) => {
+            const next = prev.map((n) => (n.id === targetId ? { ...n, is_read: true } : n));
+            setUnreadCount(computeUnreadCount(next));
+            return next;
+          });
           return;
         }
 
@@ -625,11 +760,6 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         const customEvent = new CustomEvent('notification_received', { detail: notif });
         window.dispatchEvent(customEvent);
 
-        const activeTicketId = (window as any).activeTicketId;
-        const activeReferenceId = (window as any).activeReferenceId;
-        const activeConversationId = (window as any).activeConversationId;
-        const activeChatId = (window as any).activeChatId;
-
         let parsedMeta: any = notif.metadata;
         if (typeof parsedMeta === 'string') {
           try {
@@ -637,38 +767,18 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
           } catch (e) {}
         }
 
-        const notifLink = (notif.link || '').toLowerCase();
-        const notifEntityId = String(notif.entity_id || '').toLowerCase();
-        const metaEntityId = String(parsedMeta?.entity_id || '').toLowerCase();
-        const metaTicketId = String(parsedMeta?.ticket_id || '').toLowerCase();
-        const metaRefId = String(parsedMeta?.reference_id || '').toLowerCase();
-        const metaConvId = String(parsedMeta?.conversation_id || '').toLowerCase();
+        const activeTargets = [
+          (window as any).activeChatId,
+          (window as any).activeCleanChatId,
+          (window as any).activeThreadId,
+          (window as any).activeTicketId,
+          (window as any).activeConversationId,
+          (window as any).activeReferenceId,
+        ].filter(Boolean);
 
-        const isViewingActiveEntity = 
-          // Ticket UUID match
-          (activeTicketId && (
-            notifLink.includes(String(activeTicketId).toLowerCase()) ||
-            notifEntityId === String(activeTicketId).toLowerCase() ||
-            metaEntityId === String(activeTicketId).toLowerCase() ||
-            metaTicketId === String(activeTicketId).toLowerCase()
-          )) ||
-          // Ticket / Order Reference match (e.g. BC/588)
-          (activeReferenceId && (
-            notifLink.includes(String(activeReferenceId).toLowerCase()) ||
-            notifEntityId === String(activeReferenceId).toLowerCase() ||
-            metaRefId === String(activeReferenceId).toLowerCase()
-          )) ||
-          // Conversation UUID match
-          (activeConversationId && (
-            notifEntityId === String(activeConversationId).toLowerCase() ||
-            metaConvId === String(activeConversationId).toLowerCase()
-          )) ||
-          // Direct / Group Chat match
-          (activeChatId && (
-            notifLink.includes(String(activeChatId).toLowerCase()) ||
-            notifEntityId === String(activeChatId).toLowerCase() ||
-            metaConvId === String(activeChatId).toLowerCase()
-          ));
+        const isViewingActiveEntity = activeTargets.some((target) =>
+          matchesEntityOrThread(notif, String(target))
+        );
 
         if (isViewingActiveEntity) {
           notif.is_read = true;
@@ -798,13 +908,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
               filtered.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
               lastEventIdRef.current = filtered[filtered.length - 1].id;
 
-              return [...filtered.reverse(), ...prev];
+              const next = [...filtered.reverse(), ...prev];
+              setUnreadCount(computeUnreadCount(next));
+              return next;
             });
 
             const actionableBatch = batch.filter((item) => !item.is_read && alertCheck(item));
-            if (actionableBatch.length > 0) {
-              setUnreadCount((prev) => prev + actionableBatch.length);
-            }
 
             const playNotificationSound = () => {
               try {
@@ -885,10 +994,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     // Subscribe to cross-tab broadcast events for instant multi-tab sync
     const unsubBroadcast = subscribeBroadcast((msg) => {
       if (msg.type === 'READ_STATE_CHANGED' && msg.payload?.id) {
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === msg.payload.id ? { ...n, is_read: true } : n))
-        );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
+        setNotifications((prev) => {
+          const next = prev.map((n) => (n.id === msg.payload.id ? { ...n, is_read: true } : n));
+          setUnreadCount(computeUnreadCount(next));
+          return next;
+        });
       } else if (msg.type === 'READ_ALL_STATE_CHANGED') {
         setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
         setUnreadCount(0);
@@ -898,13 +1008,30 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
             .then((cached) => {
               if (cached && cached.length > 0) {
                 setNotifications(cached as any);
-                setUnreadCount(cached.filter((n) => !n.is_read).length);
+                setUnreadCount(computeUnreadCount(cached as any));
               }
             })
             .catch(() => {});
         }
       }
     });
+
+    // Listen for module channel/entity read events (e.g. Samwad chat opened or marked read)
+    const handleChannelReadEvent = (e: any) => {
+      const channelId = e?.detail?.channelId || e?.detail?.threadId || e?.detail?.entityId || e?.detail?.id;
+      if (channelId) {
+        markNotificationsForEntity(channelId);
+      }
+      const cleanId = e?.detail?.cleanId;
+      if (cleanId && cleanId !== channelId) {
+        markNotificationsForEntity(cleanId);
+      }
+    };
+
+    window.addEventListener('samwad_channel_read', handleChannelReadEvent);
+    window.addEventListener('entity_notifications_read', handleChannelReadEvent);
+    window.addEventListener('chat_thread_read', handleChannelReadEvent);
+    window.addEventListener('chat_opened', handleChannelReadEvent);
 
     const initialAllowed = runTabChecks();
     if (initialAllowed) {
@@ -964,6 +1091,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         clearTimeout(throttleTimeoutRef.current);
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('samwad_channel_read', handleChannelReadEvent);
+      window.removeEventListener('entity_notifications_read', handleChannelReadEvent);
+      window.removeEventListener('chat_thread_read', handleChannelReadEvent);
+      window.removeEventListener('chat_opened', handleChannelReadEvent);
 
       try {
         const stored = localStorage.getItem('notification_active_tabs');
@@ -1022,6 +1153,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         fetchNotifications,
         markAsRead,
         markAllAsRead,
+        markNotificationsForEntity,
         rebuildDatabase,
         syncCatchUp: handleSyncCatchUp,
         unsubscribePush,

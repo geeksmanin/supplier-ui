@@ -92,6 +92,16 @@ export { DraftBanner as DraftBannerComponent } from './components/DraftBanner';
 export { isMobileDevice } from './utils/device';
 export { resolveMediaUrl, uploadMediaFile, toRelativeMediaUrl } from './utils/media';
 export type { ResolveMediaOptions } from './utils/media';
+export {
+  MEDIA_CACHE_NAME,
+  getMediaCacheKey,
+  getMemoryCachedUrl,
+  getCachedMediaUrl,
+  preloadMediaUrl,
+  preloadMediaBatch,
+  useCachedMediaUrl,
+  clearMediaCache,
+} from './utils/mediaCache';
 export { ImageThumbnailWithZoom } from './components/ImageThumbnailWithZoom';
 export type { ImageThumbnailWithZoomProps } from './components/ImageThumbnailWithZoom';
 

@@ -59,6 +59,16 @@ export const LayoutDesktop: React.FC<any> = ({
   onOpenNotifications,
 }) => {
   const isDashboard = currentPath === '/dashboard' || currentPath === '/';
+  const isFullScreenTab = !isDashboard && (
+    activeTabPath === '/samwad' ||
+    activeTabPath.startsWith('/samwad') ||
+    activeTabPath === '/chat' ||
+    activeTabPath.startsWith('/chat') ||
+    currentPath === '/samwad' ||
+    currentPath.startsWith('/samwad') ||
+    currentPath === '/chat' ||
+    currentPath.startsWith('/chat')
+  );
   const [activeMainMenuId, setActiveMainMenuId] = useState<string | null>('tenant-settings');
   const [isSubNavCollapsed, setIsSubNavCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -123,6 +133,9 @@ export const LayoutDesktop: React.FC<any> = ({
 
   const getTabIcon = (path: string) => {
     const p = path.toLowerCase();
+    if (p.includes('samwad')) {
+      return <SamwadMiniIcon size={16} />;
+    }
     if (p.includes('dashboard') || p === '/' || p === '/home' || p.includes('/dashboard')) {
       return <Dashboard3DIcon size={16} />;
     }
@@ -484,7 +497,14 @@ export const LayoutDesktop: React.FC<any> = ({
   const subNavTitle = activeParentItem ? activeParentItem.label : 'Settings';
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+    <div style={{
+      display: 'flex',
+      height: isFullScreenTab ? '100vh' : undefined,
+      maxHeight: isFullScreenTab ? '100vh' : undefined,
+      minHeight: '100vh',
+      overflow: isFullScreenTab ? 'hidden' : undefined,
+      backgroundColor: '#f9fafb'
+    }}>
       <style dangerouslySetInnerHTML={{
         __html: `
         @keyframes pulse-dot {
@@ -868,6 +888,8 @@ export const LayoutDesktop: React.FC<any> = ({
       {/* 3. Main content frame */}
       <div style={{
         marginLeft: mainMarginLeft,
+        height: isFullScreenTab ? '100vh' : undefined,
+        maxHeight: isFullScreenTab ? '100vh' : undefined,
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
@@ -875,10 +897,12 @@ export const LayoutDesktop: React.FC<any> = ({
         transition: 'margin-left var(--transition-normal)',
         flexGrow: 1,
         maxWidth: `calc(100vw - ${mainMarginLeft})`,
+        overflow: isFullScreenTab ? 'hidden' : undefined,
       }}>
         {/* Top Header containing Search Bar & Profile drop */}
         <header style={{
           height: '50px',
+          flexShrink: 0,
           borderBottom: '1px solid #e2e8f0',
           display: 'flex',
           alignItems: 'center',
@@ -1320,6 +1344,7 @@ export const LayoutDesktop: React.FC<any> = ({
                 borderBottom: '1px solid #e2e8f0',
                 padding: '0 6px',
                 height: '28px',
+                flexShrink: 0,
                 width: '100%',
                 boxSizing: 'border-box',
               }}>
@@ -1964,11 +1989,19 @@ export const LayoutDesktop: React.FC<any> = ({
 
         {/* Content body wrapper */}
         <main style={{
-          padding: isDashboard ? '0' : '0.75rem 1.25rem',
+          padding: isDashboard || isFullScreenTab ? '0' : '0.75rem 1.25rem',
           flex: 1,
           boxSizing: 'border-box',
           width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          minHeight: 0,
+          height: isFullScreenTab ? 'calc(100vh - 78px)' : undefined,
+          maxHeight: isFullScreenTab ? 'calc(100vh - 78px)' : undefined,
+          overflow: isFullScreenTab ? 'hidden' : undefined,
           position: 'relative',
+          display: isFullScreenTab ? 'flex' : undefined,
+          flexDirection: isFullScreenTab ? 'column' : undefined,
         }}>
           {/* Apps Dashboard View */}
           <div style={{ width: '100%', height: '100%', display: isDashboard ? 'block' : 'none' }}>
@@ -1976,19 +2009,38 @@ export const LayoutDesktop: React.FC<any> = ({
           </div>
 
           {/* Open Tabs Container - preserved in background */}
-          <div style={{ width: '100%', height: '100%', display: isDashboard ? 'none' : 'block' }}>
-            {tabs.map((tab: any) => (
-              <div
-                key={tab.path}
-                style={{
-                  display: !isDashboard && tab.path === activeTabPath ? 'block' : 'none',
-                  width: '100%',
-                  height: '100%',
-                }}
-              >
-                <TabContentWrapper tab={tab} isActive={!isDashboard && tab.path === activeTabPath} />
-              </div>
-            ))}
+          <div style={{
+            width: '100%',
+            maxWidth: '100%',
+            minWidth: 0,
+            height: '100%',
+            minHeight: 0,
+            flex: isFullScreenTab ? 1 : undefined,
+            display: isDashboard ? 'none' : (isFullScreenTab ? 'flex' : 'block'),
+            flexDirection: isFullScreenTab ? 'column' : undefined,
+            overflow: isFullScreenTab ? 'hidden' : undefined,
+          }}>
+            {tabs.map((tab: any) => {
+              const isTabActive = !isDashboard && tab.path === activeTabPath;
+              return (
+                <div
+                  key={tab.path}
+                  style={{
+                    display: isTabActive ? (isFullScreenTab ? 'flex' : 'block') : 'none',
+                    width: '100%',
+                    maxWidth: '100%',
+                    minWidth: 0,
+                    height: '100%',
+                    minHeight: 0,
+                    flex: isFullScreenTab ? 1 : undefined,
+                    flexDirection: isFullScreenTab ? 'column' : undefined,
+                    overflow: isFullScreenTab ? 'hidden' : undefined,
+                  }}
+                >
+                  <TabContentWrapper tab={tab} isActive={isTabActive} />
+                </div>
+              );
+            })}
           </div>
         </main>
       </div>

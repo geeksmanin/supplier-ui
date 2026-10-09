@@ -1,4 +1,5 @@
 export * from './types';
+export * from './utils';
 export * from './NotificationContext';
 export * from './NotificationDrawer';
 export * from './NotificationToastContainer';

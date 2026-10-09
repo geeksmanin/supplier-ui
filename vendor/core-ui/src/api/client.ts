@@ -106,6 +106,14 @@ export const getWorkspaceFromUrl = (): string => {
         const parts = host.split('.');
         const appPrefixes = ['admin', 'platform', 'www', 'samwad', 'samvad', 'chat', 'staff', 'customer', 'portal', 'catalogue', 'catalog', 'app', 'api', 'business'];
         if (parts.length > 1) {
+          // Explicit business gateway subdomain (e.g. business.samwad.geeksman.co.in or business.geeksman.in)
+          if (parts[0] === 'business' || parts[1] === 'business') {
+            const savedTenant = localStorage.getItem('tenant_code') || localStorage.getItem('workspace_code');
+            if (savedTenant && savedTenant !== 'business') {
+              return savedTenant;
+            }
+            return 'business';
+          }
           if (!appPrefixes.includes(parts[0])) {
             return parts[0];
           } else if (parts.length > 2 && !appPrefixes.includes(parts[1])) {

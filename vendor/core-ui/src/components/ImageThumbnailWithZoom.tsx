@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { resolveMediaUrl } from '../utils/media';
+import { useCachedMediaUrl } from '../utils/mediaCache';
 
 export interface ImageThumbnailWithZoomProps {
   src?: string;
@@ -26,6 +27,7 @@ export const ImageThumbnailWithZoom: React.FC<ImageThumbnailWithZoomProps> = ({
   const [isHovered, setIsHovered] = useState(false);
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const cachedUrl = useCachedMediaUrl(src);
 
   const handleMouseEnter = () => {
     if (!src || !containerRef.current) return;
@@ -92,7 +94,7 @@ export const ImageThumbnailWithZoom: React.FC<ImageThumbnailWithZoomProps> = ({
     );
   }
 
-  const fullUrl = resolveMediaUrl(src);
+  const fullUrl = cachedUrl || resolveMediaUrl(src);
 
   return (
     <div

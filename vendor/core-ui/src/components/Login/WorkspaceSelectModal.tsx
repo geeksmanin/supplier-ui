@@ -185,7 +185,7 @@ export const WorkspaceSelectModal: React.FC<WorkspaceSelectModalProps> = ({
                   marginBottom: '0.5rem',
                 }}
               >
-                🏢 MULTI-TENANT WORKSPACE
+                MULTI-TENANT WORKSPACE
               </div>
               <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: '#0f172a' }}>
                 Select Workspace

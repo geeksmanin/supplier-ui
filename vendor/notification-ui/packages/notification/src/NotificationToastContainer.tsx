@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom';
 import { UIRegistry, resolveMediaUrl } from '@geeksman/core-ui';
 import { Notification } from './types';
+import { formatNotificationBody, isImageMedia } from './utils';
 
 interface Toast {
   id: string;
@@ -109,17 +110,23 @@ export const NotificationToastContainer: React.FC<{ onNavigate?: (link: string) 
             </div>
             {(() => {
               let mediaUrl = '';
+              let isImg = false;
               try {
                 const meta = typeof toast.notification.metadata === 'string'
                   ? JSON.parse(toast.notification.metadata)
                   : toast.notification.metadata;
-                mediaUrl = meta?.media_url || meta?.image || (toast.notification as any)?.image || (toast.notification as any)?.media_url || '';
+                mediaUrl = meta?.image || meta?.media_url || meta?.public_url || (toast.notification as any)?.image || (toast.notification as any)?.media_url || '';
+                if (mediaUrl) {
+                  isImg = Boolean(meta?.image) || isImageMedia(mediaUrl, meta?.media_type);
+                }
               } catch (e) {}
 
-              if (mediaUrl) {
+              const cleanBody = formatNotificationBody(toast.notification.body);
+
+              if (mediaUrl && isImg) {
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
-                    <div style={{ ...styles.body, marginTop: 0, flex: 1 }}>{toast.notification.body}</div>
+                    <div style={{ ...styles.body, marginTop: 0, flex: 1 }}>{cleanBody}</div>
                     <img
                       src={resolveMediaUrl(mediaUrl)}
                       alt="Notification preview"
@@ -132,11 +139,14 @@ export const NotificationToastContainer: React.FC<{ onNavigate?: (link: string) 
                         flexShrink: 0,
                       }}
                       loading="lazy"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
                     />
                   </div>
                 );
               }
-              return <div style={styles.body}>{toast.notification.body}</div>;
+              return <div style={styles.body}>{cleanBody}</div>;
             })()}
           </div>
         </div>

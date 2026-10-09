@@ -1,6 +1,7 @@
 import React from 'react';
 import { UIRegistry, resolveMediaUrl } from '@geeksman/core-ui';
 import { Notification } from './types';
+import { formatNotificationBody, isImageMedia } from './utils';
 
 interface NotificationDrawerDesktopProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface NotificationDrawerDesktopProps {
   tabLimitExceeded: boolean;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  markNotificationsForEntity?: (entityOrThreadId: string) => Promise<void>;
   onNavigate?: (link: string) => void;
   sseActive: boolean;
   reconnectSSE: () => void;
@@ -28,6 +30,7 @@ export const NotificationDrawerDesktop: React.FC<NotificationDrawerDesktopProps>
   tabLimitExceeded,
   markAsRead,
   markAllAsRead,
+  markNotificationsForEntity,
   onNavigate,
   sseActive,
   reconnectSSE,
@@ -39,6 +42,37 @@ export const NotificationDrawerDesktop: React.FC<NotificationDrawerDesktopProps>
 
   const handleItemClick = (item: Notification) => {
     markAsRead(item.id);
+
+    // Extract conversation/thread ID and clear ALL related notifications for this chat/ticket
+    let meta: any = item.metadata;
+    if (typeof meta === 'string') {
+      try { meta = JSON.parse(meta); } catch {}
+    }
+
+    const relatedId =
+      meta?.thread_id ||
+      meta?.conversation_id ||
+      meta?.ticket_id ||
+      meta?.entity_id ||
+      item.entity_id;
+
+    if (relatedId) {
+      if (markNotificationsForEntity) {
+        markNotificationsForEntity(String(relatedId));
+      }
+      window.dispatchEvent(new CustomEvent('samwad_channel_read', { detail: { channelId: String(relatedId) } }));
+      window.dispatchEvent(new CustomEvent('entity_notifications_read', { detail: { entityId: String(relatedId) } }));
+    } else if (item.link) {
+      const match = item.link.match(/\/(?:chat|threads|ticket|tickets)\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        const extracted = match[1];
+        if (markNotificationsForEntity) {
+          markNotificationsForEntity(extracted);
+        }
+        window.dispatchEvent(new CustomEvent('samwad_channel_read', { detail: { channelId: extracted } }));
+      }
+    }
+
     const navFn = onNavigate || ((path: string) => { window.location.href = path; });
     const handled = UIRegistry.openNotification(item, navFn);
     if (!handled) {
@@ -201,15 +235,21 @@ export const NotificationDrawerDesktop: React.FC<NotificationDrawerDesktopProps>
                   <div style={styles.itemTitle}>{item.title}</div>
                   {(() => {
                     let mediaUrl = '';
+                    let isImg = false;
                     try {
                       const meta = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata;
-                      mediaUrl = meta?.media_url || meta?.image || (item as any)?.image || (item as any)?.media_url || '';
+                      mediaUrl = meta?.image || meta?.media_url || meta?.public_url || (item as any)?.image || (item as any)?.media_url || '';
+                      if (mediaUrl) {
+                        isImg = Boolean(meta?.image) || isImageMedia(mediaUrl, meta?.media_type);
+                      }
                     } catch (e) {}
 
-                    if (mediaUrl) {
+                    const cleanBody = formatNotificationBody(item.body);
+
+                    if (mediaUrl && isImg) {
                       return (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                          <div style={{ ...styles.itemBody, marginTop: 0, flex: 1 }}>{item.body}</div>
+                          <div style={{ ...styles.itemBody, marginTop: 0, flex: 1 }}>{cleanBody}</div>
                           <img
                             src={resolveMediaUrl(mediaUrl)}
                             alt="Notification preview"
@@ -222,11 +262,14 @@ export const NotificationDrawerDesktop: React.FC<NotificationDrawerDesktopProps>
                               flexShrink: 0,
                             }}
                             loading="lazy"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
                           />
                         </div>
                       );
                     }
-                    return <div style={styles.itemBody}>{item.body}</div>;
+                    return <div style={styles.itemBody}>{cleanBody}</div>;
                   })()}
                   <div style={styles.itemTime}>
                     {new Date(item.created_at).toLocaleTimeString([], {
