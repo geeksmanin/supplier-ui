@@ -1,5 +1,5 @@
 import { AppConfig } from './types';
-import { isNativePlatform } from '../native/usePushNotifications';
+import { isNativePlatform } from '../native/platform';
 
 export const initializeConfig = (config: AppConfig) => {
   if (typeof window !== 'undefined') {
@@ -55,16 +55,16 @@ export const resolveAppConfig = (
   let buildMode = '';
   if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
     const env = (import.meta as any).env;
-    buildMode = (env.VITE_APP_ENV || env.MODE || '').toLowerCase();
+    buildMode = (env.VITE_APP_ENV || env.MODE || (env.PROD ? 'production' : '') || '').toLowerCase();
 
-    if (buildMode === 'production' || buildMode === 'prod') {
-      return prod;
-    }
     if (buildMode === 'staging' || buildMode === 'stage') {
       return activeStaging;
     }
     if (buildMode === 'testing' || buildMode === 'test') {
       return activeTesting;
+    }
+    if (buildMode === 'production' || buildMode === 'prod' || env.PROD) {
+      return prod;
     }
   }
 

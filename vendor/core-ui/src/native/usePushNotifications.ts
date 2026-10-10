@@ -3,13 +3,9 @@ import { apiClient, getWorkspaceFromUrl } from '../api/client';
 import { isMobileDevice } from '../utils/device';
 import { DeviceRegistrationPayload, PushNotificationData } from './types';
 
-// Safely resolve Capacitor from window / global
-export const getCapacitor = () => {
-  if (typeof window !== 'undefined') {
-    if ((window as any).Capacitor) return (window as any).Capacitor;
-  }
-  return null;
-};
+import { getCapacitor, waitForCapacitor, isNativePlatform, getNativePlatform } from './platform';
+
+export { getCapacitor, waitForCapacitor, isNativePlatform, getNativePlatform };
 
 // Safely resolve PushNotifications plugin
 export const getPushNotifications = () => {
@@ -26,57 +22,6 @@ export const getPushNotifications = () => {
     }
   }
   return null;
-};
-
-// Wait for Capacitor bridge to inject on native platforms
-export const waitForCapacitor = async (maxWaitMs = 2000): Promise<any> => {
-  const start = Date.now();
-  while (Date.now() - start < maxWaitMs) {
-    const cap = getCapacitor();
-    if (cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform()) {
-      return cap;
-    }
-    await new Promise((r) => setTimeout(r, 100));
-  }
-  return getCapacitor();
-};
-
-export const isNativePlatform = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  const cap = getCapacitor();
-  if (cap && typeof cap.isNativePlatform === 'function') {
-    return cap.isNativePlatform();
-  }
-  if (cap && typeof cap.getPlatform === 'function') {
-    return cap.getPlatform() !== 'web';
-  }
-  // Check Capacitor/Cordova custom schemes
-  if (
-    window.location.protocol === 'capacitor:' ||
-    window.location.protocol === 'ionic:' ||
-    window.location.protocol === 'file:'
-  ) {
-    return true;
-  }
-  // Check user-agent & Android WebView signatures
-  const ua = (typeof navigator !== 'undefined' ? navigator.userAgent : '') || '';
-  if (
-    /Capacitor/i.test(ua) ||
-    (/Android/i.test(ua) && /wv/i.test(ua)) ||
-    (/Android/i.test(ua) && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
-  ) {
-    return true;
-  }
-  return false;
-};
-
-export const getNativePlatform = (): 'android' | 'ios' | 'web' => {
-  const cap = getCapacitor();
-  if (cap && typeof cap.getPlatform === 'function') {
-    const p = cap.getPlatform();
-    if (p === 'android' || p === 'ios') return p;
-  }
-  return 'web';
 };
 
 export type NotificationPermissionState = 'granted' | 'denied' | 'prompt' | 'unsupported';

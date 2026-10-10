@@ -51,13 +51,35 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
   const [basePath, existingQuery] = trimmed.split('?');
   const existingParams = new URLSearchParams(existingQuery || '');
 
-  // If it's an external URL (not pointing to our media server), return as-is
-  if (
-    (basePath.startsWith('http://') || basePath.startsWith('https://')) &&
-    !basePath.includes('/media/') &&
-    !basePath.includes('/media/file/')
-  ) {
-    return trimmed;
+  // Detect whether this is an external third-party URL vs an internal Geeksman/Core media URL
+  if (basePath.startsWith('http://') || basePath.startsWith('https://')) {
+    let isInternalMedia = false;
+    try {
+      const parsed = new URL(basePath);
+      const host = parsed.hostname.toLowerCase();
+      const isLoopback =
+        host === 'localhost' ||
+        host === '127.0.0.1' ||
+        host === '10.0.2.2' ||
+        host.endsWith('.local') ||
+        /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
+      const isGeeksmanHost = host.includes('geeksman.') || host.includes('samwad.') || host.includes('samvad.');
+      const isMediaEndpoint =
+        parsed.pathname.includes('/media/') ||
+        parsed.pathname.includes('/samwad') ||
+        parsed.pathname.includes('/samvad') ||
+        parsed.pathname.includes('/media/file/');
+
+      if (isLoopback || isGeeksmanHost || isMediaEndpoint) {
+        isInternalMedia = true;
+      }
+    } catch {
+      // invalid URL
+    }
+
+    if (!isInternalMedia) {
+      return trimmed;
+    }
   }
 
   // Determine the active backend base URL directly from config
@@ -111,6 +133,8 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
     } else {
       uploadId = parts.join('/');
     }
+  } else if (uploadId.startsWith('api/v1/')) {
+    uploadId = uploadId.slice('api/v1/'.length);
   }
   uploadId = uploadId.replace(/^\/+/, '');
 
@@ -185,6 +209,8 @@ export function toRelativeMediaUrl(urlOrId: string, tenant?: string): string {
     } else {
       uploadId = parts.join('/');
     }
+  } else if (uploadId.startsWith('api/v1/')) {
+    uploadId = uploadId.slice('api/v1/'.length);
   }
   uploadId = uploadId.replace(/^\/+/, '');
 

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { getAppConfig } from '../config';
-import { isNativePlatform } from '../native/usePushNotifications';
+import { isNativePlatform } from '../native/platform';
 
 declare global {
   interface Window {
