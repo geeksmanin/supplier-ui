@@ -242,7 +242,7 @@ export async function uploadMediaFile(file: File, folder: string = 'samwad'): Pr
     const d = res.data?.data || res.data;
     const rawUrl = d?.upload_id || d?.uploadId || d?.relative_url || d?.media_url || d?.url;
     if (rawUrl) {
-      return String(rawUrl);
+      return toRelativeMediaUrl(String(rawUrl));
     }
   } catch (err) {
     console.warn('Core media upload error, using local file URL fallback:', err);
