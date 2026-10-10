@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { 
   FastVoucherEntryLayoutProps, 
   VoucherLineItem, 
@@ -29,6 +29,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { apiClient } from '../../api/client';
+import { useVariantMatrixModal } from './useVariantMatrixModal';
 
 export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
   voucherType,
@@ -47,6 +48,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
   onPartySelect,
   items,
   onAddItem,
+  onAddItems,
   onUpdateItem,
   onRemoveItem,
   summary,
@@ -63,6 +65,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
   onCancel,
   isSaving = false,
   saveButtonLabel = 'Save Document (F10)',
+  headerExtraActions,
   enableBillParking = true,
   onParkBill: externalParkBill,
   onRecallBill: externalRecallBill,
@@ -86,6 +89,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
   // Stepper & search state
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedResultIndex, setSelectedResultIndex] = useState<number>(0);
@@ -101,7 +105,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
   // Party dropdown state
   const [isPartyDropdownOpen, setIsPartyDropdownOpen] = useState(false);
   const [partySearchQuery, setPartySearchQuery] = useState('');
-  const [partyOptions, setPartyOptions] = useState<VoucherPartyOption[]>(partyConfig.options || []);
+  const [asyncPartyOptions, setAsyncPartyOptions] = useState<VoucherPartyOption[]>([]);
   const [partyLoading, setPartyLoading] = useState(false);
 
   // 1. Built-in Bill Parking Hook (F6 / F7)
@@ -162,7 +166,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
         draftHook.handleClearDraft();
       }
     }
-  }, [externalParkBill, onClearForm, parking, selectedParty, voucherDate, items, summary, moreDetails, draftKey, draftHook]);
+  }, [externalParkBill, onClearForm, parking, selectedParty, voucherDate, items, summary, moreDetails, draftKey, draftHook.handleClearDraft]);
 
   // 3. Hook up Global Keyboard Orchestrator
   useVoucherKeyboard({
@@ -214,68 +218,87 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
     onCloseDrawer: () => setIsDrawerOpen(false),
   });
 
-  // 2. Fetch or filter party options
+  // 4. Fetch or filter party options (Memoized to prevent render loops)
+  const partyOptions = useMemo(() => {
+    if (partyConfig?.options) {
+      if (!partySearchQuery.trim()) return partyConfig.options;
+      const q = partySearchQuery.toLowerCase();
+      return partyConfig.options.filter(
+        (o) =>
+          o.label.toLowerCase().includes(q) ||
+          (o.gstin && o.gstin.toLowerCase().includes(q)) ||
+          (o.phone && o.phone.includes(q))
+      );
+    }
+    return asyncPartyOptions;
+  }, [partyConfig?.options, partySearchQuery, asyncPartyOptions]);
+
   useEffect(() => {
-    if (partyConfig.options) {
-      if (!partySearchQuery) {
-        setPartyOptions(partyConfig.options);
-      } else {
-        const q = partySearchQuery.toLowerCase();
-        setPartyOptions(
-          partyConfig.options.filter(
-            (o) =>
-              o.label.toLowerCase().includes(q) ||
-              (o.gstin && o.gstin.toLowerCase().includes(q)) ||
-              (o.phone && o.phone.includes(q))
-          )
-        );
-      }
-      return;
-    }
+    if (!partyConfig?.searchEndpoint || !isPartyDropdownOpen) return;
 
-    if (partyConfig.searchEndpoint && isPartyDropdownOpen) {
-      let isCancelled = false;
-      const fetchParties = async () => {
-        setPartyLoading(true);
-        try {
-          const res = await apiClient.get(partyConfig.searchEndpoint!, {
-            params: {
-              search: partySearchQuery,
-              ...(partyConfig.searchParams || {}),
-              limit: 50,
-            },
-          });
-          const list = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-          if (!isCancelled) {
-            setPartyOptions(
-              list.map((it: any) => ({
-                value: String(it.id || it.uuid),
-                label: it.name || it.display_name || it.company_name || 'Party',
-                gstin: it.tax_number || it.gstin,
-                phone: it.phone,
-                email: it.email,
-                state: it.state || it.billing_address?.state,
-                state_code: it.state_code,
-                meta: it,
-              }))
-            );
-          }
-        } catch (err) {
-          console.error('Failed to fetch parties', err);
-        } finally {
-          if (!isCancelled) setPartyLoading(false);
+    let isCancelled = false;
+    const fetchParties = async () => {
+      setPartyLoading(true);
+      try {
+        const res = await apiClient.get(partyConfig.searchEndpoint!, {
+          params: {
+            search: partySearchQuery,
+            ...(partyConfig.searchParams || {}),
+            limit: 50,
+          },
+        });
+        const list = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
+        if (!isCancelled) {
+          setAsyncPartyOptions(
+            list.map((it: any) => ({
+              value: String(it.id || it.uuid),
+              label: it.name || it.display_name || it.company_name || 'Party',
+              gstin: it.tax_number || it.gstin,
+              phone: it.phone,
+              email: it.email,
+              state: it.state || it.billing_address?.state,
+              state_code: it.state_code,
+              meta: it,
+            }))
+          );
         }
-      };
+      } catch (err) {
+        console.error('Failed to fetch parties', err);
+      } finally {
+        if (!isCancelled) setPartyLoading(false);
+      }
+    };
 
-      const timer = setTimeout(fetchParties, 200);
-      return () => {
-        isCancelled = true;
-        clearTimeout(timer);
-      };
-    }
-  }, [partySearchQuery, isPartyDropdownOpen, partyConfig]);
+    const timer = setTimeout(fetchParties, 200);
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [partySearchQuery, isPartyDropdownOpen, partyConfig?.searchEndpoint]);
 
-  // 3. Debounced Product Catalog Search
+  // 3. Variant Matrix Multi-Select Hook for Parent Products
+  const {
+    openVariantMatrix,
+    renderVariantMatrixModal,
+  } = useVariantMatrixModal({
+    onAddVariants: (newItems) => {
+      if (onAddItems) {
+        onAddItems(newItems);
+      } else {
+        newItems.forEach((it) => onAddItem(it));
+      }
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 50);
+    },
+    onClose: () => {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 50);
+    },
+  });
+
+  // 4. Debounced Product Catalog & Variant Dual Search
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -287,19 +310,60 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
     const fetchProducts = async () => {
       setSearchLoading(true);
       try {
-        const endpoint = catalogConfig?.searchEndpoint || '/catalogue/variants';
-        const res = await apiClient.get(endpoint, {
-          params: {
-            search: searchQuery,
-            ...(catalogConfig?.searchParams || {}),
-            limit: 30,
-          },
+        const variantEndpoint = catalogConfig?.searchEndpoint || '/catalogue/variants';
+        const [variantsRes, productsRes] = await Promise.allSettled([
+          apiClient.get(variantEndpoint, {
+            params: {
+              search: searchQuery,
+              ...(catalogConfig?.searchParams || {}),
+              limit: 25,
+            },
+          }),
+          apiClient.get('/catalogue/products', {
+            params: {
+              search: searchQuery,
+              limit: 12,
+            },
+          }),
+        ]);
+
+        const rawVariants =
+          variantsRes.status === 'fulfilled'
+            ? Array.isArray(variantsRes.value.data?.data)
+              ? variantsRes.value.data.data
+              : Array.isArray(variantsRes.value.data)
+              ? variantsRes.value.data
+              : []
+            : [];
+
+        const rawProducts =
+          productsRes.status === 'fulfilled'
+            ? Array.isArray(productsRes.value.data?.data)
+              ? productsRes.value.data.data
+              : Array.isArray(productsRes.value.data)
+              ? productsRes.value.data
+              : []
+            : [];
+
+        const merged: any[] = [];
+        // 1. Add Main Products first with _itemType: 'product'
+        rawProducts.forEach((p: any) => {
+          merged.push({
+            ...p,
+            _itemType: 'product',
+          });
+        });
+        // 2. Add Variants with _itemType: 'variant'
+        rawVariants.forEach((v: any) => {
+          merged.push({
+            ...v,
+            _itemType: 'variant',
+          });
         });
 
-        const list = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
         if (!isCancelled) {
-          setSearchResults(list);
-          setIsSearchOpen(list.length > 0);
+          setSearchResults(merged);
+          setIsSearchOpen(merged.length > 0);
           setSelectedResultIndex(0);
         }
       } catch (err) {
@@ -314,10 +378,19 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
       isCancelled = true;
       clearTimeout(timer);
     };
-  }, [searchQuery, catalogConfig]);
+  }, [searchQuery, catalogConfig?.searchEndpoint]);
 
-  // 4. Handle Product Selection from Search Bar
+  // 5. Handle Product Selection from Search Bar
   const handleSelectProduct = (rawProduct: any) => {
+    // If it's a parent / main product -> open Variant Matrix Modal
+    if (rawProduct._itemType === 'product') {
+      setIsSearchOpen(false);
+      setSearchQuery('');
+      openVariantMatrix(rawProduct);
+      return;
+    }
+
+    // Otherwise, single variant -> open Stepper
     const pName = rawProduct.product?.name || rawProduct.product_name || rawProduct.name || 'Product';
     const sku = rawProduct.sku_code || rawProduct.sku || '';
     const price = Number(
@@ -375,10 +448,12 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100vh',
+        height: '100%',
+        minHeight: 0,
         backgroundColor: '#f8fafc',
         overflow: 'hidden',
         fontFamily: 'Inter, system-ui, sans-serif',
+        position: 'relative',
       }}
     >
       {/* IndexedDB Draft Banner */}
@@ -690,6 +765,13 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
               </button>
             </div>
           )}
+
+          {/* Header Extra Actions (e.g., Switch to Classic Form) */}
+          {headerExtraActions && (
+            <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+              {headerExtraActions}
+            </div>
+          )}
         </div>
       </header>
 
@@ -712,25 +794,41 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                border: isSearchOpen ? '2px solid #2563eb' : '1.5px solid #cbd5e1',
+                border: (isSearchFocused || isSearchOpen) ? '2px solid #2563eb' : '1.5px solid #cbd5e1',
                 borderRadius: '10px',
                 padding: '8px 12px',
                 backgroundColor: '#ffffff',
-                boxShadow: isSearchOpen ? '0 4px 12px rgba(37, 99, 235, 0.12)' : 'none',
+                boxShadow: (isSearchFocused || isSearchOpen)
+                  ? '0 0 0 3px rgba(37, 99, 235, 0.15), 0 2px 8px rgba(37, 99, 235, 0.1)'
+                  : 'none',
+                transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
               }}
             >
-              <Search size={18} style={{ color: isSearchOpen ? '#2563eb' : '#94a3b8', marginRight: '8px' }} />
+              <Search
+                size={18}
+                style={{
+                  color: (isSearchFocused || isSearchOpen) ? '#2563eb' : '#94a3b8',
+                  marginRight: '8px',
+                  flexShrink: 0,
+                  transition: 'color 0.15s ease',
+                }}
+              />
               <input
                 ref={searchInputRef}
                 type="text"
+                className="fast-voucher-search-input"
                 placeholder={
                   catalogConfig?.placeholder ||
-                  '⚡ Type Product Name, SKU code, or scan Barcode (Press Ctrl+K or F4)...'
+                  '⚡ Type Product Name, SKU code, or scan Barcode (Press F4)...'
                 }
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => {
+                  setIsSearchFocused(true);
                   if (searchResults.length > 0) setIsSearchOpen(true);
+                }}
+                onBlur={() => {
+                  setIsSearchFocused(false);
                 }}
                 onKeyDown={(e) => {
                   if (!isSearchOpen || searchResults.length === 0) return;
@@ -754,6 +852,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                   width: '100%',
                   border: 'none',
                   outline: 'none',
+                  boxShadow: 'none',
+                  backgroundColor: 'transparent',
                   fontSize: '0.95rem',
                   fontWeight: 600,
                   color: '#1e293b',
@@ -766,13 +866,14 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                   fontWeight: 800,
                   padding: '2px 6px',
                   borderRadius: '4px',
-                  backgroundColor: '#f1f5f9',
-                  color: '#64748b',
-                  border: '1px solid #e2e8f0',
+                  backgroundColor: (isSearchFocused || isSearchOpen) ? '#eff6ff' : '#f1f5f9',
+                  color: (isSearchFocused || isSearchOpen) ? '#2563eb' : '#64748b',
+                  border: (isSearchFocused || isSearchOpen) ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
                   whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease',
                 }}
               >
-                Ctrl+K
+                F4
               </span>
             </div>
 
@@ -796,15 +897,17 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                 }}
               >
                 {searchResults.map((res, idx) => {
-                  const pName = res.product?.name || res.product_name || res.name || 'Product';
+                  const isProduct = res._itemType === 'product';
+                  const pName = isProduct ? res.name : (res.product?.name || res.product_name || res.name || 'Product');
                   const sku = res.sku_code || res.sku || '';
                   const price =
                     res.sale_price ?? res.salePrice ?? res.price ?? res.selling_price ?? res.unit_cost ?? res.mrp ?? 0;
                   const isSelected = idx === selectedResultIndex;
+                  const variantCount = Array.isArray(res.variants) ? res.variants.length : 0;
 
                   return (
                     <div
-                      key={res.id || idx}
+                      key={`${res._itemType || 'item'}-${res.id || idx}`}
                       onClick={() => handleSelectProduct(res)}
                       style={{
                         display: 'flex',
@@ -814,8 +917,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                         margin: '4px 2px',
                         borderRadius: '8px',
                         cursor: 'pointer',
-                        backgroundColor: isSelected ? '#eff6ff' : '#ffffff',
-                        border: isSelected ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                        backgroundColor: isSelected ? (isProduct ? '#eef2ff' : '#eff6ff') : '#ffffff',
+                        border: isSelected ? (isProduct ? '2px solid #4f46e5' : '2px solid #2563eb') : '1px solid #e2e8f0',
                         boxShadow: isSelected
                           ? '0 0 0 2px rgba(37, 99, 235, 0.25), 0 4px 14px rgba(37, 99, 235, 0.18)'
                           : '0 1px 2px rgba(0, 0, 0, 0.02)',
@@ -830,7 +933,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                             width: '26px',
                             height: '26px',
                             borderRadius: '6px',
-                            backgroundColor: isSelected ? '#2563eb' : '#f1f5f9',
+                            backgroundColor: isSelected ? (isProduct ? '#4f46e5' : '#2563eb') : '#f1f5f9',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -843,21 +946,93 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                           {idx + 1}
                         </div>
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: '0.875rem', color: isSelected ? '#1e40af' : '#1e293b' }}>
-                            {pName}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span
+                              style={{
+                                fontWeight: 700,
+                                fontSize: '0.875rem',
+                                color: isSelected ? (isProduct ? '#3730a3' : '#1e40af') : '#1e293b',
+                              }}
+                            >
+                              {pName}
+                            </span>
+                            {isProduct ? (
+                              <span
+                                style={{
+                                  fontSize: '0.65rem',
+                                  fontWeight: 800,
+                                  padding: '2px 6px',
+                                  borderRadius: '9999px',
+                                  backgroundColor: '#e0e7ff',
+                                  color: '#4338ca',
+                                  border: '1px solid #c7d2fe',
+                                }}
+                              >
+                                🏷️ Main Product {variantCount > 0 ? `(${variantCount} variants)` : ''}
+                              </span>
+                            ) : (
+                              <span
+                                style={{
+                                  fontSize: '0.65rem',
+                                  fontWeight: 700,
+                                  padding: '2px 5px',
+                                  borderRadius: '9999px',
+                                  backgroundColor: '#f1f5f9',
+                                  color: '#64748b',
+                                }}
+                              >
+                                📦 Variant
+                              </span>
+                            )}
                           </div>
                           <div style={{ fontSize: '0.72rem', color: '#64748b', fontFamily: 'monospace', marginTop: '2px' }}>
-                            SKU: {sku || '-'} {res.tax_percent ? `• Tax: ${res.tax_percent}%` : ''}
+                            {isProduct ? (
+                              <span>
+                                {res.brand_name ? `${res.brand_name} • ` : ''}
+                                {res.category_name ? `${res.category_name} • ` : ''}
+                                Select variants matrix (Brand, Model, Qty) ↳
+                              </span>
+                            ) : (
+                              <span>
+                                SKU: {sku || '-'} {res.tax_percent ? `• Tax: ${res.tax_percent}%` : ''}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
 
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#2563eb' }}>
-                          ₹{Number(price).toFixed(2)}
-                        </div>
+                        {isProduct ? (
+                          <div
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              backgroundColor: '#4f46e5',
+                              color: '#ffffff',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              padding: '5px 9px',
+                              borderRadius: '6px',
+                              boxShadow: '0 1px 3px rgba(79, 70, 229, 0.3)',
+                            }}
+                          >
+                            <span>Matrix Multi-Select ↳</span>
+                          </div>
+                        ) : (
+                          <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#2563eb' }}>
+                            ₹{Number(price).toFixed(2)}
+                          </div>
+                        )}
                         {isSelected && (
-                          <div style={{ fontSize: '0.68rem', color: '#1d4ed8', fontWeight: 700, marginTop: '2px' }}>
+                          <div
+                            style={{
+                              fontSize: '0.68rem',
+                              color: isProduct ? '#4338ca' : '#1d4ed8',
+                              fontWeight: 700,
+                              marginTop: '2px',
+                            }}
+                          >
                             Press Enter ↵
                           </div>
                         )}
@@ -904,7 +1079,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                 <ShoppingBag size={48} style={{ opacity: 0.35, marginBottom: '0.75rem' }} />
                 <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#64748b' }}>No items added yet</div>
                 <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>
-                  Press <strong style={{ color: '#2563eb' }}>Ctrl+K</strong> to search products or scan a barcode
+                  Press <strong style={{ color: '#2563eb' }}>F4</strong> to search products or scan a barcode
                 </div>
               </div>
             ) : (
@@ -1049,7 +1224,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                 <strong style={{ color: '#2563eb' }}>[F2]</strong> Party
               </span>
               <span>
-                <strong style={{ color: '#2563eb' }}>[Ctrl+K]</strong> Search
+                <strong style={{ color: '#2563eb' }}>[F4]</strong> Search
               </span>
               <span>
                 <strong style={{ color: '#2563eb' }}>[↓]</strong> Table Nav
@@ -1176,6 +1351,9 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
         onDeleteBill={(id) => parking.deleteBill(id)}
         voucherTitle={documentTitle}
       />
+
+      {/* ────────────────── PRODUCT VARIANT MATRIX MODAL ────────────────── */}
+      {renderVariantMatrixModal()}
     </div>
   );
 };

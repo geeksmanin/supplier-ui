@@ -6,3 +6,5 @@ export * from './VoucherLiveInvoicePreview';
 export * from './VoucherParkedBillsModal';
 export * from './useVoucherParking';
 export * from './voucherTaxEngine';
+export * from './ProductVariantMatrixModal';
+export * from './useVariantMatrixModal';

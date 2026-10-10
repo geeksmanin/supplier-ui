@@ -139,6 +139,8 @@ export interface FastVoucherEntryLayoutProps {
   onCancel?: () => void;
   isSaving?: boolean;
   saveButtonLabel?: string;
+  onAddItems?: (items: VoucherLineItem[]) => void;
+  headerExtraActions?: React.ReactNode;
 
   // Bill Parking (F6 / F7)
   enableBillParking?: boolean;

@@ -76,8 +76,8 @@ export const useVoucherKeyboard = ({
         return;
       }
 
-      // 4. Global Hotkey: F4 or Ctrl+K (Product Search)
-      if (e.key === 'F4' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k')) {
+      // 4. Hotkey: F4 (Product Search)
+      if (e.key === 'F4') {
         e.preventDefault();
         if (onFocusSearch) {
           onFocusSearch();

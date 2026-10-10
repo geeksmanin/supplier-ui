@@ -7,6 +7,26 @@ export interface ResolveMediaOptions {
 }
 
 /**
+ * getActiveTenant extracts the active workspace/tenant code from options, URL, or localStorage.
+ * No hardcoded fallbacks like "platform".
+ */
+export function getActiveTenant(optionsTenant?: string): string {
+  if (optionsTenant) return optionsTenant.trim();
+  const fromUrl = getWorkspaceFromUrl();
+  if (fromUrl) return fromUrl.trim();
+  if (typeof window !== 'undefined') {
+    const saved =
+      localStorage.getItem('tenant_code') ||
+      localStorage.getItem('workspace_code') ||
+      localStorage.getItem('current_tenant_code');
+    if (saved) return saved.trim();
+  }
+  const config = getAppConfig();
+  if (config?.tenantCode) return config.tenantCode.trim();
+  return '';
+}
+
+/**
  * resolveMediaUrl converts an upload ID (e.g. "product-images/pic.png"),
  * a relative API media path, or an absolute URL into a browser-loadable media URL
  * dynamically anchored to the active backend API server origin.
@@ -48,9 +68,7 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
     options?.tenant ||
     existingParams.get('tenant') ||
     existingParams.get('tenant_code') ||
-    getWorkspaceFromUrl() ||
-    config?.tenantCode ||
-    'platform';
+    getActiveTenant();
 
   // Extract bare upload ID from path (strip origin, /api/v1, /media/file, tenant prefix if direct)
   let uploadId = basePath;
@@ -88,19 +106,25 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
   }
   uploadId = uploadId.replace(/^\/+/, '');
 
+  if (resolvedTenant && uploadId.startsWith(`${resolvedTenant}/`)) {
+    uploadId = uploadId.slice(resolvedTenant.length + 1);
+  }
+
   const prefix = cleanBase.endsWith('/api/v1')
     ? `${cleanBase}/media`
     : cleanBase.startsWith('http://') || cleanBase.startsWith('https://')
     ? `${cleanBase}/api/v1/media`
     : `/api/v1/media`;
 
-  return `${prefix}/${resolvedTenant}/${uploadId}${downloadQuery}`;
+  if (resolvedTenant) {
+    return `${prefix}/${resolvedTenant}/${uploadId}${downloadQuery}`;
+  }
+
+  return `${cleanBase}/media/file/${uploadId}${downloadQuery}`;
 }
 
 /**
- * toRelativeMediaUrl normalizes any media URL or upload ID to a consistent relative API path
- * (e.g. "/api/v1/media/platform/samwad/photo.png"). Absolute origins (http://...) are stripped so that
- * all URLs persisted to databases and payloads remain clean, environment-agnostic paths.
+ * toRelativeMediaUrl normalizes any media URL or upload ID to a consistent relative API path.
  */
 export function toRelativeMediaUrl(urlOrId: string, tenant?: string): string {
   if (!urlOrId) return '';
@@ -127,8 +151,7 @@ export function toRelativeMediaUrl(urlOrId: string, tenant?: string): string {
     tenant ||
     existingParams.get('tenant') ||
     existingParams.get('tenant_code') ||
-    getWorkspaceFromUrl() ||
-    'platform';
+    getActiveTenant();
 
   if (uploadId.startsWith('api/v1/media/file/')) {
     uploadId = uploadId.slice('api/v1/media/file/'.length);
@@ -153,14 +176,20 @@ export function toRelativeMediaUrl(urlOrId: string, tenant?: string): string {
   }
   uploadId = uploadId.replace(/^\/+/, '');
 
+  if (activeTenant && uploadId.startsWith(`${activeTenant}/`)) {
+    uploadId = uploadId.slice(activeTenant.length + 1);
+  }
+
   const downloadQuery = (searchPart && searchPart.includes('download=true')) ? '?download=true' : '';
-  return `/api/v1/media/${activeTenant}/${uploadId}${downloadQuery}`;
+  if (activeTenant) {
+    return `/api/v1/media/${activeTenant}/${uploadId}${downloadQuery}`;
+  }
+  return `/api/v1/media/file/${uploadId}${downloadQuery}`;
 }
 
 /**
  * uploadMediaFile uploads a File to the central Core media service (/media/upload).
- * Returns the RELATIVE media path (e.g. /api/v1/media/file/samwad/photo.png) so database records
- * store relative paths. Use resolveMediaUrl / useMedia on the frontend to resolve for display.
+ * Returns the canonical upload_id so database records store pure IDs without hardcoded prefixes.
  */
 export async function uploadMediaFile(file: File, folder: string = 'samwad'): Promise<string> {
   try {
@@ -174,7 +203,7 @@ export async function uploadMediaFile(file: File, folder: string = 'samwad'): Pr
     const d = res.data?.data || res.data;
     const rawUrl = d?.upload_id || d?.uploadId || d?.relative_url || d?.media_url || d?.url;
     if (rawUrl) {
-      return toRelativeMediaUrl(String(rawUrl));
+      return String(rawUrl);
     }
   } catch (err) {
     console.warn('Core media upload error, using local file URL fallback:', err);
@@ -187,4 +216,3 @@ export async function uploadMediaFile(file: File, folder: string = 'samwad'): Pr
     reader.readAsDataURL(file);
   });
 }
-

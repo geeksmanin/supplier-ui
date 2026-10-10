@@ -50,11 +50,15 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 700;
 }
 
-/* SearchableEntitySelect Input Resets */
+/* SearchableEntitySelect & Fast Voucher Search Input Resets */
 .searchable-entity-select-input,
 .searchable-entity-select-input:focus,
 .searchable-entity-select-input:focus-visible,
-.searchable-entity-select-input:active {
+.searchable-entity-select-input:active,
+.fast-voucher-search-input,
+.fast-voucher-search-input:focus,
+.fast-voucher-search-input:focus-visible,
+.fast-voucher-search-input:active {
   outline: none !important;
   box-shadow: none !important;
   border: none !important;
@@ -311,8 +315,12 @@ select:focus {
 }
 
 /* Global High-Visibility Active Focus Ring & Pointer Hover Highlighting */
-input:focus, textarea:focus, select:focus, button:focus-visible,
-input:focus-visible, textarea:focus-visible, select:focus-visible {
+input:not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus,
+textarea:not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus,
+select:focus, button:focus-visible,
+input:not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus-visible,
+textarea:not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus-visible,
+select:focus-visible {
   outline: none !important;
   border-color: #4f46e5 !important;
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25) !important;

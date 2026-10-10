@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   VoucherLineItem, 
   VoucherSummary, 
@@ -78,26 +78,37 @@ export const VoucherLiveInvoicePreview: React.FC<VoucherLiveInvoicePreviewProps>
     documentDiscountPercent > 0 ? 'percent' : 'flat'
   );
 
-  // Re-compute live slip calculations
-  const computed = computeVoucherSummary({
-    items,
-    party,
-    companyGstin,
-    companyStateCode,
-    documentDiscountAmount,
-    documentDiscountPercent,
-    shippingCharges,
-    isRoundOffEnabled,
-  });
+  // Memoize live slip calculations
+  const computed = useMemo(() => {
+    return computeVoucherSummary({
+      items,
+      party,
+      companyGstin,
+      companyStateCode,
+      documentDiscountAmount,
+      documentDiscountPercent,
+      shippingCharges,
+      isRoundOffEnabled,
+    });
+  }, [items, party, companyGstin, companyStateCode, documentDiscountAmount, documentDiscountPercent, shippingCharges, isRoundOffEnabled]);
 
-  // Prioritize live computed calculations whenever line items exist
-  const activeSummary = items.length > 0 ? computed : (externalSummary || computed);
+  // Use external summary if provided by parent, otherwise computed
+  const activeSummary = externalSummary || computed;
 
-  // Keep parent in sync with latest calculations
+  // Keep parent in sync only when externalSummary is not provided and values meaningfully change
+  const lastEmittedRef = useRef<string>('');
   useEffect(() => {
-    onSummaryChange?.(activeSummary);
-  }, [activeSummary, onSummaryChange]);
-  const slabsList = Object.values(computed.taxSlabs).filter((s) => s.taxableAmount > 0 || s.taxAmount > 0);
+    if (!onSummaryChange || externalSummary) return;
+    const key = `${activeSummary.grand_total}_${activeSummary.subtotal}_${activeSummary.tax_total}_${activeSummary.discount_total}`;
+    if (key !== lastEmittedRef.current) {
+      lastEmittedRef.current = key;
+      onSummaryChange(activeSummary);
+    }
+  }, [activeSummary, onSummaryChange, externalSummary]);
+
+  const slabsList = useMemo(() => {
+    return Object.values(computed.taxSlabs).filter((s) => s.taxableAmount > 0 || s.taxAmount > 0);
+  }, [computed.taxSlabs]);
 
   return (
     <div
@@ -238,7 +249,7 @@ export const VoucherLiveInvoicePreview: React.FC<VoucherLiveInvoicePreviewProps>
               borderBottom: '1px dashed #e2e8f0',
             }}
           >
-            No items added yet. Use Product Search [Ctrl+K] to add lines.
+            No items added yet. Use Product Search [F4] to add lines.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderBottom: '1px dashed #e2e8f0', paddingBottom: '0.75rem' }}>
