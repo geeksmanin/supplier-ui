@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { uploadMediaFile } from '../utils/media';
+import { apiClient } from '../api/client';
 
 export interface UseClipboardImageUploadOptions {
   folder: string;
@@ -88,9 +88,17 @@ export function useClipboardImageUpload({
           });
         }
 
-        const url = await uploadMediaFile(fileToPrepare, folder);
+        const formData = new FormData();
+        formData.append('file', fileToPrepare);
+        formData.append('bucket', folder);
+
+        const res = await apiClient.post('/media/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        const d = res.data?.data || res.data;
+        const url = d?.upload_id || d?.uploadId || d?.media_url || d?.url;
         if (url && onUploaded) {
-          onUploaded(url);
+          onUploaded(String(url));
         }
         count++;
       }
