@@ -12,26 +12,46 @@ export interface ResolveMediaOptions {
  * No hardcoded fallbacks like "platform".
  */
 export function getActiveTenant(optionsTenant?: string): string {
-  if (optionsTenant) return optionsTenant.trim();
-  const fromUrl = getWorkspaceFromUrl();
-  if (fromUrl) return fromUrl.trim();
+  // 1. Explicit options (if passed and valid)
+  if (optionsTenant && optionsTenant !== 'business') {
+    return optionsTenant.trim();
+  }
+
+  // 2. localStorage is primary source of truth
   if (typeof window !== 'undefined') {
     const saved =
       localStorage.getItem('tenant_code') ||
       localStorage.getItem('workspace_code') ||
       localStorage.getItem('current_tenant_code');
-    if (saved) return saved.trim();
+    if (saved && saved !== 'business') {
+      return saved.trim();
+    }
   }
+
+  // 3. Fallback: heal from active JWT token claims
   try {
     const user = getCurrentUser();
-    if (user?.tenantCode && user.tenantCode !== 'platform') {
+    if (user?.tenantCode && user.tenantCode !== 'business') {
       return user.tenantCode.trim();
     }
   } catch {}
+
+  // 4. Subdomain / URL workspace
+  const fromUrl = getWorkspaceFromUrl();
+  if (fromUrl && fromUrl !== 'business') {
+    return fromUrl.trim();
+  }
+
+  // 5. AppConfig default (if valid)
   const config = getAppConfig();
-  if (config?.tenantCode) return config.tenantCode.trim();
-  if (config?.defaultTenant) return config.defaultTenant.trim();
-  return 'platform';
+  if (config?.tenantCode && config.tenantCode !== 'business') {
+    return config.tenantCode.trim();
+  }
+  if (config?.defaultTenant && config.defaultTenant !== 'business') {
+    return config.defaultTenant.trim();
+  }
+
+  return ''; // Never fallback to 'platform'
 }
 
 /**
@@ -95,9 +115,9 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
   const downloadQuery = (options?.download || existingParams.get('download') === 'true') ? '?download=true' : '';
 
   const activeTenant =
-    options?.tenant ||
-    existingParams.get('tenant') ||
-    existingParams.get('tenant_code') ||
+    (options?.tenant && options.tenant !== 'business' ? options.tenant : undefined) ||
+    (existingParams.get('tenant') && existingParams.get('tenant') !== 'business' ? existingParams.get('tenant') : undefined) ||
+    (existingParams.get('tenant_code') && existingParams.get('tenant_code') !== 'business' ? existingParams.get('tenant_code') : undefined) ||
     getActiveTenant();
 
   // Extract bare upload ID from path (strip origin, /api/v1, /media/file, tenant prefix if direct)
@@ -120,7 +140,11 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
   } else if (uploadId.startsWith('api/v1/media/')) {
     const parts = uploadId.slice('api/v1/media/'.length).split('/');
     if (parts.length >= 3) {
-      resolvedTenant = parts[0] || activeTenant;
+      if (parts[0] && parts[0] !== 'business' && parts[0] !== 'file') {
+        resolvedTenant = parts[0];
+      } else {
+        resolvedTenant = activeTenant;
+      }
       uploadId = parts.slice(1).join('/');
     } else {
       uploadId = parts.join('/');
@@ -128,7 +152,11 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
   } else if (uploadId.startsWith('media/')) {
     const parts = uploadId.slice('media/'.length).split('/');
     if (parts.length >= 3) {
-      resolvedTenant = parts[0] || activeTenant;
+      if (parts[0] && parts[0] !== 'business' && parts[0] !== 'file') {
+        resolvedTenant = parts[0];
+      } else {
+        resolvedTenant = activeTenant;
+      }
       uploadId = parts.slice(1).join('/');
     } else {
       uploadId = parts.join('/');
@@ -141,6 +169,13 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
   if (resolvedTenant && uploadId.startsWith(`${resolvedTenant}/`)) {
     uploadId = uploadId.slice(resolvedTenant.length + 1);
   }
+  if (uploadId.startsWith('business/')) {
+    uploadId = uploadId.slice('business/'.length);
+  }
+
+  if (!resolvedTenant || resolvedTenant === 'business') {
+    resolvedTenant = activeTenant;
+  }
 
   // Ensure uploadId has a bucket segment when routing to /media/:tenant/:bucket/*key
   // Single-part filenames default to bucket "general" (matching core HandleUploadMedia)
@@ -152,7 +187,7 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
     ? `${cleanBase}/api/v1/media`
     : `/api/v1/media`;
 
-  if (resolvedTenant) {
+  if (resolvedTenant && resolvedTenant !== 'business') {
     return `${prefix}/${resolvedTenant}/${normalizedUploadId}${downloadQuery}`;
   }
 
@@ -184,9 +219,9 @@ export function toRelativeMediaUrl(urlOrId: string, tenant?: string): string {
 
   uploadId = uploadId.replace(/^\/+/, '');
   let activeTenant =
-    tenant ||
-    existingParams.get('tenant') ||
-    existingParams.get('tenant_code') ||
+    (tenant && tenant !== 'business' ? tenant : undefined) ||
+    (existingParams.get('tenant') && existingParams.get('tenant') !== 'business' ? existingParams.get('tenant') : undefined) ||
+    (existingParams.get('tenant_code') && existingParams.get('tenant_code') !== 'business' ? existingParams.get('tenant_code') : undefined) ||
     getActiveTenant();
 
   if (uploadId.startsWith('api/v1/media/file/')) {
@@ -196,7 +231,9 @@ export function toRelativeMediaUrl(urlOrId: string, tenant?: string): string {
   } else if (uploadId.startsWith('api/v1/media/')) {
     const parts = uploadId.slice('api/v1/media/'.length).split('/');
     if (parts.length >= 3) {
-      activeTenant = parts[0] || activeTenant;
+      if (parts[0] && parts[0] !== 'business' && parts[0] !== 'file') {
+        activeTenant = parts[0];
+      }
       uploadId = parts.slice(1).join('/');
     } else {
       uploadId = parts.join('/');
@@ -204,7 +241,9 @@ export function toRelativeMediaUrl(urlOrId: string, tenant?: string): string {
   } else if (uploadId.startsWith('media/')) {
     const parts = uploadId.slice('media/'.length).split('/');
     if (parts.length >= 3) {
-      activeTenant = parts[0] || activeTenant;
+      if (parts[0] && parts[0] !== 'business' && parts[0] !== 'file') {
+        activeTenant = parts[0];
+      }
       uploadId = parts.slice(1).join('/');
     } else {
       uploadId = parts.join('/');
@@ -217,10 +256,17 @@ export function toRelativeMediaUrl(urlOrId: string, tenant?: string): string {
   if (activeTenant && uploadId.startsWith(`${activeTenant}/`)) {
     uploadId = uploadId.slice(activeTenant.length + 1);
   }
+  if (uploadId.startsWith('business/')) {
+    uploadId = uploadId.slice('business/'.length);
+  }
+
+  if (!activeTenant || activeTenant === 'business') {
+    activeTenant = getActiveTenant();
+  }
 
   const downloadQuery = (searchPart && searchPart.includes('download=true')) ? '?download=true' : '';
   const normalizedUploadId = uploadId.includes('/') ? uploadId : `general/${uploadId}`;
-  if (activeTenant) {
+  if (activeTenant && activeTenant !== 'business') {
     return `/api/v1/media/${activeTenant}/${normalizedUploadId}${downloadQuery}`;
   }
   return `/api/v1/media/file/${uploadId}${downloadQuery}`;
@@ -242,7 +288,7 @@ export async function uploadMediaFile(file: File, folder: string = 'samwad'): Pr
     const d = res.data?.data || res.data;
     const rawUrl = d?.upload_id || d?.uploadId || d?.relative_url || d?.media_url || d?.url;
     if (rawUrl) {
-      return String(rawUrl);
+      return toRelativeMediaUrl(String(rawUrl));
     }
   } catch (err) {
     console.warn('Core media upload error, using local file URL fallback:', err);

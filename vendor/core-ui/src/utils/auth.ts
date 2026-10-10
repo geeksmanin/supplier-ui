@@ -15,7 +15,7 @@ export function getCurrentUser(): CurrentUser {
       userId: '',
       userEmail: '',
       userName: '',
-      tenantCode: 'platform',
+      tenantCode: '',
     };
   }
 
@@ -23,6 +23,9 @@ export function getCurrentUser(): CurrentUser {
   let userEmail = localStorage.getItem('user_email') || '';
   let userName = localStorage.getItem('user_name') || localStorage.getItem('erp_username') || '';
   let tenantCode = localStorage.getItem('tenant_code') || localStorage.getItem('workspace_code') || '';
+  if (tenantCode === 'business') {
+    tenantCode = '';
+  }
 
   const token = localStorage.getItem('token');
   if (token) {
@@ -44,9 +47,16 @@ export function getCurrentUser(): CurrentUser {
           userName = decoded.user_alias || decoded.name || decoded.username;
           localStorage.setItem('user_name', userName);
         }
-        if (!tenantCode && (decoded.tenant_alias || decoded.tenant_code)) {
-          tenantCode = decoded.tenant_alias || decoded.tenant_code;
+        const tokenTenant = decoded.tenant_alias || decoded.tenant_code || decoded.tenant || decoded.workspace_code || decoded.workspace;
+        if (tokenTenant && tokenTenant !== 'business') {
+          tenantCode = tokenTenant;
           localStorage.setItem('tenant_code', tenantCode);
+          localStorage.setItem('workspace_code', tenantCode);
+        } else if (!tenantCode && (decoded.tenant_alias || decoded.tenant_code)) {
+          tenantCode = decoded.tenant_alias || decoded.tenant_code;
+          if (tenantCode !== 'business') {
+            localStorage.setItem('tenant_code', tenantCode);
+          }
         }
       }
     } catch (err) {
@@ -54,11 +64,15 @@ export function getCurrentUser(): CurrentUser {
     }
   }
 
+  if (tenantCode === 'business') {
+    tenantCode = '';
+  }
+
   return {
     userId: userId || 'usr-self',
     userEmail: userEmail || 'user@example.com',
     userName: userName || (userEmail ? userEmail.split('@')[0] : 'Staff Member'),
-    tenantCode: tenantCode || 'platform',
+    tenantCode: tenantCode || '',
   };
 }
 
@@ -78,7 +92,7 @@ export function setCurrentUser(user: Partial<CurrentUser>): void {
     localStorage.setItem('user_name', user.userName);
     localStorage.setItem('erp_username', user.userName);
   }
-  if (user.tenantCode) {
+  if (user.tenantCode && user.tenantCode !== 'business') {
     localStorage.setItem('tenant_code', user.tenantCode);
     localStorage.setItem('workspace_code', user.tenantCode);
   }

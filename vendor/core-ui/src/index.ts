@@ -90,7 +90,7 @@ export { useFormDraft, DraftBanner, discardFormAndCloseTab } from './hooks/useFo
 export type { UseFormDraftOptions, UseFormDraftReturn, DraftBannerProps } from './hooks/useFormDraft';
 export { DraftBanner as DraftBannerComponent } from './components/DraftBanner';
 export { isMobileDevice } from './utils/device';
-export { resolveMediaUrl, uploadMediaFile, toRelativeMediaUrl } from './utils/media';
+export { resolveMediaUrl, uploadMediaFile, toRelativeMediaUrl, getActiveTenant } from './utils/media';
 export type { ResolveMediaOptions } from './utils/media';
 export {
   MEDIA_CACHE_NAME,

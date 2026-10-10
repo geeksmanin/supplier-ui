@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { resolveMediaUrl, toRelativeMediaUrl, ResolveMediaOptions } from './media';
+import { resolveMediaUrl, toRelativeMediaUrl, ResolveMediaOptions, getActiveTenant } from './media';
 
 export const MEDIA_CACHE_NAME = 'samwad-media-cache-v1';
 const IDB_NAME = 'SamwadMediaCacheDB';
@@ -218,12 +218,11 @@ export async function getCachedMediaUrl(
         if (token) {
           headers['Authorization'] = `Bearer ${token}`;
         }
-        // Include tenant code so the media endpoint resolves correctly
-        const tenantCode =
-          localStorage.getItem('tenant_code') ||
-          localStorage.getItem('workspace_code') ||
-          localStorage.getItem('current_tenant_code');
-        if (tenantCode) {
+        // Include authentic tenant code so the media endpoint resolves correctly
+        const tenantCode = (options?.tenant && options.tenant !== 'business')
+          ? options.tenant
+          : getActiveTenant();
+        if (tenantCode && tenantCode !== 'business') {
           headers['X-Tenant-Code'] = tenantCode;
         }
         const branchCode = localStorage.getItem('active_branch');

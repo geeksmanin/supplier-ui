@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { getAppConfig } from '../config';
 import { isNativePlatform } from '../native/platform';
+import { getCurrentUser } from '../utils/auth';
 
 declare global {
   interface Window {
@@ -95,9 +96,11 @@ export const getWorkspaceFromUrl = (): string => {
 
     if (queryWs) {
       const ws = queryWs.trim().toLowerCase();
-      localStorage.setItem('tenant_code', ws);
-      localStorage.setItem('workspace_code', ws);
-      return ws;
+      if (ws !== 'business') {
+        localStorage.setItem('tenant_code', ws);
+        localStorage.setItem('workspace_code', ws);
+        return ws;
+      }
     }
 
     // 2. Check Hostname subdomain (e.g. synchx.geeksman.co.in) if URL resolution is enabled
@@ -108,18 +111,10 @@ export const getWorkspaceFromUrl = (): string => {
         const parts = host.split('.');
         const appPrefixes = ['admin', 'platform', 'www', 'samwad', 'samvad', 'chat', 'staff', 'customer', 'portal', 'catalogue', 'catalog', 'app', 'api', 'business'];
         if (parts.length > 1) {
-          // Explicit business gateway subdomain (e.g. business.samwad.geeksman.co.in or business.geeksman.in)
-          if (parts[0] === 'business' || parts[1] === 'business') {
-            const savedTenant = localStorage.getItem('tenant_code') || localStorage.getItem('workspace_code');
-            if (savedTenant && savedTenant !== 'business') {
-              return savedTenant;
-            }
-            return 'business';
-          }
           if (!appPrefixes.includes(parts[0])) {
             return parts[0];
           } else if (parts.length > 2 && !appPrefixes.includes(parts[1])) {
-            // E.g. samwad.a3pl.in -> parts[1] is 'a3pl'
+            // E.g. samwad.a3pl.in or business.a3pl.in -> parts[1] is 'a3pl'
             return parts[1];
           }
         }
@@ -132,13 +127,23 @@ export const getWorkspaceFromUrl = (): string => {
       return savedTenant;
     }
 
-    // 4. Fallback to configured defaultTenant from AppConfig
+    // 4. Authenticated user tenant code
+    try {
+      const user = getCurrentUser();
+      if (user?.tenantCode && user.tenantCode !== 'business') {
+        return user.tenantCode;
+      }
+    } catch {}
+
+    // 5. Fallback to configured defaultTenant from AppConfig
     if (appConfig.defaultTenant && appConfig.defaultTenant !== 'business') {
       return appConfig.defaultTenant;
     }
   }
   const appConfig = getAppConfig();
-  return appConfig.tenantCode || appConfig.defaultTenant || 'platform';
+  const def = appConfig.tenantCode || appConfig.defaultTenant;
+  if (def && def !== 'business') return def;
+  return '';
 };
 
 export const resolveTenantByCode = async (workspaceCode: string): Promise<TenantMetadata> => {
@@ -236,9 +241,15 @@ apiClient.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
-  // Resolve tenant code from current hostname subdomain or localStorage setting
+  // Resolve tenant code from authenticated user context, hostname subdomain, or localStorage setting
   if (config.headers) {
-    config.headers['X-Tenant-Code'] = getWorkspaceFromUrl();
+    const user = getCurrentUser();
+    let tenant = (user?.tenantCode && user.tenantCode !== 'business')
+      ? user.tenantCode
+      : getWorkspaceFromUrl();
+    if (tenant && tenant !== 'business') {
+      config.headers['X-Tenant-Code'] = tenant;
+    }
     const activeBranch = localStorage.getItem('active_branch');
     if (activeBranch) {
       config.headers['X-Business-Code'] = activeBranch;
@@ -319,7 +330,13 @@ export const createApiClient = (options: CreateClientOptions) => {
       config.headers.Authorization = `Bearer ${token}`;
     }
     if (config.headers) {
-      config.headers['X-Tenant-Code'] = getWorkspaceFromUrl();
+      const user = getCurrentUser();
+      let tenant = (user?.tenantCode && user.tenantCode !== 'business')
+        ? user.tenantCode
+        : getWorkspaceFromUrl();
+      if (tenant && tenant !== 'business') {
+        config.headers['X-Tenant-Code'] = tenant;
+      }
       const activeBranch = localStorage.getItem('active_branch');
       if (activeBranch) {
         config.headers['X-Business-Code'] = activeBranch;

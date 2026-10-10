@@ -20,7 +20,7 @@ export const WorkspaceSelectModal: React.FC<WorkspaceSelectModalProps> = ({
 }) => {
   const { showToast } = useToast();
   const [workspaceInput, setWorkspaceInput] = useState(
-    currentWorkspace === 'business' || currentWorkspace === 'platform' ? '' : currentWorkspace
+    currentWorkspace === 'business' ? '' : currentWorkspace
   );
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [validating, setValidating] = useState(false);
@@ -29,7 +29,7 @@ export const WorkspaceSelectModal: React.FC<WorkspaceSelectModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      const initial = currentWorkspace === 'business' || currentWorkspace === 'platform' ? '' : currentWorkspace;
+      const initial = currentWorkspace === 'business' ? '' : currentWorkspace;
       setWorkspaceInput(initial);
       setPreviewMetadata(null);
       setValidationError(null);

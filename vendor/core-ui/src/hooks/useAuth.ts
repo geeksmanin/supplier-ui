@@ -45,13 +45,14 @@ export interface UseLoginReturn {
 export function useLogin(): UseLoginReturn {
   const [activeWorkspace, setActiveWorkspace] = useState<string>(() => {
     const config = getAppConfig();
-    const fromUrl = getWorkspaceFromUrl();
-    if (fromUrl && fromUrl !== 'business') return fromUrl;
     const fromStorage = typeof window !== 'undefined'
       ? (localStorage.getItem('tenant_code') || localStorage.getItem('workspace_code'))
       : null;
     if (fromStorage && fromStorage !== 'business') return fromStorage;
-    return config.defaultTenant || fromUrl || 'business';
+    const fromUrl = getWorkspaceFromUrl();
+    if (fromUrl && fromUrl !== 'business') return fromUrl;
+    if (config.defaultTenant && config.defaultTenant !== 'business') return config.defaultTenant;
+    return '';
   });
 
   const [workspaceName, setWorkspaceName] = useState<string>(() => {
@@ -162,13 +163,22 @@ export function useLogin(): UseLoginReturn {
       const userId = responseData.user_id || responseData.customer_id || decoded.user_id || decoded.id || '';
       const userName = responseData.name || decoded.user_alias || decoded.name || '';
       const userEmail = responseData.email || decoded.user_email || email;
-      const tenantCode = responseData.tenant_code || decoded.tenant_alias || targetWorkspace;
+      const tokenTenant = decoded.tenant_alias || decoded.tenant_code || decoded.tenant || decoded.workspace_code || decoded.workspace;
+      const tenantCode = (responseData.tenant_code && responseData.tenant_code !== 'business')
+        ? responseData.tenant_code
+        : (tokenTenant && tokenTenant !== 'business')
+        ? tokenTenant
+        : (targetWorkspace && targetWorkspace !== 'business')
+        ? targetWorkspace
+        : '';
 
-      // Persist auth and user context
+      // Persist auth and user context directly to localStorage
       setAuthToken(token);
-      localStorage.setItem('tenant_code', targetWorkspace);
-      localStorage.setItem('workspace_code', targetWorkspace);
-      localStorage.setItem('current_tenant_code', targetWorkspace);
+      if (tenantCode && tenantCode !== 'business') {
+        localStorage.setItem('tenant_code', tenantCode);
+        localStorage.setItem('workspace_code', tenantCode);
+        localStorage.setItem('current_tenant_code', tenantCode);
+      }
 
       setCurrentUser({
         userId,

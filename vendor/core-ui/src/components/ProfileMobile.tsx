@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../api/client';
+import { getCurrentUser } from '../utils/auth';
 
 export const ProfileMobile: React.FC = () => {
   const [appVersion, setAppVersion] = useState<string>('Loading...');
@@ -9,8 +10,9 @@ export const ProfileMobile: React.FC = () => {
   const [error, setError] = useState<string>('');
   const [updateSuccessMsg, setUpdateSuccessMsg] = useState<string>('');
 
-  const userEmail = localStorage.getItem('user_email') || 'admin@geeksman.com';
-  const tenantCode = localStorage.getItem('tenant_code') || 'platform';
+  const currentUser = getCurrentUser();
+  const userEmail = currentUser.userEmail || localStorage.getItem('user_email') || 'admin@geeksman.com';
+  const tenantCode = currentUser.tenantCode || localStorage.getItem('tenant_code') || '';
 
   useEffect(() => {
     const fetchVersion = async () => {
