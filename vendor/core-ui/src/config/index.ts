@@ -69,7 +69,7 @@ export const resolveAppConfig = (
   }
 
   // 3. Native Mobile Platform Safeguard (Capacitor Android/iOS)
-  // On mobile devices, WebView localhost must NOT mistakenly bind to local machine's http://localhost:8089
+  // On mobile devices, WebView localhost must NOT mistakenly bind to local development loopback
   if (isNativePlatform()) {
     if (buildMode === 'staging' || buildMode === 'stage') {
       return activeStaging;
