@@ -42,9 +42,30 @@ export const waitForCapacitor = async (maxWaitMs = 2000): Promise<any> => {
 };
 
 export const isNativePlatform = (): boolean => {
+  if (typeof window === 'undefined') return false;
   const cap = getCapacitor();
   if (cap && typeof cap.isNativePlatform === 'function') {
     return cap.isNativePlatform();
+  }
+  if (cap && typeof cap.getPlatform === 'function') {
+    return cap.getPlatform() !== 'web';
+  }
+  // Check Capacitor/Cordova custom schemes
+  if (
+    window.location.protocol === 'capacitor:' ||
+    window.location.protocol === 'ionic:' ||
+    window.location.protocol === 'file:'
+  ) {
+    return true;
+  }
+  // Check user-agent & Android WebView signatures
+  const ua = (typeof navigator !== 'undefined' ? navigator.userAgent : '') || '';
+  if (
+    /Capacitor/i.test(ua) ||
+    (/Android/i.test(ua) && /wv/i.test(ua)) ||
+    (/Android/i.test(ua) && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+  ) {
+    return true;
   }
   return false;
 };

@@ -1,5 +1,6 @@
 import { apiClient, getBaseUrl, getWorkspaceFromUrl } from '../api/client';
 import { getAppConfig } from '../config';
+import { getCurrentUser } from './auth';
 
 export interface ResolveMediaOptions {
   download?: boolean;
@@ -21,9 +22,16 @@ export function getActiveTenant(optionsTenant?: string): string {
       localStorage.getItem('current_tenant_code');
     if (saved) return saved.trim();
   }
+  try {
+    const user = getCurrentUser();
+    if (user?.tenantCode && user.tenantCode !== 'platform') {
+      return user.tenantCode.trim();
+    }
+  } catch {}
   const config = getAppConfig();
   if (config?.tenantCode) return config.tenantCode.trim();
-  return '';
+  if (config?.defaultTenant) return config.defaultTenant.trim();
+  return 'platform';
 }
 
 /**
@@ -52,16 +60,16 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
     return trimmed;
   }
 
-  // Determine the active backend base URL
+  // Determine the active backend base URL directly from config
   const config = getAppConfig();
   const rawBase =
+    config?.apiBaseUrl ||
     apiClient.defaults.baseURL ||
     getBaseUrl() ||
-    config?.apiBaseUrl ||
     (typeof window !== 'undefined' ? (window as any)?.runtimeConfig?.apiBaseUrl : '') ||
     '/api/v1';
-  const cleanBase = (rawBase || '/api/v1').replace(/\/+$/, '');
 
+  const cleanBase = (rawBase || '/api/v1').replace(/\/+$/, '');
   const downloadQuery = (options?.download || existingParams.get('download') === 'true') ? '?download=true' : '';
 
   const activeTenant =
@@ -110,6 +118,10 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
     uploadId = uploadId.slice(resolvedTenant.length + 1);
   }
 
+  // Ensure uploadId has a bucket segment when routing to /media/:tenant/:bucket/*key
+  // Single-part filenames default to bucket "general" (matching core HandleUploadMedia)
+  const normalizedUploadId = uploadId.includes('/') ? uploadId : `general/${uploadId}`;
+
   const prefix = cleanBase.endsWith('/api/v1')
     ? `${cleanBase}/media`
     : cleanBase.startsWith('http://') || cleanBase.startsWith('https://')
@@ -117,7 +129,7 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
     : `/api/v1/media`;
 
   if (resolvedTenant) {
-    return `${prefix}/${resolvedTenant}/${uploadId}${downloadQuery}`;
+    return `${prefix}/${resolvedTenant}/${normalizedUploadId}${downloadQuery}`;
   }
 
   return `${cleanBase}/media/file/${uploadId}${downloadQuery}`;
@@ -181,8 +193,9 @@ export function toRelativeMediaUrl(urlOrId: string, tenant?: string): string {
   }
 
   const downloadQuery = (searchPart && searchPart.includes('download=true')) ? '?download=true' : '';
+  const normalizedUploadId = uploadId.includes('/') ? uploadId : `general/${uploadId}`;
   if (activeTenant) {
-    return `/api/v1/media/${activeTenant}/${uploadId}${downloadQuery}`;
+    return `/api/v1/media/${activeTenant}/${normalizedUploadId}${downloadQuery}`;
   }
   return `/api/v1/media/file/${uploadId}${downloadQuery}`;
 }

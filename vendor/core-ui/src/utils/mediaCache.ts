@@ -218,12 +218,25 @@ export async function getCachedMediaUrl(
         if (token) {
           headers['Authorization'] = `Bearer ${token}`;
         }
+        // Include tenant code so the media endpoint resolves correctly
+        const tenantCode =
+          localStorage.getItem('tenant_code') ||
+          localStorage.getItem('workspace_code') ||
+          localStorage.getItem('current_tenant_code');
+        if (tenantCode) {
+          headers['X-Tenant-Code'] = tenantCode;
+        }
+        const branchCode = localStorage.getItem('active_branch');
+        if (branchCode) {
+          headers['X-Business-Code'] = branchCode;
+        }
       }
 
       const response = await fetch(resolved, { headers });
       if (!response.ok) {
         return resolved;
       }
+
 
       const blob = await response.blob();
       if (!blob || blob.size === 0) {
@@ -317,29 +330,30 @@ export function useCachedMediaUrl(
   rawUrl?: string,
   options?: ResolveMediaOptions
 ): string {
-  if (!rawUrl) return '';
-  const trimmed = rawUrl.trim();
-  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
-    return trimmed;
-  }
-
-  const key = getMediaCacheKey(trimmed);
-  const resolved = resolveMediaUrl(trimmed, options);
-  const initialMemory = memoryBlobUrlMap.get(key) || null;
+  const trimmed = (rawUrl || '').trim();
+  const isInline = trimmed.startsWith('data:') || trimmed.startsWith('blob:');
+  const key = isInline || !trimmed ? '' : getMediaCacheKey(trimmed);
+  const resolved = isInline || !trimmed ? trimmed : resolveMediaUrl(trimmed, options);
+  const initialMemory = key ? memoryBlobUrlMap.get(key) || null : null;
 
   const [url, setUrl] = useState<string>(initialMemory || resolved);
 
   useEffect(() => {
-    if (!rawUrl) return;
+    if (!trimmed || isInline) {
+      setUrl(trimmed);
+      return;
+    }
 
     let isMounted = true;
-    const mem = memoryBlobUrlMap.get(key);
+    const mem = key ? memoryBlobUrlMap.get(key) : null;
     if (mem) {
       setUrl(mem);
       return;
     }
 
-    getCachedMediaUrl(rawUrl, options)
+    setUrl(initialMemory || resolved);
+
+    getCachedMediaUrl(trimmed, options)
       .then((cached) => {
         if (isMounted && cached) {
           setUrl(cached);
@@ -354,9 +368,11 @@ export function useCachedMediaUrl(
     return () => {
       isMounted = false;
     };
-  }, [rawUrl, key, resolved]);
+  }, [trimmed, key, resolved, isInline]);
 
-  return url;
+  if (!trimmed) return '';
+  if (isInline) return trimmed;
+  return url || resolved;
 }
 
 /**

@@ -102,31 +102,21 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
       const { cx, cy, logoW, logoH } = getLogoDimensions();
       const dotRadius = Math.max(1.2, Math.min(1.45, width / 700));
 
-      // 1. Create shape particles - spawn slightly offset so they snap into logo immediately!
+      // 1. Create shape particles - INITIALLY FULLY FORMED AT LOGO POSITION!
       GEEKSMAN_LOGO_POINTS.forEach(([nx, ny]) => {
         const tx = cx + nx * logoW;
         const ty = cy + ny * logoH;
-        
-        // Outward radial scatter destination for explosive disruption
-        const blastAngle = Math.atan2(ty - cy, tx - cx) + (Math.random() - 0.5) * 0.7;
-        const blastDist = Math.max(width, height) * (0.32 + Math.random() * 0.4);
-        const sx = cx + Math.cos(blastAngle) * blastDist;
-        const sy = cy + Math.sin(blastAngle) * blastDist;
-
-        // Initial offset: rapid inward magnetic converge on mount
-        const spawnAngle = Math.random() * Math.PI * 2;
-        const spawnDist = 45 + Math.random() * 75;
-        const initX = tx + Math.cos(spawnAngle) * spawnDist;
-        const initY = ty + Math.sin(spawnAngle) * spawnDist;
+        const sx = Math.random() * width;
+        const sy = Math.random() * height;
 
         const color = blueShades[Math.floor(Math.random() * blueShades.length)];
-        const baseAlpha = 0.85 + Math.random() * 0.15;
+        const baseAlpha = 0.8 + Math.random() * 0.2;
 
         particles.push({
-          x: initX,
-          y: initY,
-          vx: (tx - initX) * 0.09,
-          vy: (ty - initY) * 0.09,
+          x: tx, // Formed initially!
+          y: ty,
+          vx: 0,
+          vy: 0,
           scatterX: sx,
           scatterY: sy,
           targetX: tx,
@@ -135,14 +125,14 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
           color,
           alpha: baseAlpha,
           baseAlpha,
-          pulseSpeed: 2.0 + Math.random() * 3.0,
+          pulseSpeed: 1.2 + Math.random() * 2.0,
           pulsePhase: Math.random() * Math.PI * 2,
           isShape: true,
         });
       });
 
       // 2. Ambient drifting particles across background
-      const ambCount = Math.floor((width * height) / 6500);
+      const ambCount = Math.floor((width * height) / 6000);
       for (let i = 0; i < ambCount; i++) {
         const ax = Math.random() * width;
         const ay = Math.random() * height;
@@ -155,8 +145,8 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
         particles.push({
           x: ax,
           y: ay,
-          vx: (Math.random() - 0.5) * 0.35,
-          vy: (Math.random() - 0.5) * 0.35,
+          vx: (Math.random() - 0.5) * 0.25,
+          vy: (Math.random() - 0.5) * 0.25,
           scatterX: ax,
           scatterY: ay,
           targetX: ax,
@@ -165,7 +155,7 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
           color,
           alpha: baseAlpha,
           baseAlpha,
-          pulseSpeed: 1.0 + Math.random() * 2.5,
+          pulseSpeed: 1.0 + Math.random() * 2.0,
           pulsePhase: Math.random() * Math.PI * 2,
           isShape: false,
         });
@@ -187,32 +177,28 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
     initParticles();
 
     let startTime = performance.now();
-    const CYCLE_DURATION = 2600; // 2.6 second tight & energetic choreographic loop
+    const CYCLE_DURATION = 7200; // 7.2s smooth, slow, calm choreographic loop without discrete debounce phases
 
     const render = (now: number) => {
       const elapsed = now - startTime;
       const cycleTime = elapsed % CYCLE_DURATION;
 
-      // Choreography (Fast payoff so fast page loads immediately feel the style):
-      // 0ms - 240ms: Phase 1: FAST CREATION - Rapid inward magnetic snap into formed logo
-      // 240ms - 650ms: Phase 2: FORMED LOCK - Crisp illuminated logo presentation
-      // 650ms - 1150ms: Phase 3: FAST DISRUPTION - Explosive shatter into cosmic pieces
-      // 1150ms - 1750ms: Phase 4: CELESTIAL DRIFT - Swirling pieces in orbit
-      // 1750ms - 2200ms: Phase 5: RE-CREATION - Magnetic snap pulling pieces back into logo
-      // 2200ms - 2600ms: Phase 6: SETTLE - Settle beat before repeating
+      // Smooth continuous transitions:
+      // 0ms - 2400ms: Formed - Logo is sharply assembled and gently breathing
+      // 2400ms - 4100ms: Dispersal - Soft gradual scatter outward
+      // 4100ms - 5200ms: Ambient drift - Smooth floating in space
+      // 5200ms - 6800ms: Re-creation - Gentle magnetic attraction smoothly glides particles back
+      // 6800ms - 7200ms: Settle - Calm settle back into formed logo
       let formWeight = 1;
-      if (cycleTime < 240) {
-        const t = cycleTime / 240;
-        formWeight = Math.min(1, t * (2 - t));
-      } else if (cycleTime < 650) {
+      if (cycleTime < 2400) {
         formWeight = 1;
-      } else if (cycleTime < 1150) {
-        const t = (cycleTime - 650) / 500;
-        formWeight = Math.max(0, 1 - Math.pow(t, 2.2));
-      } else if (cycleTime < 1750) {
+      } else if (cycleTime < 4100) {
+        const t = (cycleTime - 2400) / 1700;
+        formWeight = 1 - Math.sin((t * Math.PI) / 2);
+      } else if (cycleTime < 5200) {
         formWeight = 0;
-      } else if (cycleTime < 2200) {
-        const t = (cycleTime - 1750) / 450;
+      } else if (cycleTime < 6800) {
+        const t = (cycleTime - 5200) / 1600;
         formWeight = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
       } else {
         formWeight = 1;
@@ -222,16 +208,14 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
 
       const mouse = mouseRef.current;
       const mouseDistThreshold = 85;
-      const cx = width / 2;
-      const cy = height / 2;
 
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
 
         if (p.isShape) {
-          // Dynamic destination based on formWeight
-          const breatheX = Math.sin(now * 0.003 + p.pulsePhase) * (formWeight * 1.2);
-          const breatheY = Math.cos(now * 0.003 + p.pulsePhase) * (formWeight * 1.2);
+          // Gentle breathing when formed
+          const breatheX = Math.sin(now * 0.0018 + p.pulsePhase) * (formWeight * 0.9);
+          const breatheY = Math.cos(now * 0.0018 + p.pulsePhase) * (formWeight * 0.9);
 
           const destX = p.scatterX + (p.targetX + breatheX - p.scatterX) * formWeight;
           const destY = p.scatterY + (p.targetY + breatheY - p.scatterY) * formWeight;
@@ -239,19 +223,11 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
           const dx = destX - p.x;
           const dy = destY - p.y;
 
-          // Snappy magnetic springs for fast creation and explosive disruption
-          const spring = formWeight > 0.3 ? 0.14 : 0.06;
-          const damp = formWeight > 0.3 ? 0.18 : 0.09;
+          // Gentle spring physics with high damping to completely prevent oscillation and bouncing
+          const spring = formWeight > 0.4 ? 0.055 : 0.022;
+          const damp = formWeight > 0.4 ? 0.16 : 0.08;
           p.vx += dx * spring - p.vx * damp;
           p.vy += dy * spring - p.vy * damp;
-
-          if (formWeight < 0.25) {
-            // Subtle celestial orbital swirl while shattered
-            const rx = p.x - cx;
-            const ry = p.y - cy;
-            p.vx += -ry * 0.0006;
-            p.vy += rx * 0.0006;
-          }
         } else {
           // Ambient background float
           p.vx += (Math.random() - 0.5) * 0.04;

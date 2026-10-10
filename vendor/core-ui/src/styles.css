@@ -315,11 +315,11 @@ select:focus {
 }
 
 /* Global High-Visibility Active Focus Ring & Pointer Hover Highlighting */
-input:not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus,
-textarea:not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus,
+input:not(.bare-input):not([data-bare-input]):not(.wa-bare-input):not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus,
+textarea:not(.bare-input):not([data-bare-input]):not(.wa-bare-input):not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus,
 select:focus, button:focus-visible,
-input:not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus-visible,
-textarea:not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus-visible,
+input:not(.bare-input):not([data-bare-input]):not(.wa-bare-input):not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus-visible,
+textarea:not(.bare-input):not([data-bare-input]):not(.wa-bare-input):not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus-visible,
 select:focus-visible {
   outline: none !important;
   border-color: #4f46e5 !important;
@@ -327,7 +327,9 @@ select:focus-visible {
   background-color: #ffffff !important;
 }
 
-input:hover, textarea:hover, select:hover {
+input:not(.bare-input):not([data-bare-input]):not(.wa-bare-input):hover,
+textarea:not(.bare-input):not([data-bare-input]):not(.wa-bare-input):hover,
+select:hover {
   border-color: #6366f1 !important;
 }
 

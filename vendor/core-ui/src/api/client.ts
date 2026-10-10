@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getAppConfig } from '../config';
+import { isNativePlatform } from '../native/usePushNotifications';
 
 declare global {
   interface Window {
@@ -17,8 +18,9 @@ export const getDefaultBackendUrl = (): string => {
 export const getBaseUrl = (): string => {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
-    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.includes('dev.');
-    const isLanIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.endsWith('.local');
+    const isNative = isNativePlatform();
+    const isLocalHost = !isNative && (host === 'localhost' || host === '127.0.0.1' || host.includes('dev.'));
+    const isLanIp = !isNative && (/^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.endsWith('.local'));
 
     const override = localStorage.getItem('portal_override_backend_url') === 'true';
     const savedUrl = localStorage.getItem('portal_backend_url');
