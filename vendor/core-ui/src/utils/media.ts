@@ -42,11 +42,7 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
     '/api/v1';
   const cleanBase = (rawBase || '/api/v1').replace(/\/+$/, '');
 
-  // Extract query parameters
-  const queryParts: string[] = [];
-  if (options?.download || existingParams.get('download') === 'true') {
-    queryParts.push('download=true');
-  }
+  const downloadQuery = (options?.download || existingParams.get('download') === 'true') ? '?download=true' : '';
 
   const activeTenant =
     options?.tenant ||
@@ -55,11 +51,6 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
     getWorkspaceFromUrl() ||
     config?.tenantCode ||
     'platform';
-
-  if (activeTenant) {
-    queryParts.push(`tenant=${encodeURIComponent(activeTenant)}`);
-  }
-  const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
 
   // Extract bare upload ID from path (strip origin, /api/v1, /media/file, tenant prefix if direct)
   let uploadId = basePath;
@@ -73,6 +64,7 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
   }
 
   uploadId = uploadId.replace(/^\/+/, '');
+  let resolvedTenant = activeTenant;
   if (uploadId.startsWith('api/v1/media/file/')) {
     uploadId = uploadId.slice('api/v1/media/file/'.length);
   } else if (uploadId.startsWith('media/file/')) {
@@ -80,6 +72,7 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
   } else if (uploadId.startsWith('api/v1/media/')) {
     const parts = uploadId.slice('api/v1/media/'.length).split('/');
     if (parts.length >= 3) {
+      resolvedTenant = parts[0] || activeTenant;
       uploadId = parts.slice(1).join('/');
     } else {
       uploadId = parts.join('/');
@@ -87,6 +80,7 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
   } else if (uploadId.startsWith('media/')) {
     const parts = uploadId.slice('media/'.length).split('/');
     if (parts.length >= 3) {
+      resolvedTenant = parts[0] || activeTenant;
       uploadId = parts.slice(1).join('/');
     } else {
       uploadId = parts.join('/');
@@ -94,25 +88,21 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
   }
   uploadId = uploadId.replace(/^\/+/, '');
 
-  if (cleanBase.endsWith('/api/v1')) {
-    return `${cleanBase}/media/file/${uploadId}${queryString}`;
-  }
-  if (cleanBase.startsWith('http://') || cleanBase.startsWith('https://')) {
-    return `${cleanBase}/api/v1/media/file/${uploadId}${queryString}`;
-  }
-  if (cleanBase === '' || cleanBase === '/') {
-    return `/api/v1/media/file/${uploadId}${queryString}`;
-  }
+  const prefix = cleanBase.endsWith('/api/v1')
+    ? `${cleanBase}/media`
+    : cleanBase.startsWith('http://') || cleanBase.startsWith('https://')
+    ? `${cleanBase}/api/v1/media`
+    : `/api/v1/media`;
 
-  return `${cleanBase}/media/file/${uploadId}${queryString}`;
+  return `${prefix}/${resolvedTenant}/${uploadId}${downloadQuery}`;
 }
 
 /**
  * toRelativeMediaUrl normalizes any media URL or upload ID to a consistent relative API path
- * (e.g. "/api/v1/media/file/samwad/photo.png"). Absolute origins (http://...) are stripped so that
+ * (e.g. "/api/v1/media/platform/samwad/photo.png"). Absolute origins (http://...) are stripped so that
  * all URLs persisted to databases and payloads remain clean, environment-agnostic paths.
  */
-export function toRelativeMediaUrl(urlOrId: string): string {
+export function toRelativeMediaUrl(urlOrId: string, tenant?: string): string {
   if (!urlOrId) return '';
   const trimmed = urlOrId.trim();
   if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
@@ -121,6 +111,7 @@ export function toRelativeMediaUrl(urlOrId: string): string {
 
   // Extract query parameters and path
   const [basePath, searchPart] = trimmed.split('?');
+  const existingParams = new URLSearchParams(searchPart || '');
   let uploadId = basePath;
   if (uploadId.startsWith('http://') || uploadId.startsWith('https://')) {
     try {
@@ -132,6 +123,13 @@ export function toRelativeMediaUrl(urlOrId: string): string {
   }
 
   uploadId = uploadId.replace(/^\/+/, '');
+  let activeTenant =
+    tenant ||
+    existingParams.get('tenant') ||
+    existingParams.get('tenant_code') ||
+    getWorkspaceFromUrl() ||
+    'platform';
+
   if (uploadId.startsWith('api/v1/media/file/')) {
     uploadId = uploadId.slice('api/v1/media/file/'.length);
   } else if (uploadId.startsWith('media/file/')) {
@@ -139,6 +137,7 @@ export function toRelativeMediaUrl(urlOrId: string): string {
   } else if (uploadId.startsWith('api/v1/media/')) {
     const parts = uploadId.slice('api/v1/media/'.length).split('/');
     if (parts.length >= 3) {
+      activeTenant = parts[0] || activeTenant;
       uploadId = parts.slice(1).join('/');
     } else {
       uploadId = parts.join('/');
@@ -146,6 +145,7 @@ export function toRelativeMediaUrl(urlOrId: string): string {
   } else if (uploadId.startsWith('media/')) {
     const parts = uploadId.slice('media/'.length).split('/');
     if (parts.length >= 3) {
+      activeTenant = parts[0] || activeTenant;
       uploadId = parts.slice(1).join('/');
     } else {
       uploadId = parts.join('/');
@@ -153,8 +153,8 @@ export function toRelativeMediaUrl(urlOrId: string): string {
   }
   uploadId = uploadId.replace(/^\/+/, '');
 
-  const queryString = searchPart ? `?${searchPart}` : '';
-  return `/api/v1/media/file/${uploadId}${queryString}`;
+  const downloadQuery = (searchPart && searchPart.includes('download=true')) ? '?download=true' : '';
+  return `/api/v1/media/${activeTenant}/${uploadId}${downloadQuery}`;
 }
 
 /**
