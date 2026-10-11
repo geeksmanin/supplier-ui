@@ -92,6 +92,8 @@ export { DraftBanner as DraftBannerComponent } from './components/DraftBanner';
 export { isMobileDevice } from './utils/device';
 export { resolveMediaUrl, uploadMediaFile, toRelativeMediaUrl, getActiveTenant } from './utils/media';
 export type { ResolveMediaOptions } from './utils/media';
+export { getDocTheme, getDocumentExtension, isDocumentFile, isUrlString, extractMediaUrl } from './utils/document';
+export type { DocTheme, DocumentCategory } from './utils/document';
 export {
   MEDIA_CACHE_NAME,
   getMediaCacheKey,
