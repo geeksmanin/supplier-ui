@@ -22,6 +22,7 @@ if (typeof document !== 'undefined' && !document.getElementById('__searchable-en
       outline: none !important;
       box-shadow: none !important;
       border: none !important;
+      border-color: transparent !important;
       background: transparent !important;
       -webkit-appearance: none !important;
       -moz-appearance: none !important;
@@ -516,7 +517,8 @@ export function SearchableEntitySelect<T = any>({
         {/* Single Direct Search Input */}
         <input
           ref={inputRef}
-          className="searchable-entity-select-input"
+          className="searchable-entity-select-input bare-input"
+          data-bare-input="true"
           type="text"
           value={getInputValue()}
           placeholder={currentSelectedEntity && !isOpen && !multi ? getEntityLabel(currentSelectedEntity) : placeholder}

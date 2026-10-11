@@ -593,6 +593,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                   <input
                     ref={partyInputRef}
                     type="text"
+                    className="bare-input"
+                    data-bare-input="true"
                     placeholder={`Search ${partyConfig.label} by name, GSTIN...`}
                     value={partySearchQuery}
                     onChange={(e) => setPartySearchQuery(e.target.value)}
@@ -791,6 +793,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
           {/* Central Product Search Bar */}
           <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0', position: 'relative' }}>
             <div
+              className="bounding-box fast-voucher-search-box"
+              data-bounding-box="true"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -816,7 +820,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
               <input
                 ref={searchInputRef}
                 type="text"
-                className="fast-voucher-search-input"
+                className="fast-voucher-search-input bare-input"
+                data-bare-input="true"
                 placeholder={
                   catalogConfig?.placeholder ||
                   '⚡ Type Product Name, SKU code, or scan Barcode (Press F4)...'

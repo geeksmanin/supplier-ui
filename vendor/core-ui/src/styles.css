@@ -62,6 +62,7 @@ h1, h2, h3, h4, h5, h6 {
   outline: none !important;
   box-shadow: none !important;
   border: none !important;
+  border-color: transparent !important;
   background-color: transparent !important;
   -webkit-appearance: none !important;
   -moz-appearance: none !important;
@@ -315,11 +316,11 @@ select:focus {
 }
 
 /* Global High-Visibility Active Focus Ring & Pointer Hover Highlighting */
-input:not(.bare-input):not([data-bare-input]):not(.wa-bare-input):not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus,
-textarea:not(.bare-input):not([data-bare-input]):not(.wa-bare-input):not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus,
+input:not(.bare-input):not([data-bare-input]):not(.fast-voucher-search-input):not(.searchable-entity-select-input):not(.wa-bare-input):not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus,
+textarea:not(.bare-input):not([data-bare-input]):not(.fast-voucher-search-input):not(.searchable-entity-select-input):not(.wa-bare-input):not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus,
 select:focus, button:focus-visible,
-input:not(.bare-input):not([data-bare-input]):not(.wa-bare-input):not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus-visible,
-textarea:not(.bare-input):not([data-bare-input]):not(.wa-bare-input):not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus-visible,
+input:not(.bare-input):not([data-bare-input]):not(.fast-voucher-search-input):not(.searchable-entity-select-input):not(.wa-bare-input):not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus-visible,
+textarea:not(.bare-input):not([data-bare-input]):not(.fast-voucher-search-input):not(.searchable-entity-select-input):not(.wa-bare-input):not(.wa-image-caption-input):not(.wa-caption-input):not([data-dark-input]):focus-visible,
 select:focus-visible {
   outline: none !important;
   border-color: #4f46e5 !important;
@@ -327,8 +328,8 @@ select:focus-visible {
   background-color: #ffffff !important;
 }
 
-input:not(.bare-input):not([data-bare-input]):not(.wa-bare-input):hover,
-textarea:not(.bare-input):not([data-bare-input]):not(.wa-bare-input):hover,
+input:not(.bare-input):not([data-bare-input]):not(.fast-voucher-search-input):not(.searchable-entity-select-input):not(.wa-bare-input):hover,
+textarea:not(.bare-input):not([data-bare-input]):not(.fast-voucher-search-input):not(.searchable-entity-select-input):not(.wa-bare-input):hover,
 select:hover {
   border-color: #6366f1 !important;
 }
@@ -339,6 +340,7 @@ select:hover {
    remains unbordered and clean without an awkward nested rectangular box. */
 .bounding-box:focus-within,
 [data-bounding-box]:focus-within,
+.fast-voucher-search-box:focus-within,
 .search-box:focus-within,
 .searchBox:focus-within,
 .searchBar:focus-within,
@@ -369,6 +371,12 @@ select:hover {
 [data-bounding-box] input:focus-visible,
 [data-bounding-box] textarea:focus,
 [data-bounding-box] textarea:focus-visible,
+.fast-voucher-search-box input:focus,
+.fast-voucher-search-box input:focus-visible,
+.fast-voucher-search-input:focus,
+.fast-voucher-search-input:focus-visible,
+.searchable-entity-select-input:focus,
+.searchable-entity-select-input:focus-visible,
 .wa-bounding-box input:focus,
 .wa-bounding-box input:focus-visible,
 [data-wa-bounding-box] input:focus,
@@ -408,6 +416,9 @@ input[data-bare-input]:focus-visible {
 
 .bounding-box input:hover,
 [data-bounding-box] input:hover,
+.fast-voucher-search-box input:hover,
+.fast-voucher-search-input:hover,
+.searchable-entity-select-input:hover,
 .wa-bounding-box input:hover,
 [data-wa-bounding-box] input:hover,
 .search-box input:hover,
