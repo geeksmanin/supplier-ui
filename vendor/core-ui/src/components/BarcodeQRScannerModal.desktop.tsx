@@ -4,13 +4,8 @@ import { Input } from './Input';
 import { apiClient } from '../api/client';
 import { useToast } from './Toast/Toast';
 
-export interface BarcodeQRScannerModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onScanSuccess: (data: any) => void;
-  lookupUrl?: string;
-  title?: string;
-}
+import { BarcodeQRScannerModalProps } from './BarcodeQRScannerModal.types';
+export type { BarcodeQRScannerModalProps };
 
 export const BarcodeQRScannerModalDesktop: React.FC<BarcodeQRScannerModalProps> = ({
   isOpen,

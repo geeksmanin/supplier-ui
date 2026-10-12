@@ -3,7 +3,7 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { apiClient } from '../api/client';
 import { useToast } from './Toast/Toast';
-import { BarcodeQRScannerModalProps } from './BarcodeQRScannerModal.desktop';
+import { BarcodeQRScannerModalProps } from './BarcodeQRScannerModal.types';
 
 const STYLE_ID = 'bqs-mobile-styles';
 if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {

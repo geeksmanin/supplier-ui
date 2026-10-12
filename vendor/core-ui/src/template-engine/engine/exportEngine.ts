@@ -139,7 +139,7 @@ export async function exportPagesToPdfBlob(
     const el = pageElements[i];
 
     if (i > 0) {
-      pdf.addPage();
+      pdf.addPage(pdfFormat, options?.orientation || 'p');
     }
 
     const canvas = await renderCleanElementCanvas(el, 1.5);
