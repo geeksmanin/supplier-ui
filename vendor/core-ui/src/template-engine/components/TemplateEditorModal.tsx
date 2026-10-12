@@ -5,6 +5,7 @@ import { DEFAULT_STARTER_HTML_TEMPLATE } from '../engine/starterTemplates';
 import { paginateCollection } from '../engine/pagination';
 import { interpolateTemplate } from '../engine/interpolator';
 import { ExportTemplateModal } from './ExportTemplateModal';
+import { Select } from '../../components/Select';
 
 export interface TemplateEditorModalProps {
   isOpen: boolean;
@@ -354,16 +355,17 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
                 </Section>
 
                 <Section label="Target Format">
-                  <select
+                  <Select
                     value={targetFormat}
-                    onChange={(e) => setTargetFormat(e.target.value as any)}
+                    onChange={(val) => setTargetFormat(val as any)}
+                    options={[
+                      { value: 'HTML', label: 'HTML / Web View' },
+                      { value: 'PDF', label: 'Multi-Page PDF' },
+                      { value: 'Image', label: 'High-Res PNG Image' },
+                      { value: 'Both', label: 'Both (Image & PDF)' },
+                    ]}
                     style={{ ...inputStyle, backgroundColor: '#ffffff' }}
-                  >
-                    <option value="HTML">HTML / Web View</option>
-                    <option value="PDF">Multi-Page PDF</option>
-                    <option value="Image">High-Res PNG Image</option>
-                    <option value="Both">Both (Image & PDF)</option>
-                  </select>
+                  />
                 </Section>
 
                 <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '0.75rem' }}>

@@ -5,7 +5,7 @@ import { useTemplateEngine } from '../hooks/useTemplateEngine';
 import { AvailableKeysInspector } from './AvailableKeysInspector';
 import { ExportTemplateModal } from './ExportTemplateModal';
 import { TemplateEditorModal } from './TemplateEditorModal';
-import { exportPageToImageBlob, exportPagesToPdfBlob, downloadBlob } from '../engine/exportEngine';
+import { exportPageToImageBlob, exportPagesToPdfBlob, downloadBlob, downloadTemplateCode } from '../engine/exportEngine';
 import { interpolateTemplate } from '../engine/interpolator';
 
 export interface VoucherDetailsModalProps {
@@ -19,6 +19,7 @@ export interface VoucherDetailsModalProps {
   title?: string;
   onWhatsAppShare?: (blob?: Blob, phone?: string) => void;
   onExportExcel?: () => void;
+  onTemplateChange?: (templateId: string) => void;
 }
 
 export const VoucherDetailsModal: React.FC<VoucherDetailsModalProps> = ({
@@ -32,6 +33,7 @@ export const VoucherDetailsModal: React.FC<VoucherDetailsModalProps> = ({
   title = 'Voucher Details Export & Printing',
   onWhatsAppShare,
   onExportExcel,
+  onTemplateChange,
 }) => {
   const [showKeysInspector, setShowKeysInspector] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -119,6 +121,7 @@ export const VoucherDetailsModal: React.FC<VoucherDetailsModalProps> = ({
   const handleSaveCustomTemplate = (newTpl: TemplateDefinition) => {
     setActiveTemplates((prev) => [newTpl, ...prev.filter((t) => t.id !== newTpl.id)]);
     setSelectedTemplateId(newTpl.id);
+    onTemplateChange?.(newTpl.id);
   };
 
   return (
@@ -231,25 +234,46 @@ export const VoucherDetailsModal: React.FC<VoucherDetailsModalProps> = ({
             </button>
 
             {selectedTemplate && (
-              <button
-                onClick={() => setShowExportModal(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                  backgroundColor: '#eff6ff',
-                  border: '1px solid #bfdbfe',
-                  padding: '0.45rem 0.85rem',
-                  borderRadius: '8px',
-                  fontSize: '0.78rem',
-                  fontWeight: 800,
-                  color: '#1d4ed8',
-                  cursor: 'pointer',
-                }}
-                title="Export this template definition as TypeScript/JSON to commit into Git"
-              >
-                ⚡ Export Template (Git)
-              </button>
+              <>
+                <button
+                  onClick={() => downloadTemplateCode(selectedTemplate, 'json')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    backgroundColor: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    padding: '0.45rem 0.85rem',
+                    borderRadius: '8px',
+                    fontSize: '0.78rem',
+                    fontWeight: 800,
+                    color: '#166534',
+                    cursor: 'pointer',
+                  }}
+                  title="Download template JSON format directly to commit to codebase"
+                >
+                  💾 Download JSON
+                </button>
+                <button
+                  onClick={() => setShowExportModal(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    backgroundColor: '#eff6ff',
+                    border: '1px solid #bfdbfe',
+                    padding: '0.45rem 0.85rem',
+                    borderRadius: '8px',
+                    fontSize: '0.78rem',
+                    fontWeight: 800,
+                    color: '#1d4ed8',
+                    cursor: 'pointer',
+                  }}
+                  title="Export this template definition as TypeScript/JSON to commit into Git"
+                >
+                  ⚡ Export Code
+                </button>
+              </>
             )}
 
             <button
@@ -290,7 +314,10 @@ export const VoucherDetailsModal: React.FC<VoucherDetailsModalProps> = ({
               return (
                 <button
                   key={t.id}
-                  onClick={() => setSelectedTemplateId(t.id)}
+                  onClick={() => {
+                    setSelectedTemplateId(t.id);
+                    onTemplateChange?.(t.id);
+                  }}
                   style={{
                     padding: '0.45rem 0.9rem',
                     borderRadius: '8px',

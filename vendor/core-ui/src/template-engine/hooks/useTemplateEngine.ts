@@ -68,6 +68,13 @@ export function useTemplateEngine({
     }
   }, [availableTemplates, selectedTemplateId]);
 
+  // Sync when defaultTemplateId prop changes
+  useEffect(() => {
+    if (defaultTemplateId && availableTemplates.some((t) => t.id === defaultTemplateId)) {
+      setSelectedTemplateId(defaultTemplateId);
+    }
+  }, [defaultTemplateId, availableTemplates]);
+
   const selectedTemplate = useMemo(() => {
     return availableTemplates.find((t) => t.id === selectedTemplateId) || availableTemplates[0] || null;
   }, [availableTemplates, selectedTemplateId]);
