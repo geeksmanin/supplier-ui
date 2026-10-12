@@ -4,7 +4,12 @@ import { TemplateDefinition } from '../engine/types';
 import { DEFAULT_STARTER_HTML_TEMPLATE } from '../engine/starterTemplates';
 import { paginateCollection } from '../engine/pagination';
 import { interpolateTemplate } from '../engine/interpolator';
-import { exportPageToImageBlob, exportPagesToPdfBlob, downloadBlob } from '../engine/exportEngine';
+import {
+  exportPageToImageBlob,
+  exportPagesToPdfBlob,
+  downloadBlob,
+  downloadTemplateCode,
+} from '../engine/exportEngine';
 import { ExportTemplateModal } from './ExportTemplateModal';
 import { AvailableKeysInspector } from './AvailableKeysInspector';
 
@@ -637,6 +642,23 @@ export const TemplateEditorPage: React.FC<TemplateEditorPageProps> = ({
             }}
           >
             🖨️ Print
+          </button>
+
+          <button
+            onClick={() => downloadTemplateCode(currentDraftTemplate, 'json')}
+            title="Download template in JSON format for public/templates/"
+            style={{
+              backgroundColor: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              color: '#166534',
+              padding: '0.32rem 0.65rem',
+              borderRadius: '7px',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+            }}
+          >
+            📥 JSON
           </button>
 
           <button
@@ -1392,6 +1414,7 @@ export const TemplateEditorPage: React.FC<TemplateEditorPageProps> = ({
                     pageIndex: page.pageIndex,
                     pageNumber: page.pageIndex + 1,
                     totalPages: paginatedPages.length,
+                    isFirstPage: page.isFirstPage,
                     isLastPage: page.isLastPage,
                     irn_qr_url: irnQrUrl,
                     upi_qr_url: upiQrUrl,

@@ -74,6 +74,20 @@ function resolveToken(tokenExpr: string, rowItem?: any, model?: DynamicDataModel
  */
 function resolveConditionValue(path: string, rowItem?: any, model?: DynamicDataModel, extraContext?: Record<string, any>): any {
   const cleanPath = path.trim().replace(/^if\s+/i, '');
+  if (cleanPath === 'isFirstPage') {
+    if (extraContext && extraContext.isFirstPage !== undefined) return Boolean(extraContext.isFirstPage);
+    if (extraContext && extraContext.pageIndex !== undefined) return extraContext.pageIndex === 0;
+    if (extraContext && extraContext.pageNumber !== undefined) return extraContext.pageNumber === 1;
+  }
+  if (cleanPath === 'isLastPage') {
+    if (extraContext && extraContext.isLastPage !== undefined) return Boolean(extraContext.isLastPage);
+    if (extraContext && extraContext.totalPages !== undefined && extraContext.pageIndex !== undefined) {
+      return extraContext.pageIndex === extraContext.totalPages - 1;
+    }
+    if (extraContext && extraContext.totalPages !== undefined && extraContext.pageNumber !== undefined) {
+      return extraContext.pageNumber === extraContext.totalPages;
+    }
+  }
   if (rowItem && typeof rowItem === 'object') {
     const cleanProp = cleanPath.replace(/^items?\./i, '');
     if (rowItem[cleanProp] !== undefined) return rowItem[cleanProp];

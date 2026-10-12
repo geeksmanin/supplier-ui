@@ -67,7 +67,9 @@ async function renderCleanElementCanvas(
   wrapper.style.position = 'fixed';
   wrapper.style.left = '-10000px';
   wrapper.style.top = '0';
-  wrapper.style.width = '210mm';
+  wrapper.style.width = '1000px';
+  wrapper.style.minHeight = '1414px';
+  wrapper.style.boxSizing = 'border-box';
   wrapper.style.transform = 'none';
   wrapper.style.zIndex = '-99999';
   wrapper.style.backgroundColor = '#ffffff';
@@ -105,7 +107,7 @@ export async function exportPageToImageBlob(
   element: HTMLElement,
   options?: { scale?: number }
 ): Promise<Blob | null> {
-  const canvas = await renderCleanElementCanvas(element, options?.scale || 2);
+  const canvas = await renderCleanElementCanvas(element, options?.scale || 1.5);
 
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob), 'image/png', 0.95);
@@ -117,15 +119,16 @@ export async function exportPageToImageBlob(
  */
 export async function exportPagesToPdfBlob(
   pageElements: HTMLElement[],
-  options?: { quality?: number }
+  options?: { quality?: number; format?: string; orientation?: 'p' | 'l' }
 ): Promise<Blob> {
   const pkg = 'jspdf';
   const jsPdfModule = await import(/* @vite-ignore */ pkg);
   const JsPdfClass = (jsPdfModule as any).jsPDF || (jsPdfModule as any).default || jsPdfModule;
+  const pdfFormat = options?.format ? options.format.toLowerCase() : 'a4';
   const pdf = new JsPdfClass({
-    orientation: 'p',
+    orientation: options?.orientation || 'p',
     unit: 'mm',
-    format: 'a4',
+    format: pdfFormat,
     compress: true,
   });
 
@@ -139,9 +142,24 @@ export async function exportPagesToPdfBlob(
       pdf.addPage();
     }
 
-    const canvas = await renderCleanElementCanvas(el, 2);
-    const imgData = canvas.toDataURL('image/jpeg', options?.quality || 0.92);
-    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+    const canvas = await renderCleanElementCanvas(el, 1.5);
+    const imgData = canvas.toDataURL('image/jpeg', options?.quality || 0.85);
+
+    const canvasRatio = canvas.height / canvas.width;
+    const expectedRatio = pdfHeight / pdfWidth; // ~1.4142857
+
+    if (Math.abs(canvasRatio - expectedRatio) < 0.05) {
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+    } else {
+      const renderedHeight = pdfWidth * canvasRatio;
+      if (renderedHeight <= pdfHeight) {
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, renderedHeight, undefined, 'FAST');
+      } else {
+        const renderedWidth = pdfHeight / canvasRatio;
+        const xOffset = (pdfWidth - renderedWidth) / 2;
+        pdf.addImage(imgData, 'JPEG', xOffset, 0, renderedWidth, pdfHeight, undefined, 'FAST');
+      }
+    }
   }
 
   return pdf.output('blob');

@@ -652,6 +652,7 @@ export const TemplateEditorModal: React.FC<TemplateEditorModalProps> = ({
                     pageIndex: page.pageIndex,
                     pageNumber: page.pageIndex + 1,
                     totalPages: paginatedPages.length,
+                    isFirstPage: page.isFirstPage,
                     isLastPage: page.isLastPage,
                     irn_qr_url: irnQrUrl || '',
                     upi_qr_url: upiQrUrl || '',

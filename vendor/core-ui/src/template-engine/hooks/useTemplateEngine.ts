@@ -88,9 +88,30 @@ export function useTemplateEngine({
     let isMounted = true;
     setIsQrLoading(Boolean(irnQrData || upiQrData));
 
+    const effectiveIrnData =
+      irnQrData ||
+      dataModel.getValue('otherDetails.EInvoiceIRNQRCode') ||
+      dataModel.getValue('EInvoiceIRNQRCode') ||
+      (dataModel.getRaw() as any)?.VVDTO?.BMDDTO?.EInvoiceIRNQRCode ||
+      (dataModel.getRaw() as any)?.BMDDTO?.EInvoiceIRNQRCode ||
+      '';
+
+    const isPaid = Boolean(
+      dataModel.getValue('IsPaid') ||
+      dataModel.getValue('payment.IsPaid') ||
+      String(dataModel.getValue('payment.Status') || '').toUpperCase() === 'PAID'
+    );
+
     Promise.all([
-      irnQrData ? generateQrCodeDataUrl(irnQrData, qrOptions) : Promise.resolve(''),
-      upiQrData ? generateQrCodeDataUrl(upiQrData, { width: 140 }) : Promise.resolve(''),
+      effectiveIrnData
+        ? generateQrCodeDataUrl(effectiveIrnData, {
+            ...qrOptions,
+            width: qrOptions?.width || 700,
+            margin: qrOptions?.margin !== undefined ? qrOptions.margin : 2,
+            errorCorrectionLevel: 'L',
+          })
+        : Promise.resolve(''),
+      (!isPaid && upiQrData) ? generateQrCodeDataUrl(upiQrData, { width: 140 }) : Promise.resolve(''),
     ]).then(([irnRes, upiRes]) => {
       if (isMounted) {
         setIrnQrUrl(irnRes);

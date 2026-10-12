@@ -13,7 +13,7 @@ export const ExportTemplateModal: React.FC<ExportTemplateModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const [format, setFormat] = useState<'json' | 'ts'>('ts');
+  const [format, setFormat] = useState<'json' | 'ts'>('json');
   const [copied, setCopied] = useState(false);
 
   if (!isOpen || !template) return null;
@@ -209,7 +209,7 @@ export const ExportTemplateModal: React.FC<ExportTemplateModalProps> = ({
           }}
         >
           <div>
-            💡 You can commit this file directly into <code>src/templates/registeredTemplates.ts</code>.
+            💡 You can save this file directly into <code>public/templates/{template.id}.json</code> or commit to Git.
           </div>
           <button
             onClick={onClose}

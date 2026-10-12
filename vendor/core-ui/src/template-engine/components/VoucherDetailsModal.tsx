@@ -73,6 +73,7 @@ export const VoucherDetailsModal: React.FC<VoucherDetailsModalProps> = ({
     '';
 
   const cleanDocNo = docNo ? docNo.replace(/[^a-zA-Z0-9_-]/g, '_') : 'voucher';
+  const isA5 = selectedTemplate?.targetFormat?.toUpperCase() === 'A5';
 
   const handleExportImage = async () => {
     if (!pagesContainerRef.current) return;
@@ -109,7 +110,9 @@ export const VoucherDetailsModal: React.FC<VoucherDetailsModalProps> = ({
 
     setIsExporting('pdf');
     try {
-      const pdfBlob = await exportPagesToPdfBlob(pageElements);
+      const pdfBlob = await exportPagesToPdfBlob(pageElements, {
+        format: isA5 ? 'a5' : 'a4',
+      });
       downloadBlob(pdfBlob, `${cleanDocNo}.pdf`);
     } catch (err) {
       console.error('Failed to export PDF:', err);
@@ -126,6 +129,7 @@ export const VoucherDetailsModal: React.FC<VoucherDetailsModalProps> = ({
 
   return (
     <div
+      className="voucher-modal-overlay"
       style={{
         position: 'fixed',
         top: 0,
@@ -143,7 +147,65 @@ export const VoucherDetailsModal: React.FC<VoucherDetailsModalProps> = ({
         fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
       }}
     >
+      <style>{`
+        @media print {
+          @page {
+            size: ${isA5 ? 'A5 portrait' : 'A4 portrait'};
+            margin: 0;
+          }
+          body, html {
+            background-color: #ffffff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          body > *:not(.voucher-modal-overlay) {
+            display: none !important;
+          }
+          .voucher-modal-overlay {
+            position: static !important;
+            background: none !important;
+            backdrop-filter: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            display: block !important;
+            width: 100% !important;
+            height: auto !important;
+          }
+          .voucher-modal-dialog {
+            background: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            max-width: none !important;
+            height: auto !important;
+            display: block !important;
+            overflow: visible !important;
+          }
+          .voucher-modal-header,
+          .voucher-modal-subbar,
+          .voucher-modal-footer {
+            display: none !important;
+          }
+          .voucher-pages-container {
+            background: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            display: block !important;
+            overflow: visible !important;
+          }
+          .printable-page {
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            page-break-after: always !important;
+            break-after: page !important;
+            margin: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+          }
+        }
+      `}</style>
       <div
+        className="voucher-modal-dialog"
         style={{
           backgroundColor: '#f1f5f9',
           borderRadius: '20px',
@@ -159,6 +221,7 @@ export const VoucherDetailsModal: React.FC<VoucherDetailsModalProps> = ({
       >
         {/* ================= MODAL HEADER ================= */}
         <div
+          className="voucher-modal-header"
           style={{
             padding: '1rem 1.75rem',
             backgroundColor: '#ffffff',
@@ -295,6 +358,7 @@ export const VoucherDetailsModal: React.FC<VoucherDetailsModalProps> = ({
 
         {/* ================= CONTROLS & TEMPLATE SELECTOR ================= */}
         <div
+          className="voucher-modal-subbar"
           style={{
             padding: '0.75rem 1.75rem',
             backgroundColor: '#ffffff',
@@ -439,6 +503,7 @@ export const VoucherDetailsModal: React.FC<VoucherDetailsModalProps> = ({
         {/* ================= PREVIEW VIEWPORT ================= */}
         <div
           ref={pagesContainerRef}
+          className="voucher-pages-container print-preview-viewport"
           style={{
             flex: 1,
             overflowY: 'auto',
@@ -496,6 +561,7 @@ export const VoucherDetailsModal: React.FC<VoucherDetailsModalProps> = ({
                 pageIndex: page.pageIndex,
                 pageNumber: page.pageIndex + 1,
                 totalPages: paginatedPages.length,
+                isFirstPage: page.isFirstPage,
                 isLastPage: page.isLastPage,
                 irn_qr_url: qrCodes.irnQrUrl,
                 upi_qr_url: qrCodes.upiQrUrl,
@@ -506,8 +572,8 @@ export const VoucherDetailsModal: React.FC<VoucherDetailsModalProps> = ({
                   key={page.pageIndex}
                   className="printable-page"
                   style={{
-                    width: '210mm',
-                    minHeight: '297mm',
+                    width: isA5 ? '148mm' : '210mm',
+                    minHeight: isA5 ? '210mm' : '297mm',
                     backgroundColor: '#ffffff',
                     boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.2)',
                     borderRadius: '8px',
@@ -535,6 +601,7 @@ export const VoucherDetailsModal: React.FC<VoucherDetailsModalProps> = ({
 
         {/* ================= FOOTER STATUS ================= */}
         <div
+          className="voucher-modal-footer"
           style={{
             padding: '0.75rem 1.75rem',
             backgroundColor: '#ffffff',
@@ -547,7 +614,7 @@ export const VoucherDetailsModal: React.FC<VoucherDetailsModalProps> = ({
           }}
         >
           <div>
-            Showing <b>{paginatedPages.length}</b> A4 printable pages &nbsp;|&nbsp; Balanced Item Grid
+            Showing <b>{paginatedPages.length}</b> {isA5 ? 'A5' : 'A4'} printable pages &nbsp;|&nbsp; Balanced Item Grid
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <span>
