@@ -1,5 +1,7 @@
 import { TemplateDefinition } from './types';
 
+const dynamicImport = (moduleName: string): Promise<any> => import(/* @vite-ignore */ moduleName);
+
 /**
  * Ensures all <img> elements inside a container are completely loaded before capturing
  */
@@ -58,17 +60,21 @@ export function downloadBlob(blob: Blob, fileName: string): void {
  */
 async function renderCleanElementCanvas(
   element: HTMLElement,
-  scale: number = 2
+  scale: number = 2,
+  format?: string
 ): Promise<HTMLCanvasElement> {
   await waitForImagesToLoad(element);
+
+  const isA5 = format?.toLowerCase() === 'a5';
+  const isThermal = format?.toLowerCase().includes('thermal');
 
   // Mount offscreen without any CSS transform ancestors
   const wrapper = document.createElement('div');
   wrapper.style.position = 'fixed';
   wrapper.style.left = '-10000px';
   wrapper.style.top = '0';
-  wrapper.style.width = '1000px';
-  wrapper.style.minHeight = '1414px';
+  wrapper.style.width = isThermal ? '380px' : isA5 ? '700px' : '1000px';
+  wrapper.style.minHeight = isThermal ? 'auto' : isA5 ? '990px' : '1414px';
   wrapper.style.boxSizing = 'border-box';
   wrapper.style.transform = 'none';
   wrapper.style.zIndex = '-99999';
@@ -84,8 +90,7 @@ async function renderCleanElementCanvas(
 
   try {
     await waitForImagesToLoad(clone);
-    const pkg = 'html2canvas';
-    const h2cModule = await import(/* @vite-ignore */ pkg);
+    const h2cModule = await dynamicImport('html2canvas');
     const html2canvas = (h2cModule as any).default || h2cModule;
     return await html2canvas(clone, {
       scale,
@@ -105,9 +110,9 @@ async function renderCleanElementCanvas(
  */
 export async function exportPageToImageBlob(
   element: HTMLElement,
-  options?: { scale?: number }
+  options?: { scale?: number; format?: string }
 ): Promise<Blob | null> {
-  const canvas = await renderCleanElementCanvas(element, options?.scale || 1.5);
+  const canvas = await renderCleanElementCanvas(element, options?.scale || 1.5, options?.format);
 
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob), 'image/png', 0.95);
@@ -115,14 +120,13 @@ export async function exportPageToImageBlob(
 }
 
 /**
- * Compiles an array of page HTML elements into an A4 multi-page PDF Blob and jsPDF instance
+ * Compiles an array of page HTML elements into an A4/A5 multi-page PDF Blob and jsPDF instance
  */
 export async function exportPagesToPdfBlob(
   pageElements: HTMLElement[],
   options?: { quality?: number; format?: string; orientation?: 'p' | 'l' }
 ): Promise<Blob> {
-  const pkg = 'jspdf';
-  const jsPdfModule = await import(/* @vite-ignore */ pkg);
+  const jsPdfModule = await dynamicImport('jspdf');
   const JsPdfClass = (jsPdfModule as any).jsPDF || (jsPdfModule as any).default || jsPdfModule;
   const pdfFormat = options?.format ? options.format.toLowerCase() : 'a4';
   const pdf = new JsPdfClass({
@@ -142,7 +146,7 @@ export async function exportPagesToPdfBlob(
       pdf.addPage(pdfFormat, options?.orientation || 'p');
     }
 
-    const canvas = await renderCleanElementCanvas(el, 1.5);
+    const canvas = await renderCleanElementCanvas(el, 1.5, pdfFormat);
     const imgData = canvas.toDataURL('image/jpeg', options?.quality || 0.85);
 
     const canvasRatio = canvas.height / canvas.width;

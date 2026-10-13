@@ -96,7 +96,13 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       cleanUrl.endsWith('.webp') ||
       cleanUrl.endsWith('.svg') ||
       cleanUrl.endsWith('.bmp') ||
-      path.startsWith('data:image/');
+      cleanUrl.includes('/media/') ||
+      folder === 'organisations' ||
+      folder === 'logos' ||
+      folder === 'avatars' ||
+      folder === 'company' ||
+      path.startsWith('data:image/') ||
+      path.startsWith('blob:');
   };
 
   const openAttachment = (url: string) => {

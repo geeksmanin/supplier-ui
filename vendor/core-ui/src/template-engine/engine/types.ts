@@ -17,6 +17,8 @@ export interface TemplateDefinition {
   description?: string;
   series: string[];                 // e.g. ["B"], ["SO-5"], or ["*"] for all
   targetFormat: 'HTML' | 'EXCEL' | 'TEXT' | 'PDF' | 'Image' | 'Both' | 'THERMAL_3INCH' | 'THERMAL' | 'A4' | (string & {});
+  pageSize?: 'A4' | 'A5' | 'A3' | 'LETTER' | 'LEGAL' | 'THERMAL' | 'THERMAL_3INCH' | string;
+  orientation?: 'portrait' | 'landscape' | string;
   isActive: boolean;
   isSystemDefault?: boolean;
   paginationConfig?: PagePaginationConfig;

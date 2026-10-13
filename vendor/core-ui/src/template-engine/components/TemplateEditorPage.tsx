@@ -299,7 +299,10 @@ export const TemplateEditorPage: React.FC<TemplateEditorPageProps> = ({
     setIsExporting('pdf');
     try {
       const cleanDoc = docNo ? docNo.replace(/[^a-zA-Z0-9_-]/g, '_') : 'voucher';
-      const pdfBlob = await exportPagesToPdfBlob(pageElements);
+      const isA5 = String(currentDraftTemplate.targetFormat || '').toUpperCase() === 'A5';
+      const pdfBlob = await exportPagesToPdfBlob(pageElements, {
+        format: isA5 ? 'a5' : (currentDraftTemplate.targetFormat?.toLowerCase() || 'a4'),
+      });
       downloadBlob(pdfBlob, `${cleanDoc}_${currentDraftTemplate.id}.pdf`);
     } catch (err) {
       console.error('Failed to export PDF:', err);
