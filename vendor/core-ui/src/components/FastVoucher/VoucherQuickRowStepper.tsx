@@ -497,6 +497,7 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
           </button>
           <button
             type="button"
+            data-testid="stepper-commit-btn"
             onClick={handleCommit}
             style={{
               display: 'inline-flex',

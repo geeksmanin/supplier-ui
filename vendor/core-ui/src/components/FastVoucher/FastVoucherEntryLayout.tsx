@@ -118,6 +118,9 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
         onRestoreDraft(bill);
       } else {
         if (bill.party && onPartySelect) onPartySelect(bill.party);
+        if (Array.isArray(bill.items) && onAddItems) {
+          onAddItems(bill.items);
+        }
       }
     },
   });
@@ -346,18 +349,18 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
             : [];
 
         const merged: any[] = [];
-        // 1. Add Main Products first with _itemType: 'product'
-        rawProducts.forEach((p: any) => {
-          merged.push({
-            ...p,
-            _itemType: 'product',
-          });
-        });
-        // 2. Add Variants with _itemType: 'variant'
+        // 1. Add Variants first with _itemType: 'variant' (exact SKU/barcode matches)
         rawVariants.forEach((v: any) => {
           merged.push({
             ...v,
             _itemType: 'variant',
+          });
+        });
+        // 2. Add Parent Products with _itemType: 'product'
+        rawProducts.forEach((p: any) => {
+          merged.push({
+            ...p,
+            _itemType: 'product',
           });
         });
 
@@ -382,8 +385,13 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
 
   // 5. Handle Product Selection from Search Bar
   const handleSelectProduct = (rawProduct: any) => {
-    // If it's a parent / main product -> open Variant Matrix Modal
+    // If it's a parent / main product
     if (rawProduct._itemType === 'product') {
+      const variants = Array.isArray(rawProduct.variants) ? rawProduct.variants : [];
+      if (variants.length === 1) {
+        handleSelectProduct({ ...variants[0], _itemType: 'variant', product: rawProduct });
+        return;
+      }
       setIsSearchOpen(false);
       setSearchQuery('');
       openVariantMatrix(rawProduct);
@@ -913,6 +921,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                   return (
                     <div
                       key={`${res._itemType || 'item'}-${res.id || idx}`}
+                      data-testid={`search-result-${idx}`}
+                      className="fast-voucher-search-result-row"
                       onClick={() => handleSelectProduct(res)}
                       style={{
                         display: 'flex',
