@@ -1,7 +1,5 @@
 import { TemplateDefinition } from './types';
 
-const dynamicImport = (moduleName: string): Promise<any> => import(/* @vite-ignore */ moduleName);
-
 /**
  * Ensures all <img> elements inside a container are completely loaded before capturing
  */
@@ -90,7 +88,7 @@ async function renderCleanElementCanvas(
 
   try {
     await waitForImagesToLoad(clone);
-    const h2cModule = await dynamicImport('html2canvas');
+    const h2cModule = await import('html2canvas');
     const html2canvas = (h2cModule as any).default || h2cModule;
     return await html2canvas(clone, {
       scale,
@@ -126,7 +124,7 @@ export async function exportPagesToPdfBlob(
   pageElements: HTMLElement[],
   options?: { quality?: number; format?: string; orientation?: 'p' | 'l' }
 ): Promise<Blob> {
-  const jsPdfModule = await dynamicImport('jspdf');
+  const jsPdfModule = await import('jspdf');
   const JsPdfClass = (jsPdfModule as any).jsPDF || (jsPdfModule as any).default || jsPdfModule;
   const pdfFormat = options?.format ? options.format.toLowerCase() : 'a4';
   const pdf = new JsPdfClass({
