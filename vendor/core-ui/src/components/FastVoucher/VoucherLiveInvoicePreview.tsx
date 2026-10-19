@@ -342,15 +342,29 @@ export const VoucherLiveInvoicePreview: React.FC<VoucherLiveInvoicePreviewProps>
                 min="0"
                 step="any"
                 value={discountMode === 'percent' ? (documentDiscountPercent || '') : (documentDiscountAmount || '')}
+                placeholder="0"
+                onFocus={(e) => {
+                  if (Number(e.target.value) === 0) {
+                    e.target.value = '';
+                  }
+                  e.target.select();
+                }}
+                onClick={(e) => {
+                  const target = e.target as HTMLInputElement;
+                  if (Number(target.value) === 0) {
+                    target.value = '';
+                  }
+                  target.select();
+                }}
                 onChange={(e) => {
-                  const val = parseFloat(e.target.value) || 0;
+                  const raw = e.target.value;
+                  const val = raw === '' ? 0 : (parseFloat(raw) || 0);
                   if (discountMode === 'percent') {
                     onDocumentDiscountChange?.(0, val);
                   } else {
                     onDocumentDiscountChange?.(val, 0);
                   }
                 }}
-                placeholder="0"
                 style={{
                   width: '80px',
                   textAlign: 'right',

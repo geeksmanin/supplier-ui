@@ -437,8 +437,25 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
             min="0"
             max="100"
             step="any"
-            value={discountPercent || ''}
-            onChange={(e) => setDiscountPercent(Number(e.target.value))}
+            placeholder="0"
+            value={discountPercent === 0 ? '' : discountPercent}
+            onFocus={(e) => {
+              if (Number(e.target.value) === 0) {
+                e.target.value = '';
+              }
+              e.target.select();
+            }}
+            onClick={(e) => {
+              const target = e.target as HTMLInputElement;
+              if (Number(target.value) === 0) {
+                target.value = '';
+              }
+              target.select();
+            }}
+            onChange={(e) => {
+              const raw = e.target.value;
+              setDiscountPercent(raw === '' ? 0 : Number(raw));
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();

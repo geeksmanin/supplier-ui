@@ -358,11 +358,12 @@ export const DataTable: React.FC<DataTableProps> = ({
 
   const processedColumns = React.useMemo(() => {
     let result = [...columns];
-    const hasSNo = columns.some(col => {
-      const k = col.key.toLowerCase().replace(/[\s_\.]/g, '');
+    const isSNoCol = (col: Column<any>) => {
+      const k = (col.key || '').toLowerCase().replace(/[\s_\.]/g, '');
       const l = (col.label || '').toLowerCase().replace(/[\s_\.]/g, '');
-      return k === 'sno' || k === 'index' || l === 'sno' || l === 'index';
-    });
+      return k === 'sno' || k === 's_no' || k === 'index' || l === 'sno' || l === 's_no' || l === 'index';
+    };
+    const hasSNo = columns.some(col => isSNoCol(col));
     if (!hasSNo && !hideSerialNumberColumn) {
       result.unshift({
         key: 's_no',
@@ -382,6 +383,13 @@ export const DataTable: React.FC<DataTableProps> = ({
         }
       });
     }
+    // Center-align serial number columns by default
+    result = result.map(col => {
+      if (isSNoCol(col) && !col.align) {
+        return { ...col, align: 'center' as const };
+      }
+      return col;
+    });
     const hasFiltersOrSorts = result.some(col => (col.filterType && col.filterType !== 'none') || col.sortable);
     const hasAction = result.some(col => col.key === 'action' || col.key === 'actions');
     if (hasFiltersOrSorts && !hasAction && !hideAutoActionColumn) {
@@ -1466,7 +1474,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                           }}
                         >
                           {selectable && (col.key === 'index' || col.key === 'sno' || col.key === 's_no') ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: col.align === 'center' ? 'center' : 'flex-start', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
                               <input
                                 type="checkbox"
                                 checked={selectedIds.has(rowId(row))}

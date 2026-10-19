@@ -1,11 +1,12 @@
 import React from 'react';
 import { GalaxyLoader, GalaxyLoaderProps } from './GalaxyLoader';
+import { GeeksmanOSLoader } from './GeeksmanOSLoader';
 
 export interface LoaderProps extends GalaxyLoaderProps {
   message?: string;
   fullscreen?: boolean;
   size?: 'sm' | 'md' | 'lg';
-  variant?: 'spinner' | 'galaxy';
+  variant?: 'spinner' | 'galaxy' | 'geeksman-os';
 }
 
 export const Loader: React.FC<LoaderProps> = ({
@@ -15,6 +16,17 @@ export const Loader: React.FC<LoaderProps> = ({
   variant = 'galaxy',
   ...galaxyProps
 }) => {
+  if (variant === 'geeksman-os') {
+    return (
+      <GeeksmanOSLoader
+        fullscreen={fullscreen}
+        statusMessage={message}
+        scale={size === 'sm' ? 0.6 : size === 'md' ? 0.82 : 1}
+        {...galaxyProps}
+      />
+    );
+  }
+
   if (variant === 'galaxy') {
     return (
       <GalaxyLoader
