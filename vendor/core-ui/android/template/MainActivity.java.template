@@ -1,13 +1,22 @@
 package {{PACKAGE_NAME}};
 
+import android.app.AlertDialog;
 import android.app.DownloadManager;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.view.ViewGroup;
 import android.webkit.CookieManager;
 import android.webkit.URLUtil;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebView;
 import android.widget.Toast;
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebViewClient;
 import com.capacitorjs.plugins.pushnotifications.PushNotificationsPlugin;
 import com.capacitorjs.plugins.app.AppPlugin;
 import com.capacitorjs.plugins.splashscreen.SplashScreenPlugin;
@@ -16,6 +25,8 @@ import com.capacitorjs.plugins.filesystem.FilesystemPlugin;
 import com.capacitorjs.plugins.share.SharePlugin;
 
 public class MainActivity extends BridgeActivity {
+    private static final String PREF_NAME = "GeeksmanAppConfig";
+    private static final String KEY_SERVER_URL = "custom_server_url";
     private GalaxyLoaderView galaxyLoaderView;
 
     @Override
@@ -32,17 +43,25 @@ public class MainActivity extends BridgeActivity {
 
         // Mount native GalaxyLoaderView directly over the window
         galaxyLoaderView = new GalaxyLoaderView(this, "{{SPLASH_BACKGROUND}}");
-        addContentView(galaxyLoaderView, new android.view.ViewGroup.LayoutParams(
-            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-            android.view.ViewGroup.LayoutParams.MATCH_PARENT
+        addContentView(galaxyLoaderView, new ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
         ));
 
-        // Load custom developer server URL if configured in SharedPreferences
+        // Configure WebView styling, error handling, downloads, and load dev URL
         if (this.bridge != null && this.bridge.getWebView() != null) {
-            android.content.SharedPreferences prefs = getSharedPreferences("GeeksmanAppConfig", MODE_PRIVATE);
-            String customUrl = prefs.getString("custom_server_url", null);
+            WebView webView = this.bridge.getWebView();
+            try {
+                webView.setBackgroundColor(Color.parseColor("{{SPLASH_BACKGROUND}}"));
+            } catch (Exception ignored) {}
+
+            setupConnectionErrorHandler();
+            setupDownloadListener();
+
+            SharedPreferences prefs = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+            String customUrl = prefs.getString(KEY_SERVER_URL, null);
             if (customUrl != null && !customUrl.trim().isEmpty()) {
-                this.bridge.getWebView().loadUrl(customUrl.trim());
+                webView.loadUrl(customUrl.trim());
             }
         }
     }
@@ -55,43 +74,140 @@ public class MainActivity extends BridgeActivity {
         });
     }
 
-        // Native DownloadManager Listener for Invoices, Reports, CSVs, and PDFs
-        if (this.bridge != null && this.bridge.getWebView() != null) {
-            this.bridge.getWebView().setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
-                try {
-                    // Blob and data URIs are generated client-side and handled via Capacitor Filesystem/Share
-                    if (url == null || url.startsWith("blob:") || url.startsWith("data:")) {
-                        return;
-                    }
+    private boolean isInternalOrDevUrl(Uri uri) {
+        if (uri == null) return false;
+        String host = uri.getHost();
+        if (host == null) return false;
 
-                    DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-                    if (mimetype != null && !mimetype.isEmpty()) {
-                        request.setMimeType(mimetype);
-                    }
-                    String cookies = CookieManager.getInstance().getCookie(url);
-                    if (cookies != null) {
-                        request.addRequestHeader("cookie", cookies);
-                    }
-                    if (userAgent != null) {
-                        request.addRequestHeader("User-Agent", userAgent);
-                    }
-                    request.setDescription("Downloading file...");
-                    String filename = URLUtil.guessFileName(url, contentDisposition, mimetype);
-                    request.setTitle(filename);
-                    request.allowScanningByMediaScanner();
-                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                    request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename);
+        SharedPreferences prefs = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        String customUrl = prefs.getString(KEY_SERVER_URL, null);
+        if (customUrl != null && !customUrl.trim().isEmpty()) {
+            try {
+                Uri customUri = Uri.parse(customUrl.trim());
+                if (host.equalsIgnoreCase(customUri.getHost())) {
+                    return true;
+                }
+            } catch (Exception ignored) {}
+        }
 
-                    DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-                    if (dm != null) {
-                        dm.enqueue(request);
-                        Toast.makeText(getApplicationContext(), "Downloading " + filename, Toast.LENGTH_SHORT).show();
-                    }
-                } catch (Exception e) {
-                    Toast.makeText(getApplicationContext(), "Download error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        // Local LAN, loopback, and emulator addresses
+        return host.startsWith("192.168.") ||
+               host.startsWith("10.") ||
+               host.matches("^172\\.(1[6-9]|2[0-9]|3[0-1])\\..*") ||
+               host.equals("10.0.2.2") ||
+               host.equals("localhost") ||
+               host.endsWith(".local");
+    }
+
+    private void setupConnectionErrorHandler() {
+        if (this.bridge == null || this.bridge.getWebView() == null) return;
+
+        WebView webView = this.bridge.getWebView();
+        webView.setWebViewClient(new BridgeWebViewClient(this.bridge) {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                if (request != null && isInternalOrDevUrl(request.getUrl())) {
+                    return false; // Keep inside WebView, DO NOT launch external browser
+                }
+                return super.shouldOverrideUrlLoading(view, request);
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String urlStr) {
+                if (urlStr != null && isInternalOrDevUrl(Uri.parse(urlStr))) {
+                    return false; // Keep inside WebView
+                }
+                return super.shouldOverrideUrlLoading(view, urlStr);
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                if (url != null && !url.equals("about:blank")) {
+                    dismissGalaxyLoader();
+                }
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                super.onReceivedError(view, request, error);
+
+                if (request.isForMainFrame()) {
+                    runOnUiThread(() -> {
+                        dismissGalaxyLoader();
+                        showServerUnreachableDialog(request.getUrl().toString());
+                    });
+                }
+            }
+        });
+    }
+
+    private void setupDownloadListener() {
+        if (this.bridge == null || this.bridge.getWebView() == null) return;
+
+        this.bridge.getWebView().setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
+            try {
+                if (url == null || url.startsWith("blob:") || url.startsWith("data:")) {
+                    return;
+                }
+
+                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+                if (mimetype != null && !mimetype.isEmpty()) {
+                    request.setMimeType(mimetype);
+                }
+                String cookies = CookieManager.getInstance().getCookie(url);
+                if (cookies != null) {
+                    request.addRequestHeader("cookie", cookies);
+                }
+                if (userAgent != null) {
+                    request.addRequestHeader("User-Agent", userAgent);
+                }
+                request.setDescription("Downloading file...");
+                String filename = URLUtil.guessFileName(url, contentDisposition, mimetype);
+                request.setTitle(filename);
+                request.allowScanningByMediaScanner();
+                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename);
+
+                DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                if (dm != null) {
+                    dm.enqueue(request);
+                    Toast.makeText(getApplicationContext(), "Downloading " + filename, Toast.LENGTH_SHORT).show();
+                }
+            } catch (Exception e) {
+                Toast.makeText(getApplicationContext(), "Download error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void showServerUnreachableDialog(String failedUrl) {
+        if (isFinishing()) return;
+
+        SharedPreferences prefs = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        boolean hasCustom = prefs.contains(KEY_SERVER_URL);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Server Unreachable");
+        builder.setMessage("Could not connect to:\n" + failedUrl + "\n\nIs your local development server running on the network?");
+
+        builder.setPositiveButton("Retry", (dialog, which) -> {
+            if (bridge != null && bridge.getWebView() != null) {
+                bridge.getWebView().reload();
+            }
+        });
+
+        if (hasCustom) {
+            builder.setNeutralButton("Reset Default", (dialog, which) -> {
+                prefs.edit().remove(KEY_SERVER_URL).apply();
+                String defaultUrl = bridge != null ? bridge.getServerUrl() : "";
+                if (!defaultUrl.isEmpty() && bridge != null && bridge.getWebView() != null) {
+                    bridge.getWebView().loadUrl(defaultUrl);
                 }
             });
         }
+
+        builder.setNegativeButton("Dismiss", null);
+        builder.show();
     }
 
     @Override

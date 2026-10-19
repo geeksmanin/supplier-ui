@@ -33,7 +33,9 @@ echo "=================================================="
 # 1. Sync Vendor & Build Web Assets
 echo "[1/4] Building web bundle and syncing Capacitor..."
 npm run build
-npx cap sync android
+if ! npx cap sync android 2>/dev/null; then
+  node -e "process.argv = ['node', 'cap', 'sync', 'android']; require('./node_modules/@capacitor/cli/dist/index').run()"
+fi
 
 # 2. Build Release APK via Gradle
 echo "[2/4] Compiling release APK with Gradle..."

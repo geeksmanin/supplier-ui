@@ -17,7 +17,12 @@ export const DevServerModal: React.FC<DevServerModalProps> = ({
 }) => {
   const [currentUrl, setCurrentUrl] = useState<string>('');
   const [selectedPreset, setSelectedPreset] = useState<'prod' | 'staging' | 'emulator' | 'custom'>('custom');
-  const [customInput, setCustomInput] = useState<string>('http://192.168.1.15:5173');
+  const [customInput, setCustomInput] = useState<string>(() => {
+    if (typeof window !== 'undefined' && window.location.port) {
+      return `http://192.168.1.15:${window.location.port}`;
+    }
+    return 'http://192.168.1.15:3004';
+  });
   const [isCapacitor, setIsCapacitor] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
@@ -100,11 +105,14 @@ export const DevServerModal: React.FC<DevServerModalProps> = ({
 
       // 2. Call Native Capacitor Plugin if available
       const cap = (window as any).Capacitor;
-      if (cap?.Plugins?.DevServer?.setServerUrl) {
+      if (isCapacitor && cap?.Plugins?.DevServer?.setServerUrl) {
         await cap.Plugins.DevServer.setServerUrl({ url: target });
+        setIsSaving(false);
+        onClose();
+        return;
       }
 
-      // 3. Reload environment
+      // 3. Reload environment for browser client
       setTimeout(() => {
         window.location.href = target;
       }, 300);
@@ -122,8 +130,11 @@ export const DevServerModal: React.FC<DevServerModalProps> = ({
 
     try {
       const cap = (window as any).Capacitor;
-      if (cap?.Plugins?.DevServer?.resetServerUrl) {
+      if (isCapacitor && cap?.Plugins?.DevServer?.resetServerUrl) {
         await cap.Plugins.DevServer.resetServerUrl();
+        setIsSaving(false);
+        onClose();
+        return;
       }
       setTimeout(() => {
         window.location.href = defaultProductionUrl;

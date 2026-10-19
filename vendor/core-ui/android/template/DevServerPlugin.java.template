@@ -2,6 +2,7 @@ package {{PACKAGE_NAME}};
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -18,6 +19,36 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 public class DevServerPlugin extends Plugin {
     private static final String PREF_NAME = "GeeksmanAppConfig";
     private static final String KEY_SERVER_URL = "custom_server_url";
+
+    @Override
+    public Boolean shouldOverrideLoad(Uri url) {
+        if (url == null) return null;
+        String host = url.getHost();
+        if (host == null) return null;
+
+        SharedPreferences prefs = getContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        String customUrl = prefs.getString(KEY_SERVER_URL, null);
+        if (customUrl != null && !customUrl.trim().isEmpty()) {
+            try {
+                Uri customUri = Uri.parse(customUrl.trim());
+                if (host.equalsIgnoreCase(customUri.getHost())) {
+                    return Boolean.FALSE; // Stay inside WebView
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // Local LAN / emulator / loopback
+        if (host.startsWith("192.168.") ||
+            host.startsWith("10.") ||
+            host.matches("^172\\.(1[6-9]|2[0-9]|3[0-1])\\..*") ||
+            host.equals("10.0.2.2") ||
+            host.equals("localhost") ||
+            host.endsWith(".local")) {
+            return Boolean.FALSE; // Stay inside WebView
+        }
+
+        return null;
+    }
 
     @PluginMethod
     public void getServerUrl(PluginCall call) {
