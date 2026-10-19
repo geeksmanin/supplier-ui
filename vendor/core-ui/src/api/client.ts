@@ -40,19 +40,13 @@ export const getBaseUrl = (): string => {
     }
 
     if (isLanIp || isLocalHost) {
-      let localPort = '8082';
-      try {
-        const defaultUrl = getDefaultBackendUrl();
-        if (defaultUrl) {
-          const parsedUrl = new URL(defaultUrl);
-          if (parsedUrl.port) {
-            localPort = parsedUrl.port;
-          }
+      const defaultUrl = getDefaultBackendUrl();
+      if (defaultUrl) {
+        if (isLanIp && (defaultUrl.includes('localhost') || defaultUrl.includes('127.0.0.1') || defaultUrl.includes('10.0.2.2'))) {
+          return defaultUrl.replace(/localhost|127\.0\.0\.1|10\.0\.2\.2/, host).replace(/\/$/, '');
         }
-      } catch (e) {
-        // ignore
+        return defaultUrl.replace(/\/$/, '');
       }
-      return `http://${host}:${localPort}/api/v1`;
     }
   }
   return getDefaultBackendUrl();
@@ -315,19 +309,13 @@ export const createApiClient = (options: CreateClientOptions) => {
       }
 
       if (isLanIp || isLocalHost) {
-        let localPort = '8082';
-        try {
-          const defaultUrl = getDefaultBackendUrl();
-          if (defaultUrl) {
-            const parsedUrl = new URL(defaultUrl);
-            if (parsedUrl.port) {
-              localPort = parsedUrl.port;
-            }
+        const defaultBase = getDefaultBackendUrl();
+        if (defaultBase) {
+          if (isLanIp && (defaultBase.includes('localhost') || defaultBase.includes('127.0.0.1') || defaultBase.includes('10.0.2.2'))) {
+            return `${defaultBase.replace(/localhost|127\.0\.0\.1|10\.0\.2\.2/, host).replace(/\/$/, '')}${options.suffix}`;
           }
-        } catch (e) {
-          // ignore
+          return `${defaultBase.replace(/\/$/, '')}${options.suffix}`;
         }
-        return `http://${host}:${localPort}/api/v1${options.suffix}`;
       }
 
       const defaultBase = getDefaultBackendUrl();

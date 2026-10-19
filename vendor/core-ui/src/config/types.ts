@@ -6,5 +6,6 @@ export interface AppConfig {
   commentsApiBaseUrl?: string;
   notificationApiBaseUrl?: string;
   tenantCode?: string;
+  backendPort?: string;
 }
 

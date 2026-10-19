@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getAppConfig } from '../config';
 
 export interface DevServerModalProps {
   isOpen: boolean;
@@ -146,12 +147,32 @@ export const DevServerModal: React.FC<DevServerModalProps> = ({
     }
   };
 
+  /**
+   * Resolves the backend API URL for a target host by substituting the host
+   * in getAppConfig().apiBaseUrl (sourced from config.local.ts) rather than
+   * hardcoding any port. This means each app's configured port wins.
+   */
+  const resolveBackendUrl = (targetHost: string): string => {
+    const localApiUrl = getAppConfig().apiBaseUrl;
+    if (localApiUrl) {
+      // Replace localhost / 127.0.0.1 / 10.0.2.2 with the target host, preserve port & path.
+      return localApiUrl
+        .replace(/localhost|127\.0\.0\.1|10\.0\.2\.2/, targetHost)
+        .replace(/\/$/, '');
+    }
+    // Fallback: use same host with /api/v1 suffix
+    return `http://${targetHost}/api/v1`;
+  };
+
   const handleSave = async () => {
     let target = '';
     if (selectedPreset === 'prod') target = defaultProductionUrl;
     else if (selectedPreset === 'staging') target = effectiveStagingUrl;
-    else if (selectedPreset === 'emulator') target = 'http://10.0.2.2:5173';
-    else {
+    else if (selectedPreset === 'emulator') {
+      // Use window.location.port as the Vite dev server port if available, else fall back to 5173
+      const vitePort = window.location.port || '5173';
+      target = `http://10.0.2.2:${vitePort}`;
+    } else {
       target = customInput.trim();
       if (!target.startsWith('http://') && !target.startsWith('https://')) {
         target = `http://${target}`;
@@ -180,13 +201,14 @@ export const DevServerModal: React.FC<DevServerModalProps> = ({
         localStorage.setItem('portal_override_backend_url', 'true');
         localStorage.setItem('portal_backend_url', 'https://staging.erpapi.geeksman.co.in/api/v1');
       } else if (selectedPreset === 'emulator') {
+        // Resolve backend URL from config.local.ts — replace localhost with emulator loopback (10.0.2.2)
         localStorage.setItem('portal_override_backend_url', 'true');
-        localStorage.setItem('portal_backend_url', 'http://10.0.2.2:8082/api/v1');
+        localStorage.setItem('portal_backend_url', resolveBackendUrl('10.0.2.2'));
       } else {
-        // LAN Wi-Fi dev server: point backend to same LAN host on port 8082
+        // LAN Wi-Fi dev server: resolve backend URL from config.local.ts, substituting only the host
         const devHost = parsedUrl.hostname;
         localStorage.setItem('portal_override_backend_url', 'true');
-        localStorage.setItem('portal_backend_url', `http://${devHost}:8082/api/v1`);
+        localStorage.setItem('portal_backend_url', resolveBackendUrl(devHost));
       }
 
       // 2. Call Native Capacitor Plugin if available
