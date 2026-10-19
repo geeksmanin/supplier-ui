@@ -1,6 +1,7 @@
 import React from 'react';
 import { UniversalLoginProps, UserPersonaRole } from './UniversalLogin.types';
 import { WorkspacePill } from './WorkspacePill';
+import { LoginVersionFooter } from './LoginVersionFooter';
 import { Button } from '../Button';
 
 export interface UniversalLoginMobileProps extends UniversalLoginProps {
@@ -236,6 +237,8 @@ export const UniversalLoginMobile: React.FC<UniversalLoginMobileProps> = ({
             Change Workspace ({activeWorkspace.toUpperCase()})
           </button>
         </div>
+
+        <LoginVersionFooter appName={appName} theme="light" />
       </div>
     </div>
   );

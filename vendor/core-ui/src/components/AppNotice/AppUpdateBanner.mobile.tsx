@@ -16,13 +16,39 @@ export const AppUpdateBannerMobile: React.FC<AppUpdateBannerProps> = ({
 }) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [downloadDownloaded, setDownloadDownloaded] = useState(false);
+  const [sessionDismissed, setSessionDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return sessionStorage.getItem('dismissed_sw_update') === (version || 'dismissed');
+    } catch {
+      return false;
+    }
+  });
 
-  if (!isOpen) return null;
+  if (!isOpen || sessionDismissed) return null;
 
-  const isApkMode = updateType === 'apk' || (updateType === 'auto' && Boolean(apkDownloadUrl));
+  const isApkMode = updateType === 'apk';
+
+  const handleDismiss = () => {
+    try {
+      sessionStorage.setItem('dismissed_sw_update', version || 'dismissed');
+    } catch {}
+    setSessionDismissed(true);
+    if (onClose) onClose();
+  };
 
   const handleUpdate = () => {
     setIsUpdating(true);
+
+    // Always tell any waiting service worker to skip waiting so it doesn't linger in waiting state
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then((reg) => {
+        if (reg?.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+      }).catch(() => {});
+    }
+
     if (onUpdateNow) {
       onUpdateNow();
       return;
@@ -163,7 +189,7 @@ export const AppUpdateBannerMobile: React.FC<AppUpdateBannerProps> = ({
 
         {onClose && (
           <button
-            onClick={onClose}
+            onClick={handleDismiss}
             aria-label="Dismiss update"
             style={{
               background: '#f1f5f9',
@@ -246,7 +272,7 @@ export const AppUpdateBannerMobile: React.FC<AppUpdateBannerProps> = ({
           {onClose && (
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleDismiss}
               style={{
                 padding: '0.7rem 1rem',
                 borderRadius: '12px',

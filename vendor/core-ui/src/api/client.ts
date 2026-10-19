@@ -19,9 +19,8 @@ export const getDefaultBackendUrl = (): string => {
 export const getBaseUrl = (): string => {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
-    const isNative = isNativePlatform();
-    const isLocalHost = !isNative && (host === 'localhost' || host === '127.0.0.1' || host.includes('dev.'));
-    const isLanIp = !isNative && (/^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.endsWith('.local'));
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '10.0.2.2' || host.includes('dev.');
+    const isLanIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.endsWith('.local');
 
     const override = localStorage.getItem('portal_override_backend_url') === 'true';
     const savedUrl = localStorage.getItem('portal_backend_url');
@@ -32,7 +31,7 @@ export const getBaseUrl = (): string => {
     const config = window.runtimeConfig as any;
     if (config?.apiBaseUrl) {
       const url = config.apiBaseUrl;
-      if (isLocalHost || isLanIp || (!url.includes('localhost') && !url.includes('127.0.0.1'))) {
+      if (isLocalHost || isLanIp || (!url.includes('localhost') && !url.includes('127.0.0.1') && !url.includes('10.0.2.2'))) {
         if (isLanIp && url.includes('localhost')) {
           return url.replace('localhost', host).replace(/\/$/, '');
         }
@@ -40,7 +39,7 @@ export const getBaseUrl = (): string => {
       }
     }
 
-    if (isLanIp) {
+    if (isLanIp || isLocalHost) {
       let localPort = '8082';
       try {
         const defaultUrl = getDefaultBackendUrl();
@@ -286,7 +285,8 @@ export const createApiClient = (options: CreateClientOptions) => {
   const getBaseUrl = (): string => {
     if (typeof window !== 'undefined') {
       const host = window.location.hostname;
-      const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host.includes('dev.');
+      const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '10.0.2.2' || host.includes('dev.');
+      const isLanIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.endsWith('.local');
 
       const override = localStorage.getItem('portal_override_backend_url') === 'true';
       const savedUrl = localStorage.getItem('portal_backend_url');
@@ -297,15 +297,37 @@ export const createApiClient = (options: CreateClientOptions) => {
       const config = window.runtimeConfig as any;
       if (options.runtimeConfigKey && config?.[options.runtimeConfigKey]) {
         const url = config[options.runtimeConfigKey];
-        if (isLocalHost || (!url.includes('localhost') && !url.includes('127.0.0.1'))) {
+        if (isLocalHost || isLanIp || (!url.includes('localhost') && !url.includes('127.0.0.1') && !url.includes('10.0.2.2'))) {
+          if (isLanIp && url.includes('localhost')) {
+            return `${url.replace('localhost', host).replace(/\/$/, '')}${options.suffix}`;
+          }
           return url;
         }
       }
       if (config?.apiBaseUrl) {
         const url = config.apiBaseUrl;
-        if (isLocalHost || (!url.includes('localhost') && !url.includes('127.0.0.1'))) {
+        if (isLocalHost || isLanIp || (!url.includes('localhost') && !url.includes('127.0.0.1') && !url.includes('10.0.2.2'))) {
+          if (isLanIp && url.includes('localhost')) {
+            return `${url.replace('localhost', host).replace(/\/$/, '')}${options.suffix}`;
+          }
           return `${url.replace(/\/$/, '')}${options.suffix}`;
         }
+      }
+
+      if (isLanIp || isLocalHost) {
+        let localPort = '8082';
+        try {
+          const defaultUrl = getDefaultBackendUrl();
+          if (defaultUrl) {
+            const parsedUrl = new URL(defaultUrl);
+            if (parsedUrl.port) {
+              localPort = parsedUrl.port;
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+        return `http://${host}:${localPort}/api/v1${options.suffix}`;
       }
 
       const defaultBase = getDefaultBackendUrl();

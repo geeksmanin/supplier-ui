@@ -188,5 +188,7 @@ export { DevServerModal } from './components/DevServerModal';
 export type { DevServerModalProps } from './components/DevServerModal';
 export { useDevModeTrigger } from './hooks/useDevModeTrigger';
 export type { UseDevModeTriggerOptions } from './hooks/useDevModeTrigger';
+export { usePlatformVersions } from './hooks/usePlatformVersions';
+export type { PlatformVersionsState } from './hooks/usePlatformVersions';
 
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAppVersion } from '../../hooks/useAppVersion';
+import { isNativePlatform } from '../../native/platform';
 import { AppNoticeProps } from './types';
 import { AppInstallBanner } from './AppInstallBanner';
 import { AppUpdateBanner } from './AppUpdateBanner';
@@ -21,6 +22,12 @@ export const AppNotice: React.FC<AppNoticeProps> = ({
   forceShowInstall = false,
   forceShowUpdate = false,
 }) => {
+  // If running inside native Android / iOS shell, AppNotice install banner should not render
+  // and native APK updates are handled by native/AppUpdateBanner based on version.json.
+  if (isNativePlatform()) {
+    return null;
+  }
+
   // Automatically connect with useAppVersion for SW updates and version info
   const appVersionState = useAppVersion();
 
@@ -55,8 +62,7 @@ export const AppNotice: React.FC<AppNoticeProps> = ({
           isOpen={showUpdate}
           onClose={() => setUpdateDismissed(true)}
           onUpdateNow={handleUpdateNow}
-          apkDownloadUrl={apkDownloadUrl}
-          onDownloadApk={onDownloadApk}
+          updateType="web"
         />
       )}
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { UniversalLoginProps, UserPersonaRole, UniversalLoginFeature } from './UniversalLogin.types';
 import { WorkspacePill } from './WorkspacePill';
+import { LoginVersionFooter } from './LoginVersionFooter';
 import { Button } from '../Button';
 
 export interface UniversalLoginDesktopProps extends UniversalLoginProps {
@@ -309,6 +310,8 @@ export const UniversalLoginDesktop: React.FC<UniversalLoginDesktopProps> = ({
               </button>
             </span>
           </div>
+
+          <LoginVersionFooter appName={appName} theme="light" />
         </div>
       </div>
     </div>

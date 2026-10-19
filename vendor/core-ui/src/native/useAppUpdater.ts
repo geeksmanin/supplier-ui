@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { isNativePlatform, getCapacitor } from './usePushNotifications';
+import { isNativePlatform, getCapacitor, waitForCapacitor } from './usePushNotifications';
 
 export enum Directory {
   Documents = 'DOCUMENTS',
@@ -150,6 +150,7 @@ export const useAppUpdater = (options: UseAppUpdaterOptions = {}) => {
     let mounted = true;
     async function loadInstalledInfo() {
       if (isNativePlatform()) {
+        await waitForCapacitor(1500);
         try {
           const AppPlugin = getAppPlugin();
           if (AppPlugin && typeof AppPlugin.getInfo === 'function') {
@@ -192,6 +193,19 @@ export const useAppUpdater = (options: UseAppUpdaterOptions = {}) => {
 
       setVersionInfo(data);
 
+      // Check session dismissal
+      try {
+        if (sessionStorage.getItem('dismissed_native_version') === data.version) {
+          setDismissed(true);
+          return;
+        }
+      } catch {}
+
+      // Wait for Capacitor bridge on native platforms before checking
+      if (isNativePlatform()) {
+        await waitForCapacitor(1500);
+      }
+
       // Resolve live native app version directly to avoid initial render race conditions
       let currentVersion = installedVersion;
       let currentBuild = installedBuild;
@@ -214,6 +228,12 @@ export const useAppUpdater = (options: UseAppUpdaterOptions = {}) => {
           }
         } catch (err) {
           console.warn('Failed to get native App info during update check:', err);
+        }
+
+        // If native platform info is still at uninitialized fallback, do not trigger false positive update
+        if (currentVersion === fallbackVersion && currentBuild === 1) {
+          console.warn('[useAppUpdater] Could not verify installed app version from Capacitor App plugin; skipping auto-update trigger.');
+          return;
         }
       }
 
@@ -251,7 +271,7 @@ export const useAppUpdater = (options: UseAppUpdaterOptions = {}) => {
     } catch (err: any) {
       console.warn('Update check failed (silent):', err);
     }
-  }, [versionUrl, installedVersion, installedBuild]);
+  }, [versionUrl, installedVersion, installedBuild, fallbackVersion]);
 
   // Run autoCheck on mount and on resume
   useEffect(() => {
@@ -409,8 +429,11 @@ export const useAppUpdater = (options: UseAppUpdaterOptions = {}) => {
   const dismissUpdate = useCallback(() => {
     if (!isMandatory) {
       setDismissed(true);
+      try {
+        sessionStorage.setItem('dismissed_native_version', versionInfo?.version || '');
+      } catch {}
     }
-  }, [isMandatory]);
+  }, [isMandatory, versionInfo]);
 
   return {
     updateAvailable: updateAvailable && (!dismissed || isMandatory),
