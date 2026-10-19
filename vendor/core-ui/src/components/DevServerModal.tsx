@@ -148,20 +148,34 @@ export const DevServerModal: React.FC<DevServerModalProps> = ({
   };
 
   /**
-   * Resolves the backend API URL for a target host by substituting the host
-   * in getAppConfig().apiBaseUrl (sourced from config.local.ts) rather than
-   * hardcoding any port. This means each app's configured port wins.
+   * Resolves the backend API URL for a target host.
+   *
+   * - If the active config URL contains a localhost/loopback address (i.e. local config is active
+   *   — running in a browser dev server), substitute host directly. Port and path from
+   *   config.local.ts are preserved.
+   * - Otherwise (prod config is active — running inside a production APK), extract just the
+   *   pathname from the prod URL (e.g. /api/v1) and reconstruct with the target host.
+   *   The port is not available at runtime in a production APK; the user must include it
+   *   in the frontend URL they enter (e.g. http://192.168.1.15:5173).
    */
   const resolveBackendUrl = (targetHost: string): string => {
-    const localApiUrl = getAppConfig().apiBaseUrl;
-    if (localApiUrl) {
-      // Replace localhost / 127.0.0.1 / 10.0.2.2 with the target host, preserve port & path.
-      return localApiUrl
+    const activeApiUrl = getAppConfig().apiBaseUrl;
+    if (activeApiUrl && /localhost|127\.0\.0\.1|10\.0\.2\.2/.test(activeApiUrl)) {
+      // Local config is active — substitute host, preserving port & path from config.local.ts
+      return activeApiUrl
         .replace(/localhost|127\.0\.0\.1|10\.0\.2\.2/, targetHost)
         .replace(/\/$/, '');
     }
-    // Fallback: use same host with /api/v1 suffix
-    return `http://${targetHost}/api/v1`;
+    // Prod config is active (e.g. running in production APK).
+    // Extract the API path suffix (e.g. /api/v1) and reconstruct with target host.
+    // Port is not knowable here; the backend must be on the default HTTP port or the user
+    // should use the localStorage override with a full URL including port.
+    try {
+      const pathname = activeApiUrl ? new URL(activeApiUrl).pathname.replace(/\/$/, '') : '/api/v1';
+      return `http://${targetHost}${pathname}`;
+    } catch {
+      return `http://${targetHost}/api/v1`;
+    }
   };
 
   const handleSave = async () => {
