@@ -22,6 +22,35 @@ export const LoginVersionFooter: React.FC<LoginVersionFooterProps> = ({
   const { webVersion, androidVersion, androidBuild, isNative } = usePlatformVersions(versionUrl);
   const [isDevModalOpen, setIsDevModalOpen] = useState(false);
 
+  const [tapCount, setTapCount] = useState(0);
+  const [lastTapTime, setLastTapTime] = useState(0);
+  const [hint, setHint] = useState<string | null>(null);
+  const hintTimeoutRef = React.useRef<any>(null);
+
+  const handleVersionTap = () => {
+    const now = Date.now();
+    const isQuick = now - lastTapTime < 2500;
+    const nextCount = isQuick ? tapCount + 1 : 1;
+
+    setTapCount(nextCount);
+    setLastTapTime(now);
+
+    if (hintTimeoutRef.current) {
+      clearTimeout(hintTimeoutRef.current);
+    }
+
+    if (nextCount >= 5) {
+      setTapCount(0);
+      setHint(null);
+      setIsDevModalOpen(true);
+    } else if (nextCount >= 3) {
+      setHint(`${5 - nextCount} tap${5 - nextCount === 1 ? '' : 's'} away from Developer Tools`);
+      hintTimeoutRef.current = setTimeout(() => {
+        setHint(null);
+      }, 2000);
+    }
+  };
+
   // Color schemes based on theme
   const isGreen = theme === 'green';
   const isDark = theme === 'dark';
@@ -51,52 +80,30 @@ export const LoginVersionFooter: React.FC<LoginVersionFooterProps> = ({
       <div
         style={{
           display: 'flex',
-          flexWrap: 'wrap',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '6px',
           marginTop: '12px',
-          fontSize: '11px',
           fontFamily: '"Outfit", "Inter", -apple-system, sans-serif',
           ...style,
         }}
       >
-        {/* Web Version Pill */}
         <div
-          title="Web Client Version"
           style={{
-            display: 'inline-flex',
+            display: 'flex',
+            flexWrap: 'wrap',
             alignItems: 'center',
-            gap: '5px',
-            padding: '4px 10px',
-            borderRadius: '999px',
-            backgroundColor: badgeBg,
-            border: `1px solid ${badgeBorder}`,
-            color: textColor,
-            fontWeight: 600,
-            backdropFilter: 'blur(4px)',
+            justifyContent: 'center',
+            gap: '6px',
+            fontSize: '11px',
           }}
         >
-          <span style={{ fontSize: '11px' }}>🌐</span>
-          <span>Web {webVersion}</span>
-          {!isNative && (
-            <span
-              style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                backgroundColor: activeDotColor,
-                boxShadow: `0 0 5px ${activeDotColor}`,
-              }}
-              title="Active Web Runtime"
-            />
-          )}
-        </div>
-
-        {/* Android Version Pill */}
-        {formattedAndroid && (
+          {/* Web Version Pill - Tap to unlock dev options */}
           <div
-            title={isNative ? "Active Native Android App" : "Available Android APK Version"}
+            onClick={handleVersionTap}
+            id="login-version-web-pill"
+            data-testid="login-version-web-pill"
+            title="Web Client Version (Tap 5 times for Developer Tools)"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -108,11 +115,14 @@ export const LoginVersionFooter: React.FC<LoginVersionFooterProps> = ({
               color: textColor,
               fontWeight: 600,
               backdropFilter: 'blur(4px)',
+              cursor: 'pointer',
+              userSelect: 'none',
+              transition: 'transform 0.1s ease, background-color 0.15s ease',
             }}
           >
-            <span style={{ fontSize: '11px' }}>📱</span>
-            <span>Android {formattedAndroid}</span>
-            {isNative && (
+            <span style={{ fontSize: '11px' }}>🌐</span>
+            <span>Web {webVersion}</span>
+            {!isNative && (
               <span
                 style={{
                   width: '6px',
@@ -121,38 +131,70 @@ export const LoginVersionFooter: React.FC<LoginVersionFooterProps> = ({
                   backgroundColor: activeDotColor,
                   boxShadow: `0 0 5px ${activeDotColor}`,
                 }}
-                title="Active Native Android Shell"
+                title="Active Web Runtime"
               />
             )}
           </div>
-        )}
 
-        {/* Developer Server Tools Trigger Button */}
-        <button
-          type="button"
-          onClick={() => setIsDevModalOpen(true)}
-          id="login-dev-server-btn"
-          data-testid="login-dev-tools-btn"
-          title="Open Developer Tools (Environment Switcher, Mobile DevTools Console, Diagnostics)"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '5px',
-            padding: '4px 10px',
-            borderRadius: '999px',
-            backgroundColor: isGreen ? 'rgba(255, 255, 255, 0.22)' : isDark ? 'rgba(37, 99, 235, 0.2)' : '#eff6ff',
-            border: isGreen ? '1px solid rgba(255, 255, 255, 0.4)' : isDark ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid #bfdbfe',
-            color: isGreen ? '#ffffff' : isDark ? '#60a5fa' : '#2563eb',
-            fontWeight: 700,
-            cursor: 'pointer',
-            outline: 'none',
-            fontSize: '11px',
-            transition: 'all 0.15s ease',
-          }}
-        >
-          <span>🛠️</span>
-          <span>Dev Tools</span>
-        </button>
+          {/* Android Version Pill - Tap to unlock dev options */}
+          {formattedAndroid && (
+            <div
+              onClick={handleVersionTap}
+              id="login-version-android-pill"
+              data-testid="login-version-android-pill"
+              title={isNative ? "Active Native Android App (Tap 5 times for Developer Tools)" : "Available Android APK Version"}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '4px 10px',
+                borderRadius: '999px',
+                backgroundColor: badgeBg,
+                border: `1px solid ${badgeBorder}`,
+                color: textColor,
+                fontWeight: 600,
+                backdropFilter: 'blur(4px)',
+                cursor: 'pointer',
+                userSelect: 'none',
+                transition: 'transform 0.1s ease, background-color 0.15s ease',
+              }}
+            >
+              <span style={{ fontSize: '11px' }}>📱</span>
+              <span>Android {formattedAndroid}</span>
+              {isNative && (
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    backgroundColor: activeDotColor,
+                    boxShadow: `0 0 5px ${activeDotColor}`,
+                  }}
+                  title="Active Native Android Shell"
+                />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Step-by-step developer mode unlock feedback */}
+        {hint && (
+          <div
+            style={{
+              fontSize: '10px',
+              fontWeight: 600,
+              color: isGreen || isDark ? 'rgba(255, 255, 255, 0.9)' : '#475569',
+              backgroundColor: isGreen || isDark ? 'rgba(0, 0, 0, 0.3)' : '#f1f5f9',
+              border: isGreen || isDark ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid #cbd5e1',
+              borderRadius: '999px',
+              padding: '2px 8px',
+              marginTop: '5px',
+              textAlign: 'center',
+            }}
+          >
+            {hint}
+          </div>
+        )}
       </div>
 
       <DevServerModal

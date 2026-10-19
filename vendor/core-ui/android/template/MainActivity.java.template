@@ -64,6 +64,22 @@ public class MainActivity extends BridgeActivity {
                 webView.loadUrl(customUrl.trim());
             }
         }
+
+        // Safety watchdog: ensure splash and loader never block the UI for more than 3 seconds
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            dismissGalaxyLoader();
+            SharedPreferences prefs = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+            String customUrl = prefs.getString(KEY_SERVER_URL, null);
+            if (customUrl != null && !customUrl.trim().isEmpty()) {
+                if (bridge != null && bridge.getWebView() != null) {
+                    String currentUrl = bridge.getWebView().getUrl();
+                    int progress = bridge.getWebView().getProgress();
+                    if (progress < 60 || currentUrl == null || currentUrl.equals("about:blank") || currentUrl.startsWith("data:")) {
+                        showServerUnreachableDialog(customUrl);
+                    }
+                }
+            }
+        }, 3000);
     }
 
     public void dismissGalaxyLoader() {
@@ -71,6 +87,14 @@ public class MainActivity extends BridgeActivity {
             if (galaxyLoaderView != null) {
                 galaxyLoaderView.dismiss(null);
             }
+            try {
+                if (bridge != null) {
+                    com.getcapacitor.PluginHandle splash = bridge.getPlugin("SplashScreen");
+                    if (splash != null && splash.getInstance() != null) {
+                        ((com.capacitorjs.plugins.splashscreen.SplashScreenPlugin) splash.getInstance()).hide(null);
+                    }
+                }
+            } catch (Exception ignored) {}
         });
     }
 
@@ -131,11 +155,44 @@ public class MainActivity extends BridgeActivity {
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 super.onReceivedError(view, request, error);
-
-                if (request.isForMainFrame()) {
+                if (request != null && request.isForMainFrame()) {
                     runOnUiThread(() -> {
                         dismissGalaxyLoader();
                         showServerUnreachableDialog(request.getUrl().toString());
+                    });
+                }
+            }
+
+            @SuppressWarnings("deprecation")
+            @Override
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                super.onReceivedError(view, errorCode, description, failingUrl);
+                runOnUiThread(() -> {
+                    dismissGalaxyLoader();
+                    showServerUnreachableDialog(failingUrl);
+                });
+            }
+
+            @Override
+            public void onReceivedHttpError(WebView view, WebResourceRequest request, android.webkit.WebResourceResponse errorResponse) {
+                super.onReceivedHttpError(view, request, errorResponse);
+                if (request != null && request.isForMainFrame() && errorResponse != null && errorResponse.getStatusCode() >= 400) {
+                    runOnUiThread(() -> {
+                        dismissGalaxyLoader();
+                        showServerUnreachableDialog(request.getUrl().toString());
+                    });
+                }
+            }
+
+            @Override
+            public void onReceivedSslError(WebView view, android.webkit.SslErrorHandler handler, android.net.http.SslError error) {
+                if (error != null && error.getUrl() != null && isInternalOrDevUrl(Uri.parse(error.getUrl()))) {
+                    handler.proceed();
+                } else {
+                    super.onReceivedSslError(view, handler, error);
+                    runOnUiThread(() -> {
+                        dismissGalaxyLoader();
+                        showServerUnreachableDialog(error != null ? error.getUrl() : "SSL Error");
                     });
                 }
             }
