@@ -28,6 +28,7 @@ import {
   ShoppingBag,
   ExternalLink
 } from 'lucide-react';
+import { normalizeSearchToken } from '../SearchableEntitySelect';
 import { apiClient } from '../../api/client';
 import { useVariantMatrixModal } from './useVariantMatrixModal';
 
@@ -46,6 +47,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
   pricingConfig = { mode: 'auto_from_party', allowRateOverride: true },
   selectedParty,
   onPartySelect,
+  renderPartySelect,
   items,
   onAddItem,
   onAddItems,
@@ -225,19 +227,40 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
   const partyOptions = useMemo(() => {
     if (partyConfig?.options) {
       if (!partySearchQuery.trim()) return partyConfig.options;
-      const q = partySearchQuery.toLowerCase();
-      return partyConfig.options.filter(
-        (o) =>
-          o.label.toLowerCase().includes(q) ||
-          (o.gstin && o.gstin.toLowerCase().includes(q)) ||
-          (o.phone && o.phone.includes(q))
-      );
+      const q = normalizeSearchToken(partySearchQuery);
+      return partyConfig.options.filter((o) => {
+        const normLabel = normalizeSearchToken(o.label || '');
+        const normGstin = o.gstin ? normalizeSearchToken(o.gstin) : '';
+        const normPhone = o.phone ? normalizeSearchToken(o.phone) : '';
+        return normLabel.includes(q) || normGstin.includes(q) || normPhone.includes(q);
+      });
     }
     return asyncPartyOptions;
   }, [partyConfig?.options, partySearchQuery, asyncPartyOptions]);
 
   useEffect(() => {
-    if (!partyConfig?.searchEndpoint || !isPartyDropdownOpen) return;
+    if (!isPartyDropdownOpen) return;
+
+    if (partyConfig?.onSearch) {
+      let isCancelled = false;
+      setPartyLoading(true);
+      partyConfig
+        .onSearch(partySearchQuery)
+        .then((res) => {
+          if (!isCancelled && Array.isArray(res)) setAsyncPartyOptions(res);
+        })
+        .catch((err) => {
+          console.error('Failed onSearch parties', err);
+        })
+        .finally(() => {
+          if (!isCancelled) setPartyLoading(false);
+        });
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    if (!partyConfig?.searchEndpoint) return;
 
     let isCancelled = false;
     const fetchParties = async () => {
@@ -256,8 +279,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
             list.map((it: any) => ({
               value: String(it.id || it.uuid),
               label: it.name || it.display_name || it.company_name || 'Party',
-              gstin: it.tax_number || it.gstin,
-              phone: it.phone,
+              gstin: it.tax_number || it.gstin || it.tax_id,
+              phone: it.phone || it.contact_number || it.primary_contact_phone,
               email: it.email,
               state: it.state || it.billing_address?.state,
               state_code: it.state_code,
@@ -277,7 +300,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
       isCancelled = true;
       clearTimeout(timer);
     };
-  }, [partySearchQuery, isPartyDropdownOpen, partyConfig?.searchEndpoint]);
+  }, [partySearchQuery, isPartyDropdownOpen, partyConfig?.onSearch, partyConfig?.searchEndpoint, JSON.stringify(partyConfig?.searchParams)]);
 
   // 3. Variant Matrix Multi-Select Hook for Parent Products
   const {
@@ -349,19 +372,39 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
             : [];
 
         const merged: any[] = [];
+        const seenVariantIds = new Set<string>();
+
         // 1. Add Variants first with _itemType: 'variant' (exact SKU/barcode matches)
         rawVariants.forEach((v: any) => {
+          const vId = String(v.id || v.variant_id || '');
+          if (vId) seenVariantIds.add(vId);
           merged.push({
             ...v,
             _itemType: 'variant',
           });
         });
-        // 2. Add Parent Products with _itemType: 'product'
+
+        // 2. Add Parent Products with _itemType: 'product' ONLY if they have MULTIPLE variants (> 1).
+        // Products with a single variant are already covered in the variant list (or promoted as a single variant).
         rawProducts.forEach((p: any) => {
-          merged.push({
-            ...p,
-            _itemType: 'product',
-          });
+          const variants = Array.isArray(p.variants) ? p.variants : [];
+          if (variants.length > 1) {
+            merged.push({
+              ...p,
+              _itemType: 'product',
+            });
+          } else if (variants.length === 1) {
+            const singleV = variants[0];
+            const singleVId = String(singleV.id || singleV.variant_id || '');
+            if (singleVId && !seenVariantIds.has(singleVId)) {
+              seenVariantIds.add(singleVId);
+              merged.push({
+                ...singleV,
+                product: p,
+                _itemType: 'variant',
+              });
+            }
+          }
         });
 
         if (!isCancelled) {
@@ -540,44 +583,55 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
 
           {/* Party Selector (F2) */}
           <div style={{ position: 'relative', width: '320px' }}>
-            <div
-              onClick={() => {
-                setIsPartyDropdownOpen(true);
-                partyInputRef.current?.focus();
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '6px 10px',
-                borderRadius: '8px',
-                border: isPartyDropdownOpen ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
-                backgroundColor: '#ffffff',
-                cursor: 'pointer',
-              }}
-            >
-              <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
-                <span style={{ color: '#64748b', marginRight: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
-                  {partyConfig.label}:
-                </span>
-                <strong style={{ color: selectedParty ? '#0f172a' : '#94a3b8' }}>
-                  {selectedParty ? selectedParty.label : partyConfig.placeholder || `Select ${partyConfig.label}...`}
-                </strong>
-              </div>
-              <span
-                style={{
-                  fontSize: '0.65rem',
-                  fontWeight: 800,
-                  padding: '2px 5px',
-                  borderRadius: '4px',
-                  backgroundColor: '#eff6ff',
-                  color: '#2563eb',
-                  border: '1px solid #dbeafe',
-                }}
-              >
-                F2
-              </span>
-            </div>
+            {renderPartySelect ? (
+              renderPartySelect({ selectedParty, onPartySelect })
+            ) : partyConfig.renderPartySelect ? (
+              partyConfig.renderPartySelect({ selectedParty, onPartySelect })
+            ) : (
+              <>
+                <div
+                  onClick={() => {
+                    setIsPartyDropdownOpen(true);
+                    partyInputRef.current?.focus();
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    border: isPartyDropdownOpen ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                    backgroundColor: '#ffffff',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
+                    <span style={{ color: '#64748b', marginRight: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+                      {partyConfig.label}:
+                    </span>
+                    <strong style={{ color: selectedParty ? '#0f172a' : '#94a3b8' }}>
+                      {selectedParty ? selectedParty.label : partyConfig.placeholder || `Select ${partyConfig.label}...`}
+                    </strong>
+                    {selectedParty?.gstin && (
+                      <span style={{ marginLeft: '6px', fontSize: '0.7rem', color: '#64748b', fontFamily: 'monospace' }}>
+                        ({selectedParty.gstin})
+                      </span>
+                    )}
+                  </div>
+                  <span
+                    style={{
+                      fontSize: '0.65rem',
+                      fontWeight: 800,
+                      padding: '2px 5px',
+                      borderRadius: '4px',
+                      backgroundColor: '#eff6ff',
+                      color: '#2563eb',
+                      border: '1px solid #dbeafe',
+                    }}
+                  >
+                    F2
+                  </span>
+                </div>
 
             {/* Party Dropdown Popover */}
             {isPartyDropdownOpen && (
@@ -668,6 +722,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                   )}
                 </div>
               </div>
+            )}
+              </>
             )}
           </div>
         </div>

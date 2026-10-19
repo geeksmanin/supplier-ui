@@ -81,11 +81,20 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
     const rawDisc = Math.min(100, Math.max(0, Number(discountPercent) || 0));
     const taxRate = Number(item?.tax_percent || 0);
 
+    const isInclusive = Boolean(item?.tax_inclusive ?? item?.metadata?.is_price_tax_inclusive);
     const baseAmount = rawQty * rawRate;
     const discAmount = (baseAmount * rawDisc) / 100;
-    const taxableAmount = Math.max(0, baseAmount - discAmount);
-    const taxAmount = (taxableAmount * taxRate) / 100;
-    const lineTotal = taxableAmount + taxAmount;
+    const grossAfterDisc = Math.max(0, baseAmount - discAmount);
+
+    let taxableAmount = grossAfterDisc;
+    let taxAmount = (taxableAmount * taxRate) / 100;
+
+    if (isInclusive && taxRate > 0) {
+      taxableAmount = +(grossAfterDisc / (1 + taxRate / 100)).toFixed(2);
+      taxAmount = +(grossAfterDisc - taxableAmount).toFixed(2);
+    }
+
+    const lineTotal = isInclusive ? grossAfterDisc : taxableAmount + taxAmount;
 
     return {
       baseAmount: Number(baseAmount.toFixed(2)),

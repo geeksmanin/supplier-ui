@@ -1,0 +1,83 @@
+package {{PACKAGE_NAME}};
+
+import android.content.Context;
+import android.content.SharedPreferences;
+import com.getcapacitor.JSObject;
+import com.getcapacitor.Plugin;
+import com.getcapacitor.PluginCall;
+import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.CapacitorPlugin;
+
+/**
+ * DevServerPlugin
+ *
+ * Capacitor plugin enabling in-app developer mode and dynamic server URL switching.
+ * Stores target server URL in SharedPreferences across app restarts.
+ */
+@CapacitorPlugin(name = "DevServer")
+public class DevServerPlugin extends Plugin {
+    private static final String PREF_NAME = "GeeksmanAppConfig";
+    private static final String KEY_SERVER_URL = "custom_server_url";
+
+    @PluginMethod
+    public void getServerUrl(PluginCall call) {
+        SharedPreferences prefs = getContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        String customUrl = prefs.getString(KEY_SERVER_URL, null);
+        String defaultUrl = getBridge() != null ? getBridge().getServerUrl() : "";
+
+        JSObject ret = new JSObject();
+        ret.put("url", (customUrl != null && !customUrl.isEmpty()) ? customUrl : defaultUrl);
+        ret.put("defaultUrl", defaultUrl);
+        ret.put("isCustom", customUrl != null && !customUrl.isEmpty());
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void setServerUrl(PluginCall call) {
+        String url = call.getString("url");
+        if (url == null || url.trim().isEmpty()) {
+            call.reject("URL cannot be empty");
+            return;
+        }
+
+        String cleanUrl = url.trim();
+        SharedPreferences prefs = getContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        prefs.edit().putString(KEY_SERVER_URL, cleanUrl).apply();
+
+        // Reload the WebView to the new target URL
+        if (getActivity() != null) {
+            getActivity().runOnUiThread(() -> {
+                if (getBridge() != null && getBridge().getWebView() != null) {
+                    getBridge().getWebView().loadUrl(cleanUrl);
+                }
+            });
+        }
+
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void resetServerUrl(PluginCall call) {
+        SharedPreferences prefs = getContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        prefs.edit().remove(KEY_SERVER_URL).apply();
+
+        String defaultUrl = getBridge() != null ? getBridge().getServerUrl() : "";
+        if (getActivity() != null && defaultUrl != null && !defaultUrl.isEmpty()) {
+            getActivity().runOnUiThread(() -> {
+                if (getBridge() != null && getBridge().getWebView() != null) {
+                    getBridge().getWebView().loadUrl(defaultUrl);
+                }
+            });
+        }
+
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void dismissSplash(PluginCall call) {
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).dismissGalaxyLoader();
+        }
+        call.resolve();
+    }
+}

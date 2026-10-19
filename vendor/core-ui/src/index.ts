@@ -183,4 +183,10 @@ export * from './components/Login';
 export { useLogin, useLogout } from './hooks/useAuth';
 export type { LoginParams, LoginResult, UseLoginReturn, LogoutOptions, UseLogoutReturn, AuthRole } from './hooks/useAuth';
 
+// Developer Options & Dynamic Server Configuration
+export { DevServerModal } from './components/DevServerModal';
+export type { DevServerModalProps } from './components/DevServerModal';
+export { useDevModeTrigger } from './hooks/useDevModeTrigger';
+export type { UseDevModeTriggerOptions } from './hooks/useDevModeTrigger';
+
 

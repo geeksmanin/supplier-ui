@@ -1,0 +1,211 @@
+package {{PACKAGE_NAME}};
+
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.util.AttributeSet;
+import android.view.View;
+import android.view.animation.DecelerateInterpolator;
+import java.io.BufferedInputStream;
+import java.io.DataInputStream;
+import java.io.InputStream;
+import java.util.Random;
+
+/**
+ * GalaxyLoaderView
+ *
+ * High-performance native Android View rendering the authentic Geeksman
+ * geodesic dome particle logo animation directly over the window before
+ * and during remote WebView initialization.
+ */
+public class GalaxyLoaderView extends View {
+    private static final float LOGO_ASPECT = 0.748f;
+    private float[] logoPoints;
+    private int pointCount = 0;
+
+    private int backgroundColor = Color.parseColor("#008069");
+    private final Paint logoPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint ambientPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+    private static class AmbientParticle {
+        float x, y, vx, vy, radius;
+        int color;
+        float baseAlpha;
+    }
+
+    private AmbientParticle[] ambientParticles;
+    private long startTime = 0;
+    private boolean isDismissing = false;
+
+    public GalaxyLoaderView(Context context) {
+        super(context);
+        init(context, null);
+    }
+
+    public GalaxyLoaderView(Context context, String bgColorHex) {
+        super(context);
+        init(context, bgColorHex);
+    }
+
+    public GalaxyLoaderView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        init(context, null);
+    }
+
+    private void init(Context context, String bgColorHex) {
+        if (bgColorHex != null && !bgColorHex.isEmpty()) {
+            try {
+                this.backgroundColor = Color.parseColor(bgColorHex);
+            } catch (Exception ignored) {}
+        }
+
+        logoPaint.setStyle(Paint.Style.FILL);
+        ambientPaint.setStyle(Paint.Style.FILL);
+
+        loadLogoPoints(context);
+        initAmbientParticles();
+        startTime = System.currentTimeMillis();
+    }
+
+    public void setBrandBackgroundColor(String colorHex) {
+        try {
+            this.backgroundColor = Color.parseColor(colorHex);
+            invalidate();
+        } catch (Exception ignored) {}
+    }
+
+    private void loadLogoPoints(Context context) {
+        try (InputStream is = context.getAssets().open("galaxy_logo_points.dat");
+             DataInputStream dis = new DataInputStream(new BufferedInputStream(is))) {
+            pointCount = dis.readInt();
+            logoPoints = new float[pointCount * 2];
+            for (int i = 0; i < pointCount * 2; i++) {
+                logoPoints[i] = dis.readShort() / 32767.0f;
+            }
+        } catch (Exception e) {
+            pointCount = 0;
+            logoPoints = new float[0];
+        }
+    }
+
+    private void initAmbientParticles() {
+        Random rand = new Random();
+        int count = 65;
+        ambientParticles = new AmbientParticle[count];
+        for (int i = 0; i < count; i++) {
+            AmbientParticle p = new AmbientParticle();
+            p.vx = (rand.nextFloat() - 0.5f) * 0.8f;
+            p.vy = (rand.nextFloat() - 0.5f) * 0.8f;
+            p.radius = 1.0f + rand.nextFloat() * 1.5f;
+            p.baseAlpha = 0.15f + rand.nextFloat() * 0.35f;
+            p.color = Color.WHITE;
+            ambientParticles[i] = p;
+        }
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        if (ambientParticles != null) {
+            Random rand = new Random();
+            for (AmbientParticle p : ambientParticles) {
+                p.x = rand.nextFloat() * w;
+                p.y = rand.nextFloat() * h;
+            }
+        }
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+
+        int width = getWidth();
+        int height = getHeight();
+        if (width <= 0 || height <= 0) return;
+
+        // 1. Draw Brand Solid Background
+        canvas.drawColor(backgroundColor);
+
+        long now = System.currentTimeMillis();
+        float elapsed = (now - startTime) / 1000.0f;
+
+        // 2. Draw Ambient Floating Dust Particles
+        if (ambientParticles != null) {
+            for (AmbientParticle p : ambientParticles) {
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.x < 0) p.x = width;
+                if (p.x > width) p.x = 0;
+                if (p.y < 0) p.y = height;
+                if (p.y > height) p.y = 0;
+
+                ambientPaint.setColor(p.color);
+                ambientPaint.setAlpha((int) (p.baseAlpha * 255));
+                canvas.drawCircle(p.x, p.y, p.radius, ambientPaint);
+            }
+        }
+
+        // 3. Draw Formed Geodesic Dome Logo Points
+        if (pointCount > 0 && logoPoints != null) {
+            float cx = width / 2.0f;
+            float cy = height / 2.0f;
+            float density = getResources().getDisplayMetrics().density;
+            float maxWByHeight = (height * 0.72f) / LOGO_ASPECT;
+            float logoW = Math.min(width * 0.75f, Math.min(500.0f * density, maxWByHeight));
+            float logoH = logoW * LOGO_ASPECT;
+
+            float dotRadius = Math.max(1.2f, Math.min(1.5f, width / 700.0f)) * density;
+
+            // Breathing oscillation
+            float breathe = (float) Math.sin(elapsed * 2.2f) * 1.5f * density;
+            float alphaPulse = 0.88f + (float) Math.sin(elapsed * 2.5f) * 0.12f;
+
+            logoPaint.setColor(Color.WHITE);
+            logoPaint.setAlpha((int) (alphaPulse * 255));
+
+            for (int i = 0; i < pointCount; i++) {
+                float nx = logoPoints[i * 2];
+                float ny = logoPoints[i * 2 + 1];
+
+                float px = cx + nx * (logoW + breathe);
+                float py = cy + ny * (logoH + breathe);
+
+                canvas.drawCircle(px, py, dotRadius, logoPaint);
+            }
+        }
+
+        // Keep 60/120fps native render loop alive until dismissed
+        if (!isDismissing) {
+            postInvalidateOnAnimation();
+        }
+    }
+
+    /**
+     * Smoothly fade out the native loader and remove from window
+     */
+    public void dismiss(Runnable onComplete) {
+        if (isDismissing) return;
+        isDismissing = true;
+
+        animate()
+            .alpha(0.0f)
+            .setDuration(300)
+            .setInterpolator(new DecelerateInterpolator())
+            .setListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    setVisibility(View.GONE);
+                    if (getParent() instanceof android.view.ViewGroup) {
+                        ((android.view.ViewGroup) getParent()).removeView(GalaxyLoaderView.this);
+                    }
+                    if (onComplete != null) {
+                        onComplete.run();
+                    }
+                }
+            })
+            .start();
+    }
+}

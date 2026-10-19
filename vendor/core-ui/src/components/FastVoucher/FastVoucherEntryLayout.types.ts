@@ -31,6 +31,11 @@ export interface VoucherPartyConfig {
   searchEndpoint?: string;
   searchParams?: Record<string, any>;
   options?: VoucherPartyOption[];
+  onSearch?: (searchTerm: string) => Promise<VoucherPartyOption[]>;
+  renderPartySelect?: (props: {
+    selectedParty?: VoucherPartyOption | null;
+    onPartySelect?: (party: VoucherPartyOption | null) => void;
+  }) => React.ReactNode;
   defaultParty?: {
     id: string;
     name: string;
@@ -77,6 +82,7 @@ export interface VoucherLineItem {
   discount_percent: number;
   discount_amount: number;
   line_total: number;
+  tax_inclusive?: boolean;
   remarks?: string;
   metadata?: Record<string, any>;
 }
@@ -116,6 +122,10 @@ export interface FastVoucherEntryLayoutProps {
   // Selected State
   selectedParty?: VoucherPartyOption | null;
   onPartySelect?: (party: VoucherPartyOption | null) => void;
+  renderPartySelect?: (props: {
+    selectedParty?: VoucherPartyOption | null;
+    onPartySelect?: (party: VoucherPartyOption | null) => void;
+  }) => React.ReactNode;
 
   items: VoucherLineItem[];
   onAddItem: (item: VoucherLineItem) => void;

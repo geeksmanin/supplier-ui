@@ -67,6 +67,8 @@ function parseArgs() {
     versionCode: 1,
     icon: null,
     googleServices: null,
+    themeColor: null,
+    splashBackground: null,
     release: false,
     skipBuild: false,
     output: null,
@@ -143,6 +145,8 @@ async function main() {
     opts.url = opts.url || registeredApp.url;
     opts.version = opts.version || registeredApp.version || '1.0.0';
     opts.versionCode = opts.versionCode || registeredApp.versionCode || 1;
+    opts.themeColor = opts.themeColor || registeredApp.theme_color || '#008069';
+    opts.splashBackground = opts.splashBackground || registeredApp.splash_background || registeredApp.theme_color || '#008069';
     if (!opts.icon && registeredApp.icon) {
       const resolvedIcon = path.resolve(ROOT_DIR, registeredApp.icon);
       if (fs.existsSync(resolvedIcon)) opts.icon = resolvedIcon;
@@ -243,15 +247,15 @@ async function main() {
       },
       SplashScreen: {
         launchShowDuration: 1500,
-        launchAutoHide: true,
-        backgroundColor: '#070b14',
+        launchAutoHide: false,
+        backgroundColor: opts.splashBackground || '#008069',
         androidScaleType: 'CENTER_CROP',
         showSpinner: false,
       },
       StatusBar: {
         overlaysWebView: false,
-        style: 'DARK',
-        backgroundColor: '#070b14',
+        style: 'LIGHT',
+        backgroundColor: opts.themeColor || opts.splashBackground || '#008069',
       },
     },
   };
@@ -299,8 +303,28 @@ async function main() {
   const packageDir = path.join(buildDir, 'android/app/src/main/java', ...opts.package.split('.'));
   fs.mkdirSync(packageDir, { recursive: true });
   const mainActivityTemplate = fs.readFileSync(path.join(templateDir, 'MainActivity.java.template'), 'utf-8');
-  const renderedMainActivity = mainActivityTemplate.replace(/\{\{PACKAGE_NAME\}\}/g, opts.package);
+  const renderedMainActivity = mainActivityTemplate
+    .replace(/\{\{PACKAGE_NAME\}\}/g, opts.package)
+    .replace(/\{\{SPLASH_BACKGROUND\}\}/g, opts.splashBackground || '#008069');
   fs.writeFileSync(path.join(packageDir, 'MainActivity.java'), renderedMainActivity);
+
+  // Create DevServerPlugin.java with correct package path
+  const devServerPluginTemplate = fs.readFileSync(path.join(templateDir, 'DevServerPlugin.java.template'), 'utf-8');
+  const renderedDevServerPlugin = devServerPluginTemplate.replace(/\{\{PACKAGE_NAME\}\}/g, opts.package);
+  fs.writeFileSync(path.join(packageDir, 'DevServerPlugin.java'), renderedDevServerPlugin);
+
+  // Create GalaxyLoaderView.java with correct package path
+  const galaxyLoaderTemplate = fs.readFileSync(path.join(templateDir, 'GalaxyLoaderView.java.template'), 'utf-8');
+  const renderedGalaxyLoader = galaxyLoaderTemplate.replace(/\{\{PACKAGE_NAME\}\}/g, opts.package);
+  fs.writeFileSync(path.join(packageDir, 'GalaxyLoaderView.java'), renderedGalaxyLoader);
+
+  // Copy galaxy_logo_points.dat into Android assets
+  const sourcePoints = path.join(templateDir, 'android/app/src/main/assets/galaxy_logo_points.dat');
+  const targetPoints = path.join(buildDir, 'android/app/src/main/assets/galaxy_logo_points.dat');
+  fs.mkdirSync(path.dirname(targetPoints), { recursive: true });
+  if (fs.existsSync(sourcePoints)) {
+    fs.copyFileSync(sourcePoints, targetPoints);
+  }
 
   // 6. Setup Firebase google-services.json
   console.log('[4/5] Checking Firebase Cloud Messaging (google-services.json)...');

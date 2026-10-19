@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../api/client';
 import { getCurrentUser } from '../utils/auth';
+import { useDevModeTrigger } from '../hooks/useDevModeTrigger';
+import { DevServerModal } from './DevServerModal';
 
 export const ProfileMobile: React.FC = () => {
+  const { handleTap: handleVersionTap, isDevModalOpen, setIsDevModalOpen } = useDevModeTrigger();
   const [appVersion, setAppVersion] = useState<string>('Loading...');
   const [checking, setChecking] = useState<boolean>(false);
   const [updating, setUpdating] = useState<boolean>(false);
@@ -252,7 +255,7 @@ export const ProfileMobile: React.FC = () => {
             ⚙️ System & Updates
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div>
+            <div onClick={handleVersionTap} style={{ cursor: 'pointer', userSelect: 'none' }} title="Tap 7 times for developer options">
               <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#6b7280', fontWeight: 600 }}>Current Version</span>
               <div style={{ fontSize: '0.85rem', fontWeight: 500, marginTop: '0.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span>{appVersion}</span>
@@ -356,6 +359,13 @@ export const ProfileMobile: React.FC = () => {
         </div>
 
       </div>
+
+      {/* Developer Mode Server Configuration Modal */}
+      <DevServerModal
+        isOpen={isDevModalOpen}
+        onClose={() => setIsDevModalOpen(false)}
+        appName="Geeksman OS"
+      />
     </div>
   );
 };

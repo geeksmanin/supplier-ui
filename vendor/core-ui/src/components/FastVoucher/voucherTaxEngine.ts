@@ -18,6 +18,7 @@ export interface TaxEngineInput {
   documentDiscountPercent?: number;
   shippingCharges?: number;
   isRoundOffEnabled?: boolean;
+  taxInclusive?: boolean;
 }
 
 export interface TaxEngineResult extends VoucherSummary {
@@ -55,6 +56,7 @@ export function computeVoucherSummary({
   documentDiscountPercent = 0,
   shippingCharges = 0,
   isRoundOffEnabled = true,
+  taxInclusive = false,
 }: TaxEngineInput): TaxEngineResult {
   const companyState = companyStateCode || extractStateCode(companyGstin);
   const partyState = party?.state_code || extractStateCode(party?.gstin);
@@ -79,9 +81,26 @@ export function computeVoucherSummary({
       lineDiscount = +((grossAmount * Number(item.discount_percent)) / 100).toFixed(2);
     }
 
-    const taxableAmount = Math.max(0, +(grossAmount - lineDiscount).toFixed(2));
+    const isInclusive =
+      item.tax_inclusive !== undefined
+        ? item.tax_inclusive
+        : item.metadata?.is_price_tax_inclusive !== undefined
+        ? Boolean(item.metadata.is_price_tax_inclusive)
+        : Boolean(taxInclusive);
+
+    const grossAfterDisc = Math.max(0, +(grossAmount - lineDiscount).toFixed(2));
     const taxRate = Number(item.tax_percent) || 0;
-    const taxAmount = +((taxableAmount * taxRate) / 100).toFixed(2);
+
+    let taxableAmount: number;
+    let taxAmount: number;
+
+    if (isInclusive && taxRate > 0) {
+      taxableAmount = +(grossAfterDisc / (1 + taxRate / 100)).toFixed(2);
+      taxAmount = +(grossAfterDisc - taxableAmount).toFixed(2);
+    } else {
+      taxableAmount = grossAfterDisc;
+      taxAmount = +((taxableAmount * taxRate) / 100).toFixed(2);
+    }
 
     subtotal += taxableAmount;
     itemDiscountsTotal += lineDiscount;

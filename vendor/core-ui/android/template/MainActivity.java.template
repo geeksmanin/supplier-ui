@@ -16,6 +16,8 @@ import com.capacitorjs.plugins.filesystem.FilesystemPlugin;
 import com.capacitorjs.plugins.share.SharePlugin;
 
 public class MainActivity extends BridgeActivity {
+    private GalaxyLoaderView galaxyLoaderView;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(PushNotificationsPlugin.class);
@@ -24,8 +26,34 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(StatusBarPlugin.class);
         registerPlugin(FilesystemPlugin.class);
         registerPlugin(SharePlugin.class);
+        registerPlugin(DevServerPlugin.class);
 
         super.onCreate(savedInstanceState);
+
+        // Mount native GalaxyLoaderView directly over the window
+        galaxyLoaderView = new GalaxyLoaderView(this, "{{SPLASH_BACKGROUND}}");
+        addContentView(galaxyLoaderView, new android.view.ViewGroup.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+
+        // Load custom developer server URL if configured in SharedPreferences
+        if (this.bridge != null && this.bridge.getWebView() != null) {
+            android.content.SharedPreferences prefs = getSharedPreferences("GeeksmanAppConfig", MODE_PRIVATE);
+            String customUrl = prefs.getString("custom_server_url", null);
+            if (customUrl != null && !customUrl.trim().isEmpty()) {
+                this.bridge.getWebView().loadUrl(customUrl.trim());
+            }
+        }
+    }
+
+    public void dismissGalaxyLoader() {
+        runOnUiThread(() -> {
+            if (galaxyLoaderView != null) {
+                galaxyLoaderView.dismiss(null);
+            }
+        });
+    }
 
         // Native DownloadManager Listener for Invoices, Reports, CSVs, and PDFs
         if (this.bridge != null && this.bridge.getWebView() != null) {
