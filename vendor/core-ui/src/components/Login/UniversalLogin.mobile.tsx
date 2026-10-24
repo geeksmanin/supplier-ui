@@ -17,7 +17,8 @@ export interface UniversalLoginMobileProps extends UniversalLoginProps {
   setActiveRole: (role: UserPersonaRole) => void;
   activeWorkspace: string;
   workspaceName?: string;
-  onOpenWorkspaceModal: () => void;
+  onOpenWorkspaceModal?: () => void;
+  onWorkspaceChange?: (newCode: string, metadata?: any) => void;
   onSubmit: (e: React.FormEvent) => void;
 }
 
@@ -35,6 +36,7 @@ export const UniversalLoginMobile: React.FC<UniversalLoginMobileProps> = ({
   activeWorkspace,
   workspaceName,
   onOpenWorkspaceModal,
+  onWorkspaceChange,
   onSubmit,
   role = 'staff',
   appName,
@@ -119,6 +121,7 @@ export const UniversalLoginMobile: React.FC<UniversalLoginMobileProps> = ({
             workspaceCode={activeWorkspace}
             workspaceName={workspaceName}
             onChangeClick={onOpenWorkspaceModal}
+            onWorkspaceChange={onWorkspaceChange}
             variant="glass"
           />
         </div>
@@ -221,22 +224,24 @@ export const UniversalLoginMobile: React.FC<UniversalLoginMobileProps> = ({
           </Button>
         </form>
 
-        <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
-          <button
-            type="button"
-            onClick={onOpenWorkspaceModal}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#64748b',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            Change Workspace ({activeWorkspace.toUpperCase()})
-          </button>
-        </div>
+        {onOpenWorkspaceModal && (
+          <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
+            <button
+              type="button"
+              onClick={onOpenWorkspaceModal}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#64748b',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Change Workspace ({activeWorkspace.toUpperCase()})
+            </button>
+          </div>
+        )}
 
         <LoginVersionFooter appName={appName} theme="light" />
       </div>

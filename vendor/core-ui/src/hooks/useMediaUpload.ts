@@ -12,6 +12,11 @@ export interface UseMediaUploadReturn {
   error: string | null;
   uploadedUrl: string | null;
   upload: (file: File, customBucket?: string) => Promise<string>;
+  uploadMedia: (
+    file: File,
+    customBucket?: string,
+    options?: UseMediaUploadOptions
+  ) => Promise<{ url: string; filename: string; file_id: string; upload_id: string }>;
   resolveUrl: (path: string) => string;
   reset: () => void;
 }
@@ -47,6 +52,21 @@ export function useMediaUpload(options: UseMediaUploadOptions = {}): UseMediaUpl
     [options]
   );
 
+  const uploadMedia = useCallback(
+    async (
+      file: File,
+      customBucket?: string,
+      customOptions?: UseMediaUploadOptions
+    ): Promise<{ url: string; filename: string; file_id: string; upload_id: string }> => {
+      const url = await upload(file, customBucket);
+      if (customOptions?.onSuccess) {
+        customOptions.onSuccess(url);
+      }
+      return { url, filename: url, file_id: url, upload_id: url };
+    },
+    [upload]
+  );
+
   const resolveUrl = useCallback((path: string) => resolveMediaUrl(path), []);
 
   const reset = useCallback(() => {
@@ -60,6 +80,7 @@ export function useMediaUpload(options: UseMediaUploadOptions = {}): UseMediaUpl
     error,
     uploadedUrl,
     upload,
+    uploadMedia,
     resolveUrl,
     reset,
   };

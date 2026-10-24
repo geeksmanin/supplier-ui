@@ -193,4 +193,16 @@ export type { UseDevModeTriggerOptions } from './hooks/useDevModeTrigger';
 export { usePlatformVersions } from './hooks/usePlatformVersions';
 export type { PlatformVersionsState } from './hooks/usePlatformVersions';
 
+// Conversational Agent Subsystem
+export * from './agents/types';
+export * from './agents/registry';
+export { VerifiedBlueTick } from './components/agent/VerifiedBlueTick';
+export type { VerifiedBlueTickProps } from './components/agent/VerifiedBlueTick';
+export { AgentAvatar } from './components/agent/AgentAvatar';
+export type { AgentAvatarProps } from './components/agent/AgentAvatar';
+export { AgentRoomPage, SamwadAgentRoomPage } from './components/agent/AgentRoomPage';
+export type { AgentRoomPageProps } from './components/agent/AgentRoomPage';
+export { AgentChatView } from './components/agent/AgentChatView';
+export type { AgentChatViewProps } from './components/agent/AgentChatView';
+
 

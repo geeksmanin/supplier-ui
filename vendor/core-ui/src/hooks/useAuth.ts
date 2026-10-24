@@ -44,19 +44,32 @@ export interface UseLoginReturn {
  */
 export function useLogin(): UseLoginReturn {
   const [activeWorkspace, setActiveWorkspace] = useState<string>(() => {
-    const config = getAppConfig();
-    const fromStorage = typeof window !== 'undefined'
-      ? (localStorage.getItem('tenant_code') || localStorage.getItem('workspace_code'))
-      : null;
-    if (fromStorage && fromStorage !== 'business') return fromStorage;
     const fromUrl = getWorkspaceFromUrl();
+    const config = getAppConfig();
+    const lastUsed = typeof window !== 'undefined'
+      ? (localStorage.getItem('last_used_workspace') || '').trim().toLowerCase()
+      : '';
+    const fromStorage = typeof window !== 'undefined'
+      ? (localStorage.getItem('tenant_code') || localStorage.getItem('workspace_code') || '').trim().toLowerCase()
+      : '';
+
+    // If URL has an explicit non-business workspace, use it
     if (fromUrl && fromUrl !== 'business') return fromUrl;
+
+    // If storage has an explicit non-business workspace, use it
+    if (fromStorage && fromStorage !== 'business') return fromStorage;
+
+    // If URL or storage requested 'business', or no workspace specified:
+    // Prefill with last used workspace if available
+    if (lastUsed && lastUsed !== 'business') return lastUsed;
+
     if (config.defaultTenant && config.defaultTenant !== 'business') return config.defaultTenant;
     return '';
   });
 
   const [workspaceName, setWorkspaceName] = useState<string>(() => {
-    return typeof window !== 'undefined' ? (localStorage.getItem('tenant_name') || '') : '';
+    if (typeof window === 'undefined') return '';
+    return localStorage.getItem('tenant_name') || localStorage.getItem('last_used_workspace_name') || '';
   });
 
   const [resolvedTenantMeta, setResolvedTenantMeta] = useState<TenantMetadata | null>(null);
@@ -82,6 +95,10 @@ export function useLogin(): UseLoginReturn {
       if (meta.name) {
         setWorkspaceName(meta.name);
         localStorage.setItem('tenant_name', meta.name);
+      }
+      localStorage.setItem('last_used_workspace', meta.tenant_code);
+      if (meta.name) {
+        localStorage.setItem('last_used_workspace_name', meta.name);
       }
       return meta;
     } catch (err: any) {
@@ -178,6 +195,10 @@ export function useLogin(): UseLoginReturn {
         localStorage.setItem('tenant_code', tenantCode);
         localStorage.setItem('workspace_code', tenantCode);
         localStorage.setItem('current_tenant_code', tenantCode);
+        localStorage.setItem('last_used_workspace', tenantCode);
+        if (workspaceName) {
+          localStorage.setItem('last_used_workspace_name', workspaceName);
+        }
       }
 
       setCurrentUser({

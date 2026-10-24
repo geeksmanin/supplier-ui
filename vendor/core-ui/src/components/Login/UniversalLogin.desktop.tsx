@@ -17,7 +17,8 @@ export interface UniversalLoginDesktopProps extends UniversalLoginProps {
   setActiveRole: (role: UserPersonaRole) => void;
   activeWorkspace: string;
   workspaceName?: string;
-  onOpenWorkspaceModal: () => void;
+  onOpenWorkspaceModal?: () => void;
+  onWorkspaceChange?: (newCode: string, metadata?: any) => void;
   onSubmit: (e: React.FormEvent) => void;
 }
 
@@ -35,6 +36,7 @@ export const UniversalLoginDesktop: React.FC<UniversalLoginDesktopProps> = ({
   activeWorkspace,
   workspaceName,
   onOpenWorkspaceModal,
+  onWorkspaceChange,
   onSubmit,
   role = 'staff',
   appName,
@@ -141,6 +143,7 @@ export const UniversalLoginDesktop: React.FC<UniversalLoginDesktopProps> = ({
                 workspaceCode={activeWorkspace}
                 workspaceName={workspaceName}
                 onChangeClick={onOpenWorkspaceModal}
+                onWorkspaceChange={onWorkspaceChange}
                 variant="dark"
               />
             </div>
@@ -210,6 +213,7 @@ export const UniversalLoginDesktop: React.FC<UniversalLoginDesktopProps> = ({
                 workspaceCode={activeWorkspace}
                 workspaceName={workspaceName}
                 onChangeClick={onOpenWorkspaceModal}
+                onWorkspaceChange={onWorkspaceChange}
                 variant="light"
               />
             </div>
@@ -289,27 +293,29 @@ export const UniversalLoginDesktop: React.FC<UniversalLoginDesktopProps> = ({
             </Button>
           </form>
 
-          <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-              Need to access a different company?{' '}
-              <button
-                type="button"
-                onClick={onOpenWorkspaceModal}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: personaConfig.primaryColor,
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                  padding: 0,
-                  textDecoration: 'underline',
-                }}
-              >
-                Change Workspace
-              </button>
-            </span>
-          </div>
+          {onOpenWorkspaceModal && (
+            <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                Need to access a different company?{' '}
+                <button
+                  type="button"
+                  onClick={onOpenWorkspaceModal}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: personaConfig.primaryColor,
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    padding: 0,
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Change Workspace
+                </button>
+              </span>
+            </div>
+          )}
 
           <LoginVersionFooter appName={appName} theme="light" />
         </div>

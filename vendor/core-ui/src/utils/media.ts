@@ -286,7 +286,7 @@ export async function uploadMediaFile(file: File, folder: string = 'samwad'): Pr
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     const d = res.data?.data || res.data;
-    const rawUrl = d?.upload_id || d?.uploadId || d?.relative_url || d?.media_url || d?.url;
+    const rawUrl = d?.upload_id || d?.uploadId || d?.relative_url || d?.media_url || d?.url || d?.filename;
     if (rawUrl) {
       return toRelativeMediaUrl(String(rawUrl));
     }

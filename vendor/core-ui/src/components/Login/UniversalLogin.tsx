@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useLogin } from '../../hooks/useAuth';
 import { UniversalLoginProps, UserPersonaRole } from './UniversalLogin.types';
 import { UniversalLoginDesktop } from './UniversalLogin.desktop';
 import { UniversalLoginMobile } from './UniversalLogin.mobile';
-import { WorkspaceSelectModal } from './WorkspaceSelectModal';
 
 export const UniversalLogin: React.FC<UniversalLoginProps> = ({
   role = 'staff',
@@ -33,19 +32,11 @@ export const UniversalLogin: React.FC<UniversalLoginProps> = ({
     setError,
   } = useLogin();
 
-  const [isWorkspaceModalOpen, setIsWorkspaceModalOpen] = useState(false);
   const [activeRole, setActiveRole] = useState<UserPersonaRole>(role === 'universal' ? 'staff' : role);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-
-  // Auto-open workspace selector if tenant is generic "business" or unset
-  useEffect(() => {
-    if (!activeWorkspace || activeWorkspace.toLowerCase() === 'business') {
-      setIsWorkspaceModalOpen(true);
-    }
-  }, [activeWorkspace]);
 
   const handleSelectWorkspace = async (code: string, meta?: any) => {
     setActiveWorkspace(code);
@@ -60,7 +51,6 @@ export const UniversalLogin: React.FC<UniversalLoginProps> = ({
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeWorkspace || activeWorkspace.toLowerCase() === 'business') {
-      setIsWorkspaceModalOpen(true);
       setError('Please select or scan your organization workspace first.');
       return;
     }
@@ -103,7 +93,7 @@ export const UniversalLogin: React.FC<UniversalLoginProps> = ({
     setActiveRole,
     activeWorkspace,
     workspaceName,
-    onOpenWorkspaceModal: () => setIsWorkspaceModalOpen(true),
+    onWorkspaceChange: handleSelectWorkspace,
     onSubmit: handleLoginSubmit,
     role,
     appName,
@@ -116,21 +106,9 @@ export const UniversalLogin: React.FC<UniversalLoginProps> = ({
     features,
   };
 
-  return (
-    <>
-      {isDesktop ? (
-        <UniversalLoginDesktop {...sharedProps} />
-      ) : (
-        <UniversalLoginMobile {...sharedProps} />
-      )}
-
-      {/* Global Workspace Selector Modal */}
-      <WorkspaceSelectModal
-        isOpen={isWorkspaceModalOpen}
-        onClose={() => setIsWorkspaceModalOpen(false)}
-        currentWorkspace={activeWorkspace}
-        onSelectWorkspace={handleSelectWorkspace}
-      />
-    </>
+  return isDesktop ? (
+    <UniversalLoginDesktop {...sharedProps} />
+  ) : (
+    <UniversalLoginMobile {...sharedProps} />
   );
 };

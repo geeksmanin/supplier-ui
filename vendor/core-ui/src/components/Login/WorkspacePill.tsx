@@ -1,6 +1,30 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { resolveTenantByCode, TenantMetadata } from '../../api/client';
 
+export const LAST_USED_WORKSPACE_KEY = 'last_used_workspace';
+export const LAST_USED_WORKSPACE_NAME_KEY = 'last_used_workspace_name';
+
+export function getLastUsedWorkspace(): { code: string; name: string } | null {
+  if (typeof window === 'undefined') return null;
+  const code = (localStorage.getItem(LAST_USED_WORKSPACE_KEY) || '').trim().toLowerCase();
+  if (code && code !== 'business') {
+    const name = localStorage.getItem(LAST_USED_WORKSPACE_NAME_KEY) || code.toUpperCase();
+    return { code, name };
+  }
+  return null;
+}
+
+export function setLastUsedWorkspace(code: string, name?: string): void {
+  if (typeof window === 'undefined') return;
+  const clean = cleanWorkspaceCode(code);
+  if (clean && clean !== 'business') {
+    localStorage.setItem(LAST_USED_WORKSPACE_KEY, clean);
+    if (name) {
+      localStorage.setItem(LAST_USED_WORKSPACE_NAME_KEY, name);
+    }
+  }
+}
+
 export interface WorkspacePillProps {
   workspaceCode: string;
   workspaceName?: string;
@@ -9,6 +33,7 @@ export interface WorkspacePillProps {
   style?: React.CSSProperties;
   variant?: 'light' | 'dark' | 'glass';
   inline?: boolean;
+  enforceSelectionOnBusiness?: boolean;
 }
 
 export function cleanWorkspaceCode(raw: string): string {
@@ -44,26 +69,52 @@ export const WorkspacePill: React.FC<WorkspacePillProps> = ({
   style,
   variant = 'light',
   inline = true,
+  enforceSelectionOnBusiness = true,
 }) => {
   const isBusinessPlaceholder = !workspaceCode || workspaceCode.toLowerCase() === 'business';
-  const displayName = isBusinessPlaceholder
-    ? 'Choose Workspace'
-    : (workspaceName || workspaceCode).toUpperCase();
+  const lastUsed = typeof window !== 'undefined' ? getLastUsedWorkspace() : null;
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [inputValue, setInputValue] = useState(isBusinessPlaceholder ? '' : workspaceCode);
+  // Auto-prefill from last used workspace if current workspace is 'business' or empty
+  useEffect(() => {
+    if (isBusinessPlaceholder && lastUsed?.code && onWorkspaceChange) {
+      onWorkspaceChange(lastUsed.code, {
+        tenant_code: lastUsed.code,
+        workspace: lastUsed.code,
+        name: lastUsed.name,
+        is_active: true,
+      });
+    }
+  }, [isBusinessPlaceholder, lastUsed?.code]);
+
+  // If still business placeholder (no last used), enforce inline editing mode
+  const shouldEnforceEdit = isBusinessPlaceholder && !lastUsed?.code && enforceSelectionOnBusiness;
+
+  const [isEditing, setIsEditing] = useState(shouldEnforceEdit);
+  const [inputValue, setInputValue] = useState(
+    isBusinessPlaceholder ? (lastUsed?.code || '') : workspaceCode
+  );
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const displayName = isBusinessPlaceholder
+    ? (lastUsed ? lastUsed.name.toUpperCase() : 'Choose Workspace')
+    : (workspaceName || workspaceCode).toUpperCase();
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!isEditing) {
-      setInputValue(isBusinessPlaceholder ? '' : workspaceCode);
+    if (shouldEnforceEdit && !isEditing) {
+      setIsEditing(true);
     }
-  }, [workspaceCode, isEditing, isBusinessPlaceholder]);
+  }, [shouldEnforceEdit]);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setInputValue(isBusinessPlaceholder ? (lastUsed?.code || '') : workspaceCode);
+    }
+  }, [workspaceCode, isEditing, isBusinessPlaceholder, lastUsed?.code]);
 
   // Clean up camera on unmount or when scanner closes
   useEffect(() => {
@@ -168,6 +219,8 @@ export const WorkspacePill: React.FC<WorkspacePillProps> = ({
           is_active: true,
         };
       }
+
+      setLastUsedWorkspace(cleaned, meta?.name || cleaned.toUpperCase());
 
       setIsEditing(false);
       setIsScannerOpen(false);
@@ -598,3 +651,6 @@ export const WorkspacePill: React.FC<WorkspacePillProps> = ({
     </div>
   );
 };
+
+export const WorkspaceSelector = WorkspacePill;
+export type WorkspaceSelectorProps = WorkspacePillProps;
