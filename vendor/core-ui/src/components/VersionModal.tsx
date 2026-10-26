@@ -1,29 +1,38 @@
 import React from 'react';
-import { BackendVersionData } from '../hooks/useAppVersion';
+import { BackendVersionData, AppVersionState } from '../hooks/useAppVersion';
 import { getWorkspaceFromUrl } from '../api/client';
 
 export interface VersionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  uiVersion: string;
-  cacheId: string;
-  backendVersion: BackendVersionData | null;
-  onCheckUpdates: () => void;
-  onCopyInfo: () => void;
+  uiVersion?: string;
+  cacheId?: string;
+  backendVersion?: BackendVersionData | null;
+  onCheckUpdates?: () => void;
+  onCopyInfo?: () => void;
   updateReady?: boolean;
+  versionInfo?: AppVersionState;
 }
 
 export const VersionModal: React.FC<VersionModalProps> = ({
   isOpen,
   onClose,
-  uiVersion,
-  cacheId,
-  backendVersion,
-  onCheckUpdates,
-  onCopyInfo,
-  updateReady = false,
+  uiVersion: propUiVersion,
+  cacheId: propCacheId,
+  backendVersion: propBackendVersion,
+  onCheckUpdates: propOnCheckUpdates,
+  onCopyInfo: propOnCopyInfo,
+  updateReady: propUpdateReady = false,
+  versionInfo,
 }) => {
   if (!isOpen) return null;
+
+  const uiVersion = versionInfo?.uiVersion || propUiVersion || 'v1.0.0';
+  const cacheId = versionInfo?.cacheId || propCacheId || 'local';
+  const backendVersion = versionInfo ? versionInfo.backendVersion : propBackendVersion;
+  const onCheckUpdates = versionInfo?.checkForUpdates || propOnCheckUpdates || (() => {});
+  const onCopyInfo = versionInfo?.copySystemInfo || propOnCopyInfo || (() => {});
+  const updateReady = versionInfo ? versionInfo.updateReady : propUpdateReady;
 
   const tenant = getWorkspaceFromUrl() || 'default';
   const isDesktopShell = typeof window !== 'undefined' && !!(window as any).wails;

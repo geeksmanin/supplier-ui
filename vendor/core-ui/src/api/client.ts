@@ -18,35 +18,14 @@ export const getDefaultBackendUrl = (): string => {
 
 export const getBaseUrl = (): string => {
   if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '10.0.2.2' || host.includes('dev.');
-    const isLanIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.endsWith('.local');
-
-    const override = localStorage.getItem('portal_override_backend_url') === 'true';
-    const savedUrl = localStorage.getItem('portal_backend_url');
-    if (override && savedUrl) {
-      return savedUrl.replace(/\/$/, '');
+    const config = getAppConfig();
+    if (config.apiBaseUrl) {
+      return config.apiBaseUrl.replace(/\/$/, '');
     }
 
-    const config = window.runtimeConfig as any;
-    if (config?.apiBaseUrl) {
-      const url = config.apiBaseUrl;
-      if (isLocalHost || isLanIp || (!url.includes('localhost') && !url.includes('127.0.0.1') && !url.includes('10.0.2.2'))) {
-        if (isLanIp && url.includes('localhost')) {
-          return url.replace('localhost', host).replace(/\/$/, '');
-        }
-        return url.replace(/\/$/, '');
-      }
-    }
-
-    if (isLanIp || isLocalHost) {
-      const defaultUrl = getDefaultBackendUrl();
-      if (defaultUrl) {
-        if (isLanIp && (defaultUrl.includes('localhost') || defaultUrl.includes('127.0.0.1') || defaultUrl.includes('10.0.2.2'))) {
-          return defaultUrl.replace(/localhost|127\.0\.0\.1|10\.0\.2\.2/, host).replace(/\/$/, '');
-        }
-        return defaultUrl.replace(/\/$/, '');
-      }
+    const legacyConfig = (window as any).runtimeConfig;
+    if (legacyConfig?.apiBaseUrl) {
+      return legacyConfig.apiBaseUrl.replace(/\/$/, '');
     }
   }
   return getDefaultBackendUrl();
@@ -74,66 +53,18 @@ export interface TenantMetadata {
 }
 
 export const getWorkspaceFromUrl = (): string => {
+  const appConfig = getAppConfig();
+  if (appConfig.tenantCode && appConfig.tenantCode !== 'business') {
+    return appConfig.tenantCode;
+  }
   if (typeof window !== 'undefined') {
-    const appConfig = getAppConfig();
-
-    // 1. Check URL query parameters (both standard query and hash query, e.g. ?workspace=synchx)
-    const searchParams = new URLSearchParams(window.location.search);
-    let queryWs = searchParams.get('workspace') || searchParams.get('tenant') || searchParams.get('tenant_code');
-
-    if (!queryWs && window.location.hash.includes('?')) {
-      const hashQuery = window.location.hash.split('?')[1];
-      const hashParams = new URLSearchParams(hashQuery);
-      queryWs = hashParams.get('workspace') || hashParams.get('tenant') || hashParams.get('tenant_code');
-    }
-
-    if (queryWs) {
-      const ws = queryWs.trim().toLowerCase();
-      if (ws !== 'business') {
-        localStorage.setItem('tenant_code', ws);
-        localStorage.setItem('workspace_code', ws);
-        return ws;
-      }
-    }
-
-    // 2. Check Hostname subdomain (e.g. synchx.geeksman.co.in) if URL resolution is enabled
-    if (appConfig.resolveTenantFromUrl) {
-      const host = window.location.hostname.toLowerCase();
-      const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
-      if (host && host !== 'localhost' && host !== '127.0.0.1' && !host.endsWith('.localhost') && !isIpAddress) {
-        const parts = host.split('.');
-        const appPrefixes = ['admin', 'platform', 'www', 'pos', 'samwad', 'samvad', 'chat', 'staff', 'customer', 'portal', 'catalogue', 'catalog', 'app', 'api', 'business', 'geeksman'];
-        if (parts.length > 1) {
-          if (!appPrefixes.includes(parts[0])) {
-            return parts[0];
-          } else if (parts.length > 2 && !appPrefixes.includes(parts[1])) {
-            // E.g. samwad.a3pl.in or pos.a3pl.in -> parts[1] is 'a3pl'
-            return parts[1];
-          }
-        }
-      }
-    }
-
-    // 3. User-chosen or saved tenant in localStorage (survives reloads and explicit switches)
-    const savedTenant = localStorage.getItem('tenant_code') || localStorage.getItem('workspace_code');
-    if (savedTenant && savedTenant !== 'business') {
-      return savedTenant;
-    }
-
-    // 4. Authenticated user tenant code
     try {
       const user = getCurrentUser();
       if (user?.tenantCode && user.tenantCode !== 'business') {
         return user.tenantCode;
       }
     } catch {}
-
-    // 5. Fallback to configured defaultTenant from AppConfig
-    if (appConfig.defaultTenant && appConfig.defaultTenant !== 'business') {
-      return appConfig.defaultTenant;
-    }
   }
-  const appConfig = getAppConfig();
   const def = appConfig.tenantCode || appConfig.defaultTenant;
   if (def && def !== 'business') return def;
   return '';

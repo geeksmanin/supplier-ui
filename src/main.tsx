@@ -3,19 +3,18 @@ import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { registerSupplierPortalModule } from './register';
 import './index.css';
-import { initializeConfig, resolveTenantCodeFromServer, apiClient } from '@geeksman/core-ui';
+import { apiClient } from '@geeksman/core-ui';
 import { getAppConfig } from './config';
 
 // Initialize configuration
-initializeConfig(getAppConfig());
+const config = getAppConfig();
 
 registerSupplierPortalModule();
 
 const applyDynamicBranding = async (target: 'staff' | 'customer') => {
   if (typeof window === 'undefined') return;
 
-  const config = getAppConfig();
-  const backendBase = config.apiBaseUrl || 'https://erpapi.geeksman.co.in';
+  const backendBase = config.apiBaseUrl;
   let backendHost = '';
   if (backendBase.startsWith('http://') || backendBase.startsWith('https://')) {
     backendHost = backendBase.replace(/\/api\/v1\/?$/, '').replace(/\/$/, '');
@@ -29,14 +28,7 @@ const applyDynamicBranding = async (target: 'staff' | 'customer') => {
     return `${backendHost}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
-  const host = window.location.host;
-  let workspace = 'platform';
-  if (host !== 'localhost' && host !== '127.0.0.1') {
-    const parts = host.split('.');
-    if (parts.length > 1 && parts[0] !== 'admin' && parts[0] !== 'platform' && parts[0] !== 'www') {
-      workspace = parts[0];
-    }
-  }
+  const workspace = config.tenantCode;
 
   try {
     const res = await apiClient.get(`/tenant/workspace`, {
@@ -69,9 +61,7 @@ const applyDynamicBranding = async (target: 'staff' | 'customer') => {
       if (logoUrl) appleTouchIcon.href = logoUrl;
 
       // Point the manifest link at the backend dynamic manifest endpoint.
-      // The backend serves a fully branded manifest per subdomain (name, short_name, icons)
-      // as a proper absolute URL — satisfying Chrome's PWA installability check.
-      const manifestApiUrl = `${backendBase}/tenant/manifest?portal=customer${workspace !== 'platform' ? `&workspace=${workspace}` : ''}`;
+      const manifestApiUrl = `${backendBase}/tenant/manifest?portal=customer${workspace ? `&workspace=${workspace}` : ''}`;
       let link = document.querySelector('link[rel="manifest"]');
       if (!link) {
         link = document.createElement('link');
@@ -89,15 +79,7 @@ const applyDynamicBranding = async (target: 'staff' | 'customer') => {
   }
 };
 
-// Resolve tenant code from server before mounting application
-resolveTenantCodeFromServer().then(async () => {
-  await applyDynamicBranding('customer');
-  ReactDOM.createRoot(document.getElementById('root')!).render(
-    <App />
-  );
-}).catch((err) => {
-  console.error('Failed to bootstrap application:', err);
-  // Mount anyway so the user sees a UI
+applyDynamicBranding('customer').finally(() => {
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   );

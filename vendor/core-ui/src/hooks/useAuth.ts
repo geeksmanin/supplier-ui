@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiClient, getWorkspaceFromUrl, resolveTenantByCode, TenantMetadata } from '../api/client';
-import { getAppConfig } from '../config';
+import { apiClient, resolveTenantByCode, TenantMetadata } from '../api/client';
+import { useAppConfig } from './useAppConfig';
 import { setAuthToken, setCurrentUser, clearCurrentUser, clearAuthToken } from '../utils/auth';
 
 export type AuthRole = 'staff' | 'customer' | 'vendor' | 'universal';
@@ -43,33 +43,29 @@ export interface UseLoginReturn {
  * backend tenant resolution, JWT decoding, user profile storage, and event broadcasting.
  */
 export function useLogin(): UseLoginReturn {
+  const {
+    tenantCode: configTenantCode,
+    tenantName: configTenantName,
+    lastUsedWorkspace,
+    lastUsedWorkspaceName,
+    storeTenantCode,
+    isBusinessTenant,
+  } = useAppConfig();
+
   const [activeWorkspace, setActiveWorkspace] = useState<string>(() => {
-    const fromUrl = getWorkspaceFromUrl();
-    const config = getAppConfig();
-    const lastUsed = typeof window !== 'undefined'
-      ? (localStorage.getItem('last_used_workspace') || '').trim().toLowerCase()
-      : '';
-    const fromStorage = typeof window !== 'undefined'
-      ? (localStorage.getItem('tenant_code') || localStorage.getItem('workspace_code') || '').trim().toLowerCase()
-      : '';
-
-    // If URL has an explicit non-business workspace, use it
-    if (fromUrl && fromUrl !== 'business') return fromUrl;
-
-    // If storage has an explicit non-business workspace, use it
-    if (fromStorage && fromStorage !== 'business') return fromStorage;
-
-    // If URL or storage requested 'business', or no workspace specified:
-    // Prefill with last used workspace if available
-    if (lastUsed && lastUsed !== 'business') return lastUsed;
-
-    if (config.defaultTenant && config.defaultTenant !== 'business') return config.defaultTenant;
+    // If config has resolved an explicit non-business workspace, use it
+    if (!isBusinessTenant(configTenantCode)) {
+      return configTenantCode;
+    }
+    // If current resolved is business or empty, prefill with last used workspace
+    if (!isBusinessTenant(lastUsedWorkspace)) {
+      return lastUsedWorkspace;
+    }
     return '';
   });
 
   const [workspaceName, setWorkspaceName] = useState<string>(() => {
-    if (typeof window === 'undefined') return '';
-    return localStorage.getItem('tenant_name') || localStorage.getItem('last_used_workspace_name') || '';
+    return configTenantName || lastUsedWorkspaceName || '';
   });
 
   const [resolvedTenantMeta, setResolvedTenantMeta] = useState<TenantMetadata | null>(null);
@@ -82,7 +78,7 @@ export function useLogin(): UseLoginReturn {
    */
   const resolveTenant = useCallback(async (code: string): Promise<TenantMetadata | null> => {
     const cleaned = code.trim().toLowerCase();
-    if (!cleaned || cleaned === 'business') {
+    if (isBusinessTenant(cleaned)) {
       setResolvedTenantMeta(null);
       return null;
     }
@@ -94,12 +90,8 @@ export function useLogin(): UseLoginReturn {
       setActiveWorkspace(meta.tenant_code);
       if (meta.name) {
         setWorkspaceName(meta.name);
-        localStorage.setItem('tenant_name', meta.name);
       }
-      localStorage.setItem('last_used_workspace', meta.tenant_code);
-      if (meta.name) {
-        localStorage.setItem('last_used_workspace_name', meta.name);
-      }
+      storeTenantCode(meta.tenant_code, meta.name);
       return meta;
     } catch (err: any) {
       console.warn('Backend tenant resolution warning:', err);
@@ -112,11 +104,12 @@ export function useLogin(): UseLoginReturn {
       };
       setResolvedTenantMeta(fallbackMeta);
       setActiveWorkspace(cleaned);
+      storeTenantCode(cleaned, cleaned.toUpperCase());
       return fallbackMeta;
     } finally {
       setIsResolvingTenant(false);
     }
-  }, []);
+  }, [isBusinessTenant, storeTenantCode]);
 
   /**
    * Performs authentication against the backend with tenant scoping.
@@ -129,7 +122,7 @@ export function useLogin(): UseLoginReturn {
     loginEndpoint,
   }: LoginParams): Promise<LoginResult> => {
     const targetWorkspace = (workspaceCode || activeWorkspace || '').trim().toLowerCase();
-    if (!targetWorkspace || targetWorkspace === 'business') {
+    if (isBusinessTenant(targetWorkspace)) {
       const errMsg = 'Please select or scan your organization workspace first.';
       setError(errMsg);
       throw new Error(errMsg);
@@ -181,24 +174,18 @@ export function useLogin(): UseLoginReturn {
       const userName = responseData.name || decoded.user_alias || decoded.name || '';
       const userEmail = responseData.email || decoded.user_email || email;
       const tokenTenant = decoded.tenant_alias || decoded.tenant_code || decoded.tenant || decoded.workspace_code || decoded.workspace;
-      const tenantCode = (responseData.tenant_code && responseData.tenant_code !== 'business')
+      const tenantCode = (!isBusinessTenant(responseData.tenant_code))
         ? responseData.tenant_code
-        : (tokenTenant && tokenTenant !== 'business')
+        : (!isBusinessTenant(tokenTenant))
         ? tokenTenant
-        : (targetWorkspace && targetWorkspace !== 'business')
+        : (!isBusinessTenant(targetWorkspace))
         ? targetWorkspace
         : '';
 
-      // Persist auth and user context directly to localStorage
+      // Persist auth and user context directly
       setAuthToken(token);
-      if (tenantCode && tenantCode !== 'business') {
-        localStorage.setItem('tenant_code', tenantCode);
-        localStorage.setItem('workspace_code', tenantCode);
-        localStorage.setItem('current_tenant_code', tenantCode);
-        localStorage.setItem('last_used_workspace', tenantCode);
-        if (workspaceName) {
-          localStorage.setItem('last_used_workspace_name', workspaceName);
-        }
+      if (!isBusinessTenant(tenantCode)) {
+        storeTenantCode(tenantCode, workspaceName);
       }
 
       setCurrentUser({
@@ -233,7 +220,7 @@ export function useLogin(): UseLoginReturn {
     } finally {
       setLoading(false);
     }
-  }, [activeWorkspace]);
+  }, [activeWorkspace, storeTenantCode, workspaceName]);
 
   return {
     activeWorkspace,
@@ -268,6 +255,7 @@ export interface UseLogoutReturn {
  */
 export function useLogout(): UseLogoutReturn {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { clearTenantCode } = useAppConfig();
   let navigate: any = null;
   try {
     navigate = useNavigate();
@@ -287,12 +275,7 @@ export function useLogout(): UseLogoutReturn {
 
       // 3. Clear workspace only if explicitly requested
       if (options?.clearWorkspace) {
-        localStorage.removeItem('tenant_code');
-        localStorage.removeItem('workspace_code');
-        localStorage.removeItem('current_tenant_code');
-        localStorage.removeItem('tenant_name');
-        localStorage.removeItem('tenant_logo_url');
-        localStorage.removeItem('tenant_theme_color');
+        clearTenantCode();
       }
 
       // 4. Broadcast logout event to unregister push notifications and reset state

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { usePlatformVersions } from '../../hooks/usePlatformVersions';
+import { useAppVersion } from '../../hooks/useAppVersion';
 import { DevServerModal } from '../DevServerModal';
 
 export interface LoginVersionFooterProps {
@@ -19,7 +19,14 @@ export const LoginVersionFooter: React.FC<LoginVersionFooterProps> = ({
   defaultStagingUrl,
   style,
 }) => {
-  const { webVersion, androidVersion, androidBuild, isNative } = usePlatformVersions(versionUrl);
+  const {
+    webVersion,
+    androidVersion,
+    androidBuild,
+    desktopVersion,
+    isNativeAndroid,
+    isDesktop,
+  } = useAppVersion(versionUrl);
   const [isDevModalOpen, setIsDevModalOpen] = useState(false);
 
   const [tapCount, setTapCount] = useState(0);
@@ -98,6 +105,46 @@ export const LoginVersionFooter: React.FC<LoginVersionFooterProps> = ({
             fontSize: '11px',
           }}
         >
+          {/* Desktop Version Pill (if running in desktop shell) */}
+          {(isDesktop || desktopVersion) && (
+            <div
+              onClick={handleVersionTap}
+              id="login-version-desktop-pill"
+              data-testid="login-version-desktop-pill"
+              title="Desktop App Version (Tap 5 times for Developer Tools)"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '4px 10px',
+                borderRadius: '999px',
+                backgroundColor: badgeBg,
+                border: `1px solid ${badgeBorder}`,
+                color: textColor,
+                fontWeight: 600,
+                backdropFilter: 'blur(4px)',
+                cursor: 'pointer',
+                userSelect: 'none',
+                transition: 'transform 0.1s ease, background-color 0.15s ease',
+              }}
+            >
+              <span style={{ fontSize: '11px' }}>🖥️</span>
+              <span>Desktop {desktopVersion || 'Shell'}</span>
+              {isDesktop && (
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    backgroundColor: activeDotColor,
+                    boxShadow: `0 0 5px ${activeDotColor}`,
+                  }}
+                  title="Active Desktop Runtime"
+                />
+              )}
+            </div>
+          )}
+
           {/* Web Version Pill - Tap to unlock dev options */}
           <div
             onClick={handleVersionTap}
@@ -122,7 +169,7 @@ export const LoginVersionFooter: React.FC<LoginVersionFooterProps> = ({
           >
             <span style={{ fontSize: '11px' }}>🌐</span>
             <span>Web {webVersion}</span>
-            {!isNative && (
+            {!isNativeAndroid && !isDesktop && (
               <span
                 style={{
                   width: '6px',
@@ -142,7 +189,7 @@ export const LoginVersionFooter: React.FC<LoginVersionFooterProps> = ({
               onClick={handleVersionTap}
               id="login-version-android-pill"
               data-testid="login-version-android-pill"
-              title={isNative ? "Active Native Android App (Tap 5 times for Developer Tools)" : "Available Android APK Version"}
+              title={isNativeAndroid ? "Active Native Android App (Tap 5 times for Developer Tools)" : "Available Android APK Version"}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -161,7 +208,7 @@ export const LoginVersionFooter: React.FC<LoginVersionFooterProps> = ({
             >
               <span style={{ fontSize: '11px' }}>📱</span>
               <span>Android {formattedAndroid}</span>
-              {isNative && (
+              {isNativeAndroid && (
                 <span
                   style={{
                     width: '6px',

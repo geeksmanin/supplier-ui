@@ -4,6 +4,7 @@ import { Input } from '../Input';
 import { BarcodeQRScannerModal } from '../BarcodeQRScannerModal';
 import { resolveTenantByCode, TenantMetadata } from '../../api/client';
 import { useToast } from '../Toast/Toast';
+import { useAppConfig } from '../../hooks/useAppConfig';
 
 export interface WorkspaceSelectModalProps {
   isOpen: boolean;
@@ -19,8 +20,9 @@ export const WorkspaceSelectModal: React.FC<WorkspaceSelectModalProps> = ({
   onSelectWorkspace,
 }) => {
   const { showToast } = useToast();
+  const { storeTenantCode, isBusinessTenant: checkIsBusinessTenant } = useAppConfig();
   const [workspaceInput, setWorkspaceInput] = useState(
-    currentWorkspace === 'business' ? '' : currentWorkspace
+    checkIsBusinessTenant(currentWorkspace) ? '' : currentWorkspace
   );
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [validating, setValidating] = useState(false);
@@ -29,7 +31,7 @@ export const WorkspaceSelectModal: React.FC<WorkspaceSelectModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      const initial = currentWorkspace === 'business' ? '' : currentWorkspace;
+      const initial = checkIsBusinessTenant(currentWorkspace) ? '' : currentWorkspace;
       setWorkspaceInput(initial);
       setPreviewMetadata(null);
       setValidationError(null);
@@ -37,7 +39,7 @@ export const WorkspaceSelectModal: React.FC<WorkspaceSelectModalProps> = ({
         checkWorkspace(initial.trim());
       }
     }
-  }, [isOpen, currentWorkspace]);
+  }, [isOpen, currentWorkspace, checkIsBusinessTenant]);
 
   const cleanWorkspaceCode = (raw: string): string => {
     let clean = raw.trim().toLowerCase();
@@ -104,12 +106,7 @@ export const WorkspaceSelectModal: React.FC<WorkspaceSelectModalProps> = ({
     }
 
     try {
-      localStorage.setItem('tenant_code', targetCode);
-      localStorage.setItem('workspace_code', targetCode);
-      localStorage.setItem('current_tenant_code', targetCode);
-      if (previewMetadata?.name) {
-        localStorage.setItem('tenant_name', previewMetadata.name);
-      }
+      storeTenantCode(targetCode, previewMetadata?.name);
       showToast(`Workspace switched to ${targetCode.toUpperCase()}`, 'success');
       onSelectWorkspace(targetCode, previewMetadata || undefined);
       onClose();
@@ -149,7 +146,7 @@ export const WorkspaceSelectModal: React.FC<WorkspaceSelectModalProps> = ({
           padding: '1rem',
         }}
         onClick={(e) => {
-          if (e.target === e.currentTarget && currentWorkspace && currentWorkspace !== 'business') {
+          if (e.target === e.currentTarget && !checkIsBusinessTenant(currentWorkspace)) {
             onClose();
           }
         }}
@@ -194,7 +191,7 @@ export const WorkspaceSelectModal: React.FC<WorkspaceSelectModalProps> = ({
                 Enter your company workspace slug or scan your organization QR code.
               </p>
             </div>
-            {currentWorkspace && currentWorkspace !== 'business' && (
+            {!checkIsBusinessTenant(currentWorkspace) && (
               <button
                 type="button"
                 onClick={onClose}
@@ -350,7 +347,7 @@ export const WorkspaceSelectModal: React.FC<WorkspaceSelectModalProps> = ({
 
           {/* Footer Actions */}
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-            {currentWorkspace && currentWorkspace !== 'business' && (
+            {!checkIsBusinessTenant(currentWorkspace) && (
               <Button variant="secondary" type="button" onClick={onClose}>
                 Cancel
               </Button>

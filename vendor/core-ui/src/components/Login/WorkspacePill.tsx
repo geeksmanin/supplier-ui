@@ -1,27 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { resolveTenantByCode, TenantMetadata } from '../../api/client';
+import { useAppConfig } from '../../hooks/useAppConfig';
+import { getAppConfig, storeTenantCode, isBusinessTenant } from '../../config';
 
 export const LAST_USED_WORKSPACE_KEY = 'last_used_workspace';
 export const LAST_USED_WORKSPACE_NAME_KEY = 'last_used_workspace_name';
 
 export function getLastUsedWorkspace(): { code: string; name: string } | null {
-  if (typeof window === 'undefined') return null;
-  const code = (localStorage.getItem(LAST_USED_WORKSPACE_KEY) || '').trim().toLowerCase();
-  if (code && code !== 'business') {
-    const name = localStorage.getItem(LAST_USED_WORKSPACE_NAME_KEY) || code.toUpperCase();
-    return { code, name };
+  const cfg = getAppConfig();
+  if (!isBusinessTenant(cfg.lastUsedWorkspace)) {
+    return {
+      code: cfg.lastUsedWorkspace,
+      name: cfg.lastUsedWorkspaceName || cfg.lastUsedWorkspace.toUpperCase(),
+    };
   }
   return null;
 }
 
 export function setLastUsedWorkspace(code: string, name?: string): void {
-  if (typeof window === 'undefined') return;
   const clean = cleanWorkspaceCode(code);
-  if (clean && clean !== 'business') {
-    localStorage.setItem(LAST_USED_WORKSPACE_KEY, clean);
-    if (name) {
-      localStorage.setItem(LAST_USED_WORKSPACE_NAME_KEY, name);
-    }
+  if (!isBusinessTenant(clean)) {
+    storeTenantCode(clean, name);
   }
 }
 
@@ -71,8 +70,17 @@ export const WorkspacePill: React.FC<WorkspacePillProps> = ({
   inline = true,
   enforceSelectionOnBusiness = true,
 }) => {
-  const isBusinessPlaceholder = !workspaceCode || workspaceCode.toLowerCase() === 'business';
-  const lastUsed = typeof window !== 'undefined' ? getLastUsedWorkspace() : null;
+  const {
+    lastUsedWorkspace,
+    lastUsedWorkspaceName,
+    storeTenantCode: configStoreTenantCode,
+    isBusinessTenant: checkIsBusinessTenant,
+  } = useAppConfig();
+
+  const isBusinessPlaceholder = checkIsBusinessTenant(workspaceCode);
+  const lastUsed = !checkIsBusinessTenant(lastUsedWorkspace)
+    ? { code: lastUsedWorkspace, name: lastUsedWorkspaceName || lastUsedWorkspace.toUpperCase() }
+    : null;
 
   // Auto-prefill from last used workspace if current workspace is 'business' or empty
   useEffect(() => {
@@ -201,16 +209,9 @@ export const WorkspacePill: React.FC<WorkspacePillProps> = ({
     }
 
     try {
-      localStorage.setItem('tenant_code', cleaned);
-      localStorage.setItem('workspace_code', cleaned);
-      localStorage.setItem('current_tenant_code', cleaned);
-
       let meta: TenantMetadata | null = null;
       try {
         meta = await resolveTenantByCode(cleaned);
-        if (meta?.name) {
-          localStorage.setItem('tenant_name', meta.name);
-        }
       } catch (e) {
         meta = {
           tenant_code: cleaned,
@@ -220,7 +221,7 @@ export const WorkspacePill: React.FC<WorkspacePillProps> = ({
         };
       }
 
-      setLastUsedWorkspace(cleaned, meta?.name || cleaned.toUpperCase());
+      configStoreTenantCode(cleaned, meta?.name || cleaned.toUpperCase());
 
       setIsEditing(false);
       setIsScannerOpen(false);

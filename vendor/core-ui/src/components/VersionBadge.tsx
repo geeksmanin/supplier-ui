@@ -1,24 +1,30 @@
 import React from 'react';
+import { AppVersionState } from '../hooks/useAppVersion';
 
 export interface VersionBadgeProps {
-  version: string;
+  version?: string;
   onClick?: () => void;
   updateReady?: boolean;
   prefix?: string;
   style?: React.CSSProperties;
   className?: string;
   showDot?: boolean;
+  versionInfo?: AppVersionState;
 }
 
 export const VersionBadge: React.FC<VersionBadgeProps> = ({
-  version,
-  onClick,
-  updateReady = false,
+  version: propVersion,
+  onClick: propOnClick,
+  updateReady: propUpdateReady = false,
   prefix = 'UI',
   style,
   className = '',
   showDot = true,
+  versionInfo,
 }) => {
+  const version = versionInfo ? versionInfo.uiVersion : (propVersion || 'v1.0.0');
+  const updateReady = versionInfo ? versionInfo.updateReady : propUpdateReady;
+  const onClick = versionInfo ? () => versionInfo.setModalOpen(true) : propOnClick;
   return (
     <button
       type="button"

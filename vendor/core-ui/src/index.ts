@@ -60,15 +60,29 @@ export type { SpreadsheetColumn } from './components/SpreadsheetGrid';
 export { CommandPalette } from './components/CommandPalette';
 export type { CommandItem } from './components/CommandPalette';
 export { PortalConfigModal } from './components/PortalConfigModal';
-export { getAppConfig, initializeConfig, resolveAppConfig } from './config';
+export {
+  getAppConfig,
+  initAppConfig,
+  initializeConfig,
+  resolveAppConfig,
+  isBusinessWorkspace,
+  isBusinessTenant,
+} from './config';
+export type { BaseAppConfig, AppConfig, EnvironmentType, EnvironmentConfigs } from './config';
+export { useAppConfig } from './hooks/useAppConfig';
+export type { UseAppConfigReturn } from './hooks/useAppConfig';
 export { AboutApp } from './components/AboutApp';
 export type { AboutAppProps } from './components/AboutApp';
 export { VersionModal } from './components/VersionModal';
 export type { VersionModalProps } from './components/VersionModal';
 export { VersionBadge } from './components/VersionBadge';
 export type { VersionBadgeProps } from './components/VersionBadge';
+export { SystemVersionModal, SystemVersionBadge } from './components/SystemVersion';
+export type { SystemVersionModalProps, SystemVersionBadgeProps } from './components/SystemVersion';
 export { useAppVersion } from './hooks/useAppVersion';
 export type { AppVersionState, BackendVersionData } from './hooks/useAppVersion';
+export { useSystemVersion } from './hooks/useSystemVersion';
+export type { SystemVersionInfo } from './hooks/useSystemVersion';
 export { HelpGuide } from './components/HelpGuide';
 export { STATES_MAP, INDIAN_STATES_GST_OPTIONS, INDIAN_STATES_OPTIONS, findMatchingStateOption } from './constants';
 export { ImportWizard } from './components/ImportWizard/ImportWizard';
