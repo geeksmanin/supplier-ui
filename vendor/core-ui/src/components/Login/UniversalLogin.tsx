@@ -48,6 +48,13 @@ export const UniversalLogin: React.FC<UniversalLoginProps> = ({
     }
   }, [workspaceCode]);
 
+  // Automatically resolve tenant branding/metadata if activeWorkspace is resolved
+  React.useEffect(() => {
+    if (activeWorkspace && activeWorkspace.toLowerCase() !== 'business' && !workspaceName) {
+      resolveTenant(activeWorkspace);
+    }
+  }, [activeWorkspace, workspaceName]);
+
   const [activeRole, setActiveRole] = useState<UserPersonaRole>(role === 'universal' ? 'staff' : role);
   const [customLoading, setCustomLoading] = useState(false);
   const [customError, setCustomError] = useState<string | null>(null);

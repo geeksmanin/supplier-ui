@@ -102,12 +102,12 @@ export const getWorkspaceFromUrl = (): string => {
       const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
       if (host && host !== 'localhost' && host !== '127.0.0.1' && !host.endsWith('.localhost') && !isIpAddress) {
         const parts = host.split('.');
-        const appPrefixes = ['admin', 'platform', 'www', 'samwad', 'samvad', 'chat', 'staff', 'customer', 'portal', 'catalogue', 'catalog', 'app', 'api', 'business'];
+        const appPrefixes = ['admin', 'platform', 'www', 'pos', 'samwad', 'samvad', 'chat', 'staff', 'customer', 'portal', 'catalogue', 'catalog', 'app', 'api', 'business', 'geeksman'];
         if (parts.length > 1) {
           if (!appPrefixes.includes(parts[0])) {
             return parts[0];
           } else if (parts.length > 2 && !appPrefixes.includes(parts[1])) {
-            // E.g. samwad.a3pl.in or business.a3pl.in -> parts[1] is 'a3pl'
+            // E.g. samwad.a3pl.in or pos.a3pl.in -> parts[1] is 'a3pl'
             return parts[1];
           }
         }
