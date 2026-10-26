@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { UniversalLoginProps, UserPersonaRole, UniversalLoginFeature } from './UniversalLogin.types';
 import { WorkspacePill } from './WorkspacePill';
 import { LoginVersionFooter } from './LoginVersionFooter';
 import { Button } from '../Button';
+import { GalaxyLoader } from '../GalaxyLoader';
 
 export interface UniversalLoginDesktopProps extends UniversalLoginProps {
   email: string;
@@ -35,6 +36,7 @@ export const UniversalLoginDesktop: React.FC<UniversalLoginDesktopProps> = ({
   setActiveRole,
   activeWorkspace,
   workspaceName,
+  workspaceLogo,
   onOpenWorkspaceModal,
   onWorkspaceChange,
   onSubmit,
@@ -44,11 +46,23 @@ export const UniversalLoginDesktop: React.FC<UniversalLoginDesktopProps> = ({
   subtitle,
   systemBadge,
   themeColor = '#2563eb',
+  backgroundColor,
   gradient,
   logoUrl,
+  layout = 'loader',
+  loaderTheme = 'light',
   features = [],
 }) => {
   const isUniversalMode = role === 'universal';
+  const [logoError, setLogoError] = useState(false);
+
+  // Resolved logo URL: explicit prop -> workspaceLogo -> localStorage -> /logo.png
+  const resolvedLogo =
+    !logoError &&
+    (logoUrl ||
+      workspaceLogo ||
+      (typeof window !== 'undefined' ? localStorage.getItem('tenant_logo_url') : null) ||
+      '/logo.png');
 
   // Resolved visuals based on active persona
   const getPersonaConfig = () => {
@@ -70,7 +84,7 @@ export const UniversalLoginDesktop: React.FC<UniversalLoginDesktopProps> = ({
         return {
           defaultTitle: 'Vendor & Supplier Hub',
           defaultBadge: 'SUPPLIER NETWORK',
-          defaultDesc: 'Manage purchase purchase orders, quote RFQs, and coordinate inventory delivery.',
+          defaultDesc: 'Manage purchase orders, quote RFQs, and coordinate inventory delivery.',
           primaryColor: themeColor !== '#2563eb' ? themeColor : '#4f46e5',
           grad: gradient || 'linear-gradient(135deg, #4338ca 0%, #312e81 100%)',
           defaultFeatures: [
@@ -99,29 +113,57 @@ export const UniversalLoginDesktop: React.FC<UniversalLoginDesktopProps> = ({
   const personaConfig = getPersonaConfig();
   const displayFeatures: UniversalLoginFeature[] = features.length > 0 ? features : personaConfig.defaultFeatures;
   const resolvedBadge = systemBadge || personaConfig.defaultBadge;
-  const resolvedTitle = title || personaConfig.defaultTitle;
+  const resolvedTitle = title || appName || personaConfig.defaultTitle;
   const resolvedSubtitle = subtitle || personaConfig.defaultDesc;
 
   return (
-    <div style={styles.container}>
+    <div style={{ ...styles.container, backgroundColor: backgroundColor || '#f1f5f9' }}>
       <style>{`
-        .universal-desktop-card {
-          box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(226, 232, 240, 0.8);
+        .universal-login-input {
+          width: 100%;
+          padding: 0.75rem 0.95rem;
+          background-color: #ffffff;
+          border: 1.5px solid #cbd5e1;
+          border-radius: 10px;
+          font-size: 0.9rem;
+          color: #0f172a;
+          outline: none;
+          box-sizing: border-box;
+          transition: all 0.15s ease;
         }
-        .universal-input-focus:focus {
-          border-color: ${personaConfig.primaryColor} !important;
-          box-shadow: 0 0 0 3px ${personaConfig.primaryColor}22 !important;
+        .universal-login-input:focus {
+          border-color: ${personaConfig.primaryColor};
+          box-shadow: 0 0 0 3px ${personaConfig.primaryColor}22;
         }
         .universal-submit-btn {
-          background: ${personaConfig.primaryColor};
-          transition: all 0.2s ease;
+          width: 100%;
+          padding: 0.825rem;
+          border-radius: 10px;
+          font-size: 0.925rem;
+          font-weight: 700;
+          color: #ffffff;
+          background-color: ${personaConfig.primaryColor};
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+          box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.1);
         }
         .universal-submit-btn:hover {
           filter: brightness(1.08);
           transform: translateY(-1px);
+          box-shadow: 0 6px 12px -1px rgba(15, 23, 42, 0.15);
         }
         .universal-submit-btn:active {
-          transform: translateY(0);
+          transform: scale(0.98);
+        }
+        .universal-submit-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
         }
         input:-webkit-autofill,
         input:-webkit-autofill:hover, 
@@ -133,217 +175,402 @@ export const UniversalLoginDesktop: React.FC<UniversalLoginDesktopProps> = ({
         }
       `}</style>
 
-      <div className="universal-desktop-card" style={styles.card}>
-        {/* Left Hero Pane */}
-        <div style={{ ...styles.leftPane, background: personaConfig.grad }}>
-          <div>
-            <div style={styles.badgeWrapper}>
-              <span style={styles.systemBadge}>{resolvedBadge}</span>
-              <WorkspacePill
-                workspaceCode={activeWorkspace}
-                workspaceName={workspaceName}
-                onChangeClick={onOpenWorkspaceModal}
-                onWorkspaceChange={onWorkspaceChange}
-                variant="dark"
-              />
-            </div>
-
-            <div style={{ margin: '2rem 0' }}>
-              {logoUrl ? (
-                <img
-                  src={logoUrl}
-                  alt={appName || 'Logo'}
-                  style={{ maxHeight: '56px', marginBottom: '1.25rem', objectFit: 'contain' }}
-                />
-              ) : (
-                <h1 style={styles.heroTitle}>{appName || 'GEEKSMAN ERP'}</h1>
-              )}
-              <p style={styles.heroSubtitle}>{resolvedSubtitle}</p>
-            </div>
-
-            <div style={styles.featuresList}>
-              {displayFeatures.map((feat, idx) => (
-                <div key={idx} style={styles.featureItem}>
-                  <div style={styles.featureIconBox}>
-                    {feat.icon || (
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    )}
-                  </div>
-                  <div>
-                    <div style={styles.featureHeading}>{feat.title}</div>
-                    <div style={styles.featureDesc}>{feat.description}</div>
-                  </div>
+      {/* Mode 1: Loader Layout (Split Card with 3D Geeksman Dome Particle Canvas) */}
+      {layout === 'loader' ? (
+        <div style={styles.cardBoxLoader}>
+          {/* Left Half: Credentials & Workspace Selection */}
+          <div style={styles.leftPaneLoader}>
+            <div style={styles.formContentLoader}>
+              {/* Branding Header */}
+              <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+                <div style={styles.brandIconWrapper}>
+                  {resolvedLogo ? (
+                    <img
+                      src={resolvedLogo}
+                      alt={appName || 'Logo'}
+                      style={styles.brandLogoImg}
+                      onError={() => {
+                        if (!logoError) setLogoError(true);
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: personaConfig.primaryColor,
+                        fontWeight: 800,
+                        fontSize: '1.2rem',
+                      }}
+                    >
+                      {(appName || 'G')[0].toUpperCase()}
+                    </div>
+                  )}
                 </div>
-              ))}
+                <h1 style={styles.titleLoader}>{appName || resolvedTitle}</h1>
+                <p style={styles.subtitleLoader}>{resolvedSubtitle}</p>
+              </div>
+
+              {/* Universal Persona Segmented Toggle */}
+              {isUniversalMode && (
+                <div style={styles.segmentedToggle}>
+                  {(['staff', 'customer', 'vendor'] as UserPersonaRole[]).map((pRole) => (
+                    <button
+                      key={pRole}
+                      type="button"
+                      onClick={() => setActiveRole(pRole)}
+                      style={{
+                        ...styles.segmentedBtn,
+                        ...(activeRole === pRole ? styles.segmentedBtnActive : {}),
+                      }}
+                    >
+                      {pRole.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {error && (
+                <div style={styles.errorAlert}>
+                  <span style={styles.errorDot} />
+                  <span style={{ flex: 1, fontSize: '0.8rem', color: '#b91c1c', fontWeight: 500 }}>
+                    {error}
+                  </span>
+                </div>
+              )}
+
+              <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.95rem' }}>
+                {/* Workspace Indicator directly above Email field */}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.2rem' }}>
+                  <WorkspacePill
+                    workspaceCode={activeWorkspace}
+                    workspaceName={workspaceName}
+                    onChangeClick={onOpenWorkspaceModal}
+                    onWorkspaceChange={onWorkspaceChange}
+                    variant="light"
+                  />
+                </div>
+
+                <div>
+                  <label style={styles.label}>Email Address or Username</label>
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    className="universal-login-input"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@company.com"
+                  />
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                    <label style={styles.label}>Password</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={styles.togglePasswordBtn}
+                    >
+                      {showPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    className="universal-login-input"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || !email || !password}
+                  className="universal-submit-btn"
+                  style={{ marginTop: '0.35rem' }}
+                >
+                  {loading ? 'Authenticating...' : `Sign In`}
+                </button>
+              </form>
+
+              <div style={styles.footerNoteLoader}>
+                <span>Secured with end-to-end multi-tenant isolation</span>
+              </div>
+
+              <LoginVersionFooter appName={appName} theme="light" />
             </div>
           </div>
 
-          <div style={styles.footerNote}>
-            <span>Secured with end-to-end multi-tenant isolation</span>
+          {/* Right Half: 3D Geeksman Dome Particle Canvas */}
+          <div style={styles.rightPaneLoader}>
+            <GalaxyLoader fullscreen={false} theme={loaderTheme} />
           </div>
         </div>
+      ) : (
+        /* Mode 2: Hero Layout (Gradient Hero Left Pane + Form Right Pane) */
+        <div style={styles.cardBoxHero}>
+          {/* Left Hero Pane */}
+          <div style={{ ...styles.leftPaneHero, background: personaConfig.grad }}>
+            <div>
+              <div style={styles.badgeWrapperHero}>
+                <span style={styles.systemBadgeHero}>{resolvedBadge}</span>
+                <WorkspacePill
+                  workspaceCode={activeWorkspace}
+                  workspaceName={workspaceName}
+                  onChangeClick={onOpenWorkspaceModal}
+                  onWorkspaceChange={onWorkspaceChange}
+                  variant="dark"
+                />
+              </div>
 
-        {/* Right Sign-in Form Pane */}
-        <div style={styles.rightPane}>
-          {/* Universal Persona Segmented Toggle */}
-          {isUniversalMode && (
-            <div style={styles.segmentedToggle}>
-              {(['staff', 'customer', 'vendor'] as UserPersonaRole[]).map((pRole) => (
-                <button
-                  key={pRole}
-                  type="button"
-                  onClick={() => setActiveRole(pRole)}
-                  style={{
-                    ...styles.segmentedBtn,
-                    ...(activeRole === pRole ? styles.segmentedBtnActive : {}),
-                  }}
-                >
-                  {pRole.toUpperCase()}
-                </button>
-              ))}
-            </div>
-          )}
+              <div style={{ margin: '2rem 0' }}>
+                {resolvedLogo ? (
+                  <img
+                    src={resolvedLogo}
+                    alt={appName || 'Logo'}
+                    style={{ maxHeight: '52px', marginBottom: '1.25rem', objectFit: 'contain' }}
+                  />
+                ) : (
+                  <h1 style={styles.heroTitle}>{appName || 'GEEKSMAN ERP'}</h1>
+                )}
+                <p style={styles.heroSubtitle}>{resolvedSubtitle}</p>
+              </div>
 
-          <div style={{ marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-              <h2 style={styles.formTitle}>{resolvedTitle}</h2>
-              <WorkspacePill
-                workspaceCode={activeWorkspace}
-                workspaceName={workspaceName}
-                onChangeClick={onOpenWorkspaceModal}
-                onWorkspaceChange={onWorkspaceChange}
-                variant="light"
-              />
+              <div style={styles.featuresListHero}>
+                {displayFeatures.map((feat, idx) => (
+                  <div key={idx} style={styles.featureItemHero}>
+                    <div style={styles.featureIconBoxHero}>
+                      {feat.icon || (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </div>
+                    <div>
+                      <div style={styles.featureHeadingHero}>{feat.title}</div>
+                      <div style={styles.featureDescHero}>{feat.description}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <p style={styles.formDesc}>Enter your login credentials to continue.</p>
+
+            <div style={styles.footerNoteHero}>
+              <span>Secured with end-to-end multi-tenant isolation</span>
+            </div>
           </div>
 
-          {error && (
-            <div style={styles.errorBox}>
-              <div style={styles.errorDot} />
-              <div style={{ flex: 1, fontSize: '0.85rem', color: '#b91c1c', fontWeight: 500 }}>{error}</div>
-            </div>
-          )}
+          {/* Right Form Pane */}
+          <div style={styles.rightPaneHero}>
+            {isUniversalMode && (
+              <div style={styles.segmentedToggle}>
+                {(['staff', 'customer', 'vendor'] as UserPersonaRole[]).map((pRole) => (
+                  <button
+                    key={pRole}
+                    type="button"
+                    onClick={() => setActiveRole(pRole)}
+                    style={{
+                      ...styles.segmentedBtn,
+                      ...(activeRole === pRole ? styles.segmentedBtnActive : {}),
+                    }}
+                  >
+                    {pRole.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            )}
 
-          <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
-            <div>
-              <label style={styles.label}>Email Address / Username</label>
-              <div style={{ position: 'relative' }}>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                <h2 style={styles.formTitleHero}>{resolvedTitle}</h2>
+                <WorkspacePill
+                  workspaceCode={activeWorkspace}
+                  workspaceName={workspaceName}
+                  onChangeClick={onOpenWorkspaceModal}
+                  onWorkspaceChange={onWorkspaceChange}
+                  variant="light"
+                />
+              </div>
+              <p style={styles.formDescHero}>Enter your login credentials to continue.</p>
+            </div>
+
+            {error && (
+              <div style={styles.errorAlert}>
+                <span style={styles.errorDot} />
+                <span style={{ flex: 1, fontSize: '0.85rem', color: '#b91c1c', fontWeight: 500 }}>{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+              <div>
+                <label style={styles.label}>Email Address / Username</label>
                 <input
                   type="text"
                   required
                   autoFocus
-                  className="universal-input-focus"
+                  className="universal-login-input"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@company.com"
-                  style={styles.input}
                 />
               </div>
-            </div>
 
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                <label style={styles.label}>Password</label>
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    fontSize: '0.75rem',
-                    color: '#64748b',
-                    cursor: 'pointer',
-                    fontWeight: 600,
-                  }}
-                >
-                  {showPassword ? 'Hide' : 'Show'}
-                </button>
-              </div>
-              <div style={{ position: 'relative' }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <label style={styles.label}>Password</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={styles.togglePasswordBtn}
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
-                  className="universal-input-focus"
+                  className="universal-login-input"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  style={styles.input}
                 />
               </div>
-            </div>
 
-            <Button
-              variant="primary"
-              type="submit"
-              disabled={loading || !email || !password}
-              className="universal-submit-btn"
-              style={{
-                width: '100%',
-                padding: '0.85rem',
-                fontSize: '0.95rem',
-                fontWeight: 700,
-                borderRadius: '10px',
-                marginTop: '0.5rem',
-              }}
-            >
-              {loading ? 'Authenticating...' : `Sign In to ${activeWorkspace.toUpperCase()}`}
-            </Button>
-          </form>
+              <Button
+                variant="primary"
+                type="submit"
+                disabled={loading || !email || !password}
+                className="universal-submit-btn"
+                style={{
+                  width: '100%',
+                  padding: '0.85rem',
+                  fontSize: '0.95rem',
+                  fontWeight: 700,
+                  borderRadius: '10px',
+                  marginTop: '0.5rem',
+                }}
+              >
+                {loading ? 'Authenticating...' : `Sign In to ${activeWorkspace.toUpperCase()}`}
+              </Button>
+            </form>
 
-          {onOpenWorkspaceModal && (
-            <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                Need to access a different company?{' '}
-                <button
-                  type="button"
-                  onClick={onOpenWorkspaceModal}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: personaConfig.primaryColor,
-                    fontWeight: 700,
-                    fontSize: '0.8rem',
-                    cursor: 'pointer',
-                    padding: 0,
-                    textDecoration: 'underline',
-                  }}
-                >
-                  Change Workspace
-                </button>
-              </span>
-            </div>
-          )}
-
-          <LoginVersionFooter appName={appName} theme="light" />
+            <LoginVersionFooter appName={appName} theme="light" />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
-    display: 'flex',
     minHeight: '100vh',
-    backgroundColor: '#f8fafc',
+    width: '100vw',
+    display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '2rem',
+    padding: '2rem 1.5rem',
     boxSizing: 'border-box',
+    overflow: 'hidden',
+    position: 'relative',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
   },
-  card: {
+  cardBoxLoader: {
+    width: '100%',
+    maxWidth: '880px',
+    height: '540px',
+    minHeight: '500px',
+    backgroundColor: '#ffffff',
+    borderRadius: '24px',
+    boxShadow: '0 20px 45px -10px rgba(15, 23, 42, 0.12), 0 0 0 1px #e2e8f0',
+    display: 'flex',
+    flexDirection: 'row',
+    overflow: 'hidden',
+    zIndex: 10,
+    position: 'relative',
+  },
+  leftPaneLoader: {
+    flex: '1 1 440px',
+    width: '50%',
+    backgroundColor: '#ffffff',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '2rem 2.25rem',
+    boxSizing: 'border-box',
+    borderRight: '1px solid #e2e8f0',
+  },
+  formContentLoader: {
+    width: '100%',
+    maxWidth: '360px',
+  },
+  rightPaneLoader: {
+    flex: '1 1 440px',
+    width: '50%',
+    height: '100%',
+    backgroundColor: '#ffffff',
+    position: 'relative',
+    overflow: 'hidden',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandIconWrapper: {
+    width: '48px',
+    height: '48px',
+    borderRadius: '12px',
+    backgroundColor: '#f8fafc',
+    border: '1px solid #e2e8f0',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '0.75rem',
+    padding: '6px',
+    boxSizing: 'border-box',
+    overflow: 'hidden',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.04)',
+  },
+  brandLogoImg: {
+    maxWidth: '100%',
+    maxHeight: '100%',
+    objectFit: 'contain',
+    display: 'block',
+  },
+  titleLoader: {
+    fontSize: '1.45rem',
+    fontWeight: 800,
+    color: '#0f172a',
+    margin: '0 0 0.25rem 0',
+    letterSpacing: '-0.025em',
+  },
+  subtitleLoader: {
+    fontSize: '0.825rem',
+    color: '#64748b',
+    margin: 0,
+    lineHeight: 1.4,
+  },
+  footerNoteLoader: {
+    marginTop: '1.25rem',
+    textAlign: 'center',
+    fontSize: '0.725rem',
+    color: '#94a3b8',
+  },
+  cardBoxHero: {
     width: '960px',
     minHeight: '580px',
     display: 'flex',
     borderRadius: '16px',
     overflow: 'hidden',
     backgroundColor: '#ffffff',
+    boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(226, 232, 240, 0.8)',
   },
-  leftPane: {
+  leftPaneHero: {
     flex: 1.1,
     display: 'flex',
     flexDirection: 'column',
@@ -352,14 +579,14 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#ffffff',
     position: 'relative',
   },
-  badgeWrapper: {
+  badgeWrapperHero: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: '0.75rem',
     flexWrap: 'wrap',
   },
-  systemBadge: {
+  systemBadgeHero: {
     padding: '0.25rem 0.75rem',
     borderRadius: '100px',
     fontSize: '0.725rem',
@@ -383,18 +610,18 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: '380px',
     margin: 0,
   },
-  featuresList: {
+  featuresListHero: {
     display: 'flex',
     flexDirection: 'column',
     gap: '1.25rem',
     marginTop: '2rem',
   },
-  featureItem: {
+  featureItemHero: {
     display: 'flex',
     alignItems: 'flex-start',
     gap: '0.85rem',
   },
-  featureIconBox: {
+  featureIconBoxHero: {
     width: '32px',
     height: '32px',
     borderRadius: '8px',
@@ -405,23 +632,23 @@ const styles: Record<string, React.CSSProperties> = {
     flexShrink: 0,
     color: '#ffffff',
   },
-  featureHeading: {
+  featureHeadingHero: {
     fontSize: '0.9rem',
     fontWeight: 700,
     color: '#ffffff',
     marginBottom: '0.15rem',
   },
-  featureDesc: {
+  featureDescHero: {
     fontSize: '0.775rem',
     color: 'rgba(255, 255, 255, 0.7)',
     lineHeight: 1.45,
   },
-  footerNote: {
+  footerNoteHero: {
     fontSize: '0.75rem',
     color: 'rgba(255, 255, 255, 0.6)',
     paddingTop: '1.5rem',
   },
-  rightPane: {
+  rightPaneHero: {
     width: '440px',
     display: 'flex',
     flexDirection: 'column',
@@ -430,12 +657,24 @@ const styles: Record<string, React.CSSProperties> = {
     boxSizing: 'border-box',
     backgroundColor: '#ffffff',
   },
+  formTitleHero: {
+    fontSize: '1.4rem',
+    fontWeight: 800,
+    color: '#0f172a',
+    margin: 0,
+    letterSpacing: '-0.02em',
+  },
+  formDescHero: {
+    fontSize: '0.85rem',
+    color: '#64748b',
+    margin: 0,
+  },
   segmentedToggle: {
     display: 'flex',
     padding: '0.25rem',
     borderRadius: '10px',
     backgroundColor: '#f1f5f9',
-    marginBottom: '1.5rem',
+    marginBottom: '1.25rem',
   },
   segmentedBtn: {
     flex: 1,
@@ -454,52 +693,37 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#0f172a',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
   },
-  formTitle: {
-    fontSize: '1.4rem',
-    fontWeight: 800,
-    color: '#0f172a',
-    margin: 0,
-    letterSpacing: '-0.02em',
-  },
-  formDesc: {
-    fontSize: '0.85rem',
-    color: '#64748b',
-    margin: 0,
-  },
-  errorBox: {
+  errorAlert: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.65rem',
-    padding: '0.75rem 1rem',
-    borderRadius: '10px',
+    gap: '0.5rem',
+    padding: '0.65rem 0.85rem',
+    borderRadius: '8px',
     backgroundColor: '#fef2f2',
     border: '1px solid #fecaca',
     marginBottom: '1rem',
   },
   errorDot: {
-    width: '8px',
-    height: '8px',
+    width: '7px',
+    height: '7px',
     borderRadius: '50%',
     backgroundColor: '#dc2626',
     flexShrink: 0,
   },
   label: {
     display: 'block',
-    fontSize: '0.825rem',
+    fontSize: '0.8rem',
     fontWeight: 700,
     color: '#334155',
-    marginBottom: '0.35rem',
+    marginBottom: '0.25rem',
   },
-  input: {
-    width: '100%',
-    padding: '0.75rem 1rem',
-    backgroundColor: '#ffffff',
-    border: '1.5px solid #cbd5e1',
-    borderRadius: '10px',
-    fontSize: '0.9rem',
-    color: '#0f172a',
-    outline: 'none',
-    boxSizing: 'border-box',
-    transition: 'all 0.15s ease',
+  togglePasswordBtn: {
+    background: 'none',
+    border: 'none',
+    fontSize: '0.75rem',
+    color: '#64748b',
+    fontWeight: 600,
+    cursor: 'pointer',
+    padding: 0,
   },
 };

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { UniversalLoginProps, UserPersonaRole } from './UniversalLogin.types';
 import { WorkspacePill } from './WorkspacePill';
 import { LoginVersionFooter } from './LoginVersionFooter';
@@ -43,9 +43,20 @@ export const UniversalLoginMobile: React.FC<UniversalLoginMobileProps> = ({
   title,
   subtitle,
   themeColor = '#2563eb',
+  backgroundColor,
   logoUrl,
+  workspaceLogo,
 }) => {
   const isUniversalMode = role === 'universal';
+  const [logoError, setLogoError] = useState(false);
+
+  // Resolved logo URL: explicit prop -> workspaceLogo -> localStorage -> /logo.png
+  const resolvedLogo =
+    !logoError &&
+    (logoUrl ||
+      workspaceLogo ||
+      (typeof window !== 'undefined' ? localStorage.getItem('tenant_logo_url') : null) ||
+      '/logo.png');
 
   const getPersonaTheme = () => {
     switch (activeRole) {
@@ -72,7 +83,7 @@ export const UniversalLoginMobile: React.FC<UniversalLoginMobileProps> = ({
   const resolvedTitle = title || personaTheme.defaultTitle;
 
   return (
-    <div style={styles.mobileContainer}>
+    <div style={{ ...styles.mobileContainer, backgroundColor: backgroundColor || '#f1f5f9' }}>
       <style>{`
         .universal-mobile-input:focus {
           border-color: ${personaTheme.primaryColor} !important;
@@ -91,8 +102,15 @@ export const UniversalLoginMobile: React.FC<UniversalLoginMobileProps> = ({
       {/* Header Branding */}
       <div style={styles.mobileHeader}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
-          {logoUrl ? (
-            <img src={logoUrl} alt={appName || 'Logo'} style={{ maxHeight: '44px', objectFit: 'contain' }} />
+          {resolvedLogo ? (
+            <img
+              src={resolvedLogo}
+              alt={appName || 'Logo'}
+              style={{ maxHeight: '44px', objectFit: 'contain' }}
+              onError={() => {
+                if (!logoError) setLogoError(true);
+              }}
+            />
           ) : (
             <div
               style={{
