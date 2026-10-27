@@ -66,6 +66,12 @@ export interface AgentTab {
   showBottomNav?: boolean;
 }
 
+export interface AgentBadgeMetrics {
+  unreadCount?: number; // Unread customer messages requiring attention (green pill)
+  openCount?: number;   // Open queue / triage items requiring staff action (amber pill)
+  badgeLabel?: string;  // Optional custom text pill (e.g., '12 Open')
+}
+
 export interface AgentConfig {
   id: string; // e.g., 'agent-sales', 'agent-ticket', 'agent-subscription'
   slug: string; // e.g., 'sales', 'ticket', 'subscription'
@@ -77,6 +83,13 @@ export interface AgentConfig {
   isVerified: boolean; // Renders official VerifiedBlueTick badge
   isPinned: boolean; // Pinned in verified agent rows
   searchPlaceholder?: string;
+  /**
+   * Self-configured badge metrics provider.
+   * Enables agents to dynamically compute and supply their own queue counts,
+   * unread messages, or status pills without shell application hardcoding.
+   */
+  getBadges?: (context?: AgentContext) => Promise<AgentBadgeMetrics> | AgentBadgeMetrics;
+  badgeMetrics?: AgentBadgeMetrics;
   /**
    * Agent Archetype defining layout defaults:
    * - 'assistant': Conversational copilot, showBottomNav defaults to false.
