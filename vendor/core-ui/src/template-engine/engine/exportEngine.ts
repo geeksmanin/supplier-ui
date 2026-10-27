@@ -1,6 +1,21 @@
 import { TemplateDefinition } from './types';
 
-const dynamicImport = (moduleName: string): Promise<any> => import(/* @vite-ignore */ moduleName);
+async function loadHtml2Canvas(): Promise<any> {
+  if (typeof window !== 'undefined' && (window as any).html2canvas) {
+    return (window as any).html2canvas;
+  }
+  const mod = await import('html2canvas');
+  return mod.default || mod;
+}
+
+async function loadJsPdf(): Promise<any> {
+  if (typeof window !== 'undefined') {
+    if ((window as any).jspdf?.jsPDF) return (window as any).jspdf.jsPDF;
+    if ((window as any).jsPDF) return (window as any).jsPDF;
+  }
+  const mod = await import('jspdf');
+  return mod.jsPDF || mod.default || mod;
+}
 
 /**
  * Ensures all <img> elements inside a container are completely loaded before capturing
@@ -90,8 +105,7 @@ async function renderCleanElementCanvas(
 
   try {
     await waitForImagesToLoad(clone);
-    const h2cModule = await dynamicImport('html2canvas');
-    const html2canvas = (h2cModule as any).default || h2cModule;
+    const html2canvas = await loadHtml2Canvas();
     return await html2canvas(clone, {
       scale,
       useCORS: true,
@@ -126,8 +140,7 @@ export async function exportPagesToPdfBlob(
   pageElements: HTMLElement[],
   options?: { quality?: number; format?: string; orientation?: 'p' | 'l' }
 ): Promise<Blob> {
-  const jsPdfModule = await dynamicImport('jspdf');
-  const JsPdfClass = (jsPdfModule as any).jsPDF || (jsPdfModule as any).default || jsPdfModule;
+  const JsPdfClass = await loadJsPdf();
   const pdfFormat = options?.format ? options.format.toLowerCase() : 'a4';
   const pdf = new JsPdfClass({
     orientation: options?.orientation || 'p',
