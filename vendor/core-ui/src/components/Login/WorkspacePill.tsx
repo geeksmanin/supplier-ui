@@ -78,7 +78,7 @@ export const WorkspacePill: React.FC<WorkspacePillProps> = ({
   } = useAppConfig();
 
   const isBusinessPlaceholder = checkIsBusinessTenant(workspaceCode);
-  const lastUsed = !checkIsBusinessTenant(lastUsedWorkspace)
+  const lastUsed = lastUsedWorkspace && !checkIsBusinessTenant(lastUsedWorkspace)
     ? { code: lastUsedWorkspace, name: lastUsedWorkspaceName || lastUsedWorkspace.toUpperCase() }
     : null;
 

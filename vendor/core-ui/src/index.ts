@@ -39,6 +39,8 @@ export { CardDataList } from './components/CardDataList';
 export type { CardDataListProps } from './components/CardDataList';
 export { CardDataListMobile } from './components/CardDataList.mobile';
 export type { CardDataListMobileProps } from './components/CardDataList.mobile';
+export { WhatsAppDataList, WhatsAppDataListDesktop, WhatsAppDataListMobile, WhatsAppListItem } from './components/WhatsAppDataList';
+export type { WhatsAppDataListProps, WhatsAppListItemData, WhatsAppFilterPill } from './components/WhatsAppDataList';
 export { ToastProvider, useToast, dispatchGlobalToast } from './components/Toast/Toast';
 export type { ToastType } from './components/Toast/Toast';
 export { Select } from './components/Select';

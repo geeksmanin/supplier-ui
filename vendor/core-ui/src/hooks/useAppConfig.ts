@@ -148,8 +148,8 @@ export const useAppConfig = <T = Record<string, any>>(): UseAppConfigReturn<T> =
   }, []);
 
   const handleIsBusinessTenant = useCallback((code?: string): boolean => {
-    return isBusinessTenant(code !== undefined ? code : config.tenantCode);
-  }, [config.tenantCode]);
+    return isBusinessTenant(code);
+  }, []);
 
   const isBusiness = isBusinessWorkspace(config.tenantCode);
 

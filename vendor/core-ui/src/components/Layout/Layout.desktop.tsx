@@ -915,8 +915,7 @@ export const LayoutDesktop: React.FC<any> = ({
           justifyContent: 'space-between',
           padding: '0 2rem',
           backgroundColor: '#ffffff',
-          position: 'sticky',
-          top: 0,
+          position: 'relative',
           zIndex: 100,
         }}>
           {/* Left panel placeholder (Logo/Breadcrumb) */}
@@ -2002,9 +2001,7 @@ export const LayoutDesktop: React.FC<any> = ({
           maxWidth: '100%',
           minWidth: 0,
           minHeight: 0,
-          height: isFullScreenTab ? 'calc(100vh - 78px)' : undefined,
-          maxHeight: isFullScreenTab ? 'calc(100vh - 78px)' : undefined,
-          overflow: isFullScreenTab ? 'hidden' : undefined,
+          overflow: isFullScreenTab ? 'hidden' : 'auto',
           position: 'relative',
           display: isFullScreenTab ? 'flex' : undefined,
           flexDirection: isFullScreenTab ? 'column' : undefined,

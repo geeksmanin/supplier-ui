@@ -9,7 +9,7 @@ export * from './types';
 export const isBusinessWorkspace = (code?: string): boolean => {
   if (!code) return true;
   const clean = code.trim().toLowerCase();
-  return clean === 'business' || clean === '' || clean === 'platform';
+  return clean === 'business' || clean === '';
 };
 
 export const isBusinessTenant = isBusinessWorkspace;

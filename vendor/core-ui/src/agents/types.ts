@@ -50,6 +50,8 @@ export interface AgentTabProps {
   onNavigateToTab?: (tabId: string) => void;
 }
 
+export type AgentType = 'assistant' | 'triage' | 'workspace';
+
 export interface AgentTab {
   id: string;
   label: string;
@@ -57,6 +59,11 @@ export interface AgentTab {
   component: React.ComponentType<AgentTabProps>;
   badge?: string | number;
   badgeCount?: number;
+  /**
+   * Screen-level layout override for mobile bottom navigation bar.
+   * When defined, overrides agent.showBottomNav and agent.type defaults.
+   */
+  showBottomNav?: boolean;
 }
 
 export interface AgentConfig {
@@ -70,6 +77,18 @@ export interface AgentConfig {
   isVerified: boolean; // Renders official VerifiedBlueTick badge
   isPinned: boolean; // Pinned in verified agent rows
   searchPlaceholder?: string;
+  /**
+   * Agent Archetype defining layout defaults:
+   * - 'assistant': Conversational copilot, showBottomNav defaults to false.
+   * - 'triage': Queue list hub, showBottomNav defaults to true.
+   * - 'workspace': Multi-tab workbench.
+   */
+  type?: AgentType;
+  /**
+   * Agent-level layout default for mobile.
+   * Overridden by activeTab.showBottomNav if specified.
+   */
+  showBottomNav?: boolean;
   tabs?: AgentTab[];
   quickPrompts?: AgentQuickPrompt[];
   headerActions?: AgentAction[];
@@ -88,10 +107,28 @@ export interface AgentConfig {
   }>;
 }
 
+/**
+ * Resolves whether the mobile bottom navigation bar should be visible for an agent
+ * based on the active tab, agent-level configuration, and agent archetype.
+ */
+export function resolveAgentBottomNav(agent?: AgentConfig | null, activeTabId?: string): boolean {
+  if (!agent) return false;
+  const activeTab = agent.tabs?.find((t) => t.id === activeTabId) || agent.tabs?.[0];
+  if (activeTab?.showBottomNav !== undefined) {
+    return activeTab.showBottomNav;
+  }
+  if (agent.showBottomNav !== undefined) {
+    return agent.showBottomNav;
+  }
+  return agent.type === 'triage';
+}
+
 // Backward-compatibility aliases
+export type SamwadAgentType = AgentType;
 export type SamwadAgent = AgentConfig;
 export type SamwadAgentContext = AgentContext;
 export type SamwadAgentQuickPrompt = AgentQuickPrompt;
 export type SamwadAgentAction = AgentAction;
 export type SamwadAgentTab = AgentTab;
 export type SamwadAgentTabProps = AgentTabProps;
+
