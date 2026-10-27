@@ -59,7 +59,13 @@ export const LayoutDesktop: React.FC<any> = ({
   onOpenNotifications,
 }) => {
   const isDashboard = currentPath === '/dashboard' || currentPath === '/';
-  const isFullScreenTab = !isDashboard && (
+  const isAgentRoute =
+    activeTabPath.startsWith('/samwad/agent') ||
+    activeTabPath.startsWith('/agent') ||
+    currentPath.startsWith('/samwad/agent') ||
+    currentPath.startsWith('/agent');
+
+  const isFullScreenTab = !isDashboard && !isAgentRoute && (
     activeTabPath === '/samwad' ||
     activeTabPath.startsWith('/samwad') ||
     activeTabPath === '/chat' ||
