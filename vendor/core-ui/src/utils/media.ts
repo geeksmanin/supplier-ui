@@ -288,7 +288,18 @@ export async function uploadMediaFile(file: File, folder: string = 'samwad'): Pr
     const d = res.data?.data || res.data;
     const rawUrl = d?.upload_id || d?.uploadId || d?.relative_url || d?.media_url || d?.url || d?.filename;
     if (rawUrl) {
-      return toRelativeMediaUrl(String(rawUrl));
+      const rel = toRelativeMediaUrl(String(rawUrl));
+      // Write-through caching before returning: guarantees 0ms immediate render!
+      try {
+        const { saveBlobToMediaCache } = await import('./mediaCache');
+        await saveBlobToMediaCache(String(rawUrl), file);
+        if (rel && rel !== String(rawUrl)) {
+          await saveBlobToMediaCache(rel, file);
+        }
+      } catch (cacheErr) {
+        console.warn('[mediaCache] Write-through cache save failed:', cacheErr);
+      }
+      return rel;
     }
   } catch (err) {
     console.warn('Core media upload error, using local file URL fallback:', err);

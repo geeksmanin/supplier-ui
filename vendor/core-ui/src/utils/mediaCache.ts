@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { resolveMediaUrl, toRelativeMediaUrl, ResolveMediaOptions, getActiveTenant } from './media';
 
-export const MEDIA_CACHE_NAME = 'samwad-media-cache-v1';
-const IDB_NAME = 'SamwadMediaCacheDB';
+export const MEDIA_CACHE_NAME = 'geeksman-media-cache-v1';
+export const LEGACY_MEDIA_CACHE_NAME = 'samwad-media-cache-v1';
+const IDB_NAME = 'GeeksmanMediaCacheDB';
+const LEGACY_IDB_NAME = 'SamwadMediaCacheDB';
 const IDB_VERSION = 1;
 const IDB_STORE = 'media_items';
 const MAX_MEMORY_ITEMS = 1000;
+const MAX_CACHE_BYTES = 500 * 1024 * 1024; // 500MB LRU storage budget
 
 // In-memory cache mapping cleanKey -> blobUrl for instant (0ms) access
 const memoryBlobUrlMap = new Map<string, string>();
@@ -78,7 +81,9 @@ function openMediaIDB(): Promise<IDBDatabase> {
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(IDB_STORE)) {
-        db.createObjectStore(IDB_STORE, { keyPath: 'key' });
+        const store = db.createObjectStore(IDB_STORE, { keyPath: 'key' });
+        store.createIndex('timestamp', 'timestamp', { unique: false });
+        store.createIndex('lastAccessed', 'lastAccessed', { unique: false });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -95,18 +100,56 @@ async function getBlobFromIndexedDB(key: string): Promise<Blob | null> {
   try {
     const db = await openMediaIDB();
     return new Promise<Blob | null>((resolve) => {
-      const tx = db.transaction(IDB_STORE, 'readonly');
+      const tx = db.transaction(IDB_STORE, 'readwrite');
       const store = tx.objectStore(IDB_STORE);
       const req = store.get(key);
       req.onsuccess = () => {
         const item = req.result;
-        resolve(item?.blob || null);
+        if (item?.blob) {
+          // Touch lastAccessed for LRU
+          try {
+            item.lastAccessed = Date.now();
+            store.put(item);
+          } catch {}
+          resolve(item.blob);
+        } else {
+          resolve(null);
+        }
       };
       req.onerror = () => resolve(null);
     });
   } catch {
     return null;
   }
+}
+
+/**
+ * Prune oldest records if estimated storage exceeds 500MB
+ */
+async function pruneLRUStorageIfNeeded(): Promise<void> {
+  try {
+    const db = await openMediaIDB();
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    const store = tx.objectStore(IDB_STORE);
+    const countReq = store.count();
+    countReq.onsuccess = () => {
+      // If store has over 4000 items, prune the oldest 20%
+      if (countReq.result > 4000) {
+        const toDelete = Math.floor(countReq.result * 0.2);
+        let deleted = 0;
+        const index = store.index('lastAccessed');
+        const cursorReq = index.openCursor();
+        cursorReq.onsuccess = () => {
+          const cursor = cursorReq.result;
+          if (cursor && deleted < toDelete) {
+            cursor.delete();
+            deleted++;
+            cursor.continue();
+          }
+        };
+      }
+    };
+  } catch {}
 }
 
 async function saveBlobToIndexedDB(key: string, blob: Blob): Promise<void> {
@@ -118,12 +161,57 @@ async function saveBlobToIndexedDB(key: string, blob: Blob): Promise<void> {
       const req = store.put({
         key,
         blob,
+        size: blob.size,
         timestamp: Date.now(),
+        lastAccessed: Date.now(),
       });
       req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);
     });
+    // Trigger non-blocking LRU check
+    pruneLRUStorageIfNeeded().catch(() => {});
   } catch {}
+}
+
+/**
+ * saveBlobToMediaCache writes a blob directly into local L1 (memory), L3 (CacheStorage),
+ * and L4 (IndexedDB) caches. Call this upon successful media upload to guarantee 0ms,
+ * flicker-free immediate rendering everywhere in the app.
+ */
+export async function saveBlobToMediaCache(rawUrlOrId: string, blob: Blob): Promise<void> {
+  if (!rawUrlOrId || !blob) return;
+  const key = getMediaCacheKey(rawUrlOrId);
+  if (!key) return;
+
+  const blobUrl = URL.createObjectURL(blob);
+  saveToMemoryMap(key, blobUrl);
+
+  const fakeUrl = `https://samwad.media.local${key.startsWith('/') ? key : '/' + key}`;
+
+  // 1. Save to Web CacheStorage
+  if (typeof window !== 'undefined' && 'caches' in window) {
+    try {
+      const cache = await caches.open(MEDIA_CACHE_NAME);
+      await cache.put(
+        fakeUrl,
+        new Response(blob, {
+          headers: {
+            'Content-Type': blob.type || 'image/jpeg',
+            'Content-Length': String(blob.size),
+          },
+        })
+      );
+    } catch (cacheErr) {
+      console.warn('[mediaCache] CacheStorage write-through failed:', cacheErr);
+    }
+  }
+
+  // 2. Save to persistent IndexedDB
+  try {
+    await saveBlobToIndexedDB(key, blob);
+  } catch (idbErr) {
+    console.warn('[mediaCache] IndexedDB write-through failed:', idbErr);
+  }
 }
 
 /**
@@ -165,7 +253,13 @@ export async function getCachedMediaUrl(
       if (typeof window !== 'undefined' && 'caches' in window) {
         try {
           const cache = await caches.open(MEDIA_CACHE_NAME);
-          const match = await cache.match(fakeUrl);
+          let match = await cache.match(fakeUrl);
+          if (!match && LEGACY_MEDIA_CACHE_NAME) {
+            try {
+              const legacyCache = await caches.open(LEGACY_MEDIA_CACHE_NAME);
+              match = await legacyCache.match(fakeUrl);
+            } catch {}
+          }
           if (match) {
             const blob = await match.blob();
             if (blob && blob.size > 0) {
@@ -373,6 +467,8 @@ export function useCachedMediaUrl(
   if (isInline) return trimmed;
   return url || resolved;
 }
+
+export const useCachedMedia = useCachedMediaUrl;
 
 /**
  * clearMediaCache wipes all in-memory, CacheStorage, and IndexedDB cached media.

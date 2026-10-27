@@ -28,6 +28,30 @@ export function WhatsAppDataListDesktop<T = any>({
   const [internalSearch, setInternalSearch] = React.useState('');
   const currentSearch = searchQuery !== undefined ? searchQuery : internalSearch;
 
+  // Viewport windowing virtualization for 100,000+ items scale
+  const ITEM_HEIGHT = 72;
+  const OVERSCAN = 5;
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = React.useState(0);
+  const [viewportHeight, setViewportHeight] = React.useState(600);
+
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setViewportHeight(el.clientHeight || 600);
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setViewportHeight(entry.contentRect.height);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setScrollTop(e.currentTarget.scrollTop);
+  };
+
   const handleSearchChange = (val: string) => {
     if (onSearchChange) {
       onSearchChange(val);
@@ -281,52 +305,71 @@ export function WhatsAppDataListDesktop<T = any>({
         </div>
       )}
 
-      {/* 3. Items List / Feed */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          scrollbarWidth: 'thin',
-          backgroundColor: '#FFFFFF',
-        }}
-      >
-        {displayItems.length === 0 && !isLoading ? (
+      {/* 3. Items List / Feed with Viewport Virtualization */}
+      {(() => {
+        const totalCount = displayItems.length;
+        const startIndex = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - OVERSCAN);
+        const endIndex = Math.min(totalCount, Math.ceil((scrollTop + viewportHeight) / ITEM_HEIGHT) + OVERSCAN);
+        const topSpacerHeight = startIndex * ITEM_HEIGHT;
+        const bottomSpacerHeight = Math.max(0, (totalCount - endIndex) * ITEM_HEIGHT);
+        const visibleItems = displayItems.slice(startIndex, endIndex);
+
+        return (
           <div
+            ref={containerRef}
+            onScroll={handleScroll}
             style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: '100%',
-              padding: '32px 20px',
-              textAlign: 'center',
-              color: '#667781',
+              flex: 1,
+              overflowY: 'auto',
+              scrollbarWidth: 'thin',
+              backgroundColor: '#FFFFFF',
+              position: 'relative',
             }}
           >
-            {emptyIcon || <MessageSquare size={44} color="#94A3B8" style={{ marginBottom: '12px' }} />}
-            <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#334155', margin: '0 0 6px 0' }}>
-              {emptyTitle}
-            </h3>
-            <p style={{ fontSize: '13px', color: '#64748B', margin: 0, maxWidth: '280px' }}>
-              {emptySubtitle}
-            </p>
+            {totalCount === 0 && !isLoading ? (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  padding: '32px 20px',
+                  textAlign: 'center',
+                  color: '#667781',
+                }}
+              >
+                {emptyIcon || <MessageSquare size={44} color="#94A3B8" style={{ marginBottom: '12px' }} />}
+                <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#334155', margin: '0 0 6px 0' }}>
+                  {emptyTitle}
+                </h3>
+                <p style={{ fontSize: '13px', color: '#64748B', margin: 0, maxWidth: '280px' }}>
+                  {emptySubtitle}
+                </p>
+              </div>
+            ) : (
+              <div style={{ width: '100%', position: 'relative' }}>
+                {topSpacerHeight > 0 && <div style={{ height: `${topSpacerHeight}px`, width: '100%' }} />}
+                {visibleItems.map((item, visibleIdx) => {
+                  const actualIndex = startIndex + visibleIdx;
+                  const rawItem = items[actualIndex];
+                  const isSelected = selectedId !== undefined ? selectedId === item.id : false;
+                  return (
+                    <WhatsAppListItem
+                      key={item.id}
+                      data={item}
+                      isSelected={isSelected}
+                      isMobile={false}
+                      onClick={() => onItemClick(rawItem)}
+                    />
+                  );
+                })}
+                {bottomSpacerHeight > 0 && <div style={{ height: `${bottomSpacerHeight}px`, width: '100%' }} />}
+              </div>
+            )}
           </div>
-        ) : (
-          displayItems.map((item, index) => {
-            const rawItem = items[index];
-            const isSelected = selectedId !== undefined ? selectedId === item.id : false;
-            return (
-              <WhatsAppListItem
-                key={item.id}
-                data={item}
-                isSelected={isSelected}
-                isMobile={false}
-                onClick={() => onItemClick(rawItem)}
-              />
-            );
-          })
-        )}
-      </div>
+        );
+      })()}
     </div>
   );
 }

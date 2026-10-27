@@ -118,14 +118,19 @@ export { getDocTheme, getDocumentExtension, isDocumentFile, isUrlString, extract
 export type { DocTheme, DocumentCategory } from './utils/document';
 export {
   MEDIA_CACHE_NAME,
+  LEGACY_MEDIA_CACHE_NAME,
   getMediaCacheKey,
   getMemoryCachedUrl,
   getCachedMediaUrl,
+  saveBlobToMediaCache,
   preloadMediaUrl,
   preloadMediaBatch,
   useCachedMediaUrl,
+  useCachedMedia,
   clearMediaCache,
 } from './utils/mediaCache';
+export { CachedImage } from './components/CachedImage';
+export type { CachedImageProps } from './components/CachedImage';
 export { ImageThumbnailWithZoom } from './components/ImageThumbnailWithZoom';
 export type { ImageThumbnailWithZoomProps } from './components/ImageThumbnailWithZoom';
 
