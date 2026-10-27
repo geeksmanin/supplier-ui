@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckCheck } from 'lucide-react';
 import { WhatsAppListItemData } from './WhatsAppDataList.types';
+import { formatWhatsAppTime } from '../../utils/formatTime';
 
 export interface WhatsAppListItemProps {
   data: WhatsAppListItemData;
@@ -120,7 +121,7 @@ export const WhatsAppListItem: React.FC<WhatsAppListItemProps> = ({
           borderBottom: '1px solid #F0F2F5',
         }}
       >
-        {/* Line 1: Title + Badges + Timestamp */}
+        {/* Line 1: Title + Badges */}
         <div
           style={{
             display: 'flex',
@@ -172,23 +173,9 @@ export const WhatsAppListItem: React.FC<WhatsAppListItemProps> = ({
               </span>
             )}
           </div>
-
-          {data.timestamp && (
-            <span
-              style={{
-                fontSize: '12px',
-                fontWeight: (data.unreadCount || 0) > 0 ? 600 : 400,
-                color: (data.unreadCount || 0) > 0 ? '#25D366' : '#667781',
-                flexShrink: 0,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {data.timestamp}
-            </span>
-          )}
         </div>
 
-        {/* Line 2: Subtitle / Snippet + Status / Priority Badge / Unread */}
+        {/* Line 2: Subtitle / Snippet + Short Timestamp + Status / Priority / Unread */}
         <div
           style={{
             display: 'flex',
@@ -229,6 +216,20 @@ export const WhatsAppListItem: React.FC<WhatsAppListItemProps> = ({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+            {data.timestamp && (
+              <span
+                style={{
+                  fontSize: '11.5px',
+                  fontWeight: (data.unreadCount || 0) > 0 ? 600 : 400,
+                  color: (data.unreadCount || 0) > 0 ? '#25D366' : '#667781',
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {formatWhatsAppTime(data.timestamp)}
+              </span>
+            )}
+
             {data.priorityBadge && (
               <span
                 style={{

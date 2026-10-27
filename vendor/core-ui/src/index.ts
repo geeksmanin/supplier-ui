@@ -198,6 +198,7 @@ export {
   clearAuthToken
 } from './utils/auth';
 export type { CurrentUser } from './utils/auth';
+export { formatWhatsAppTime } from './utils/formatTime';
 
 // Common App Installation & Update Notice System
 export * from './components/AppNotice';
