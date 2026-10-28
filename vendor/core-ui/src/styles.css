@@ -357,9 +357,11 @@ select:hover {
 
 /* WhatsApp / Teal Theme Bounding Box variant */
 .wa-bounding-box:focus-within,
-[data-wa-bounding-box]:focus-within {
-  border-color: #00a884 !important;
-  box-shadow: 0 0 0 3px rgba(0, 168, 132, 0.22) !important;
+[data-wa-bounding-box]:focus-within,
+.stock-search-wrap:focus-within,
+.stock-search-wrap.focused {
+  border-color: #008069 !important;
+  box-shadow: 0 0 0 3px rgba(0, 128, 105, 0.16) !important;
 }
 
 /* Suppress inner rectangular focus ring & background override on inputs inside bounding boxes */
@@ -399,18 +401,32 @@ select:hover {
 .inputBox input:focus-visible,
 .desktopInputBox input:focus,
 .desktopInputBox input:focus-visible,
+.stock-search-wrap input:focus,
+.stock-search-wrap input:focus-visible,
+.stock-search-input:focus,
+.stock-search-input:focus-visible,
 .searchRow input:focus,
 .searchRow input:focus-visible,
+input.bare-input,
 input.bare-input:focus,
 input.bare-input:focus-visible,
+textarea.bare-input,
 textarea.bare-input:focus,
 textarea.bare-input:focus-visible,
+input[data-bare-input],
 input[data-bare-input]:focus,
 input[data-bare-input]:focus-visible {
-  outline: none !important;
-  border: none !important;
+  outline: 0 !important;
+  outline-style: none !important;
+  outline-width: 0 !important;
+  outline-color: transparent !important;
+  border: 0 !important;
+  border-style: none !important;
   border-color: transparent !important;
   box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
   background-color: transparent !important;
 }
 
