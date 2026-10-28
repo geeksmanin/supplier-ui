@@ -144,7 +144,11 @@ export async function syncCatchUp(
     }
 
     return { syncedCount: 0, latestSeq, needsBootstrap: false };
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.response?.status === 401) {
+      console.warn('[SyncEngine] 401 Unauthorized during stream catch-up - session inactive or workspace changed.');
+      return { syncedCount: 0, latestSeq: lastSeq, needsBootstrap: false };
+    }
     console.error('[SyncEngine] Failed to sync stream events:', err);
     throw err;
   }
@@ -252,7 +256,10 @@ export async function rebuildFromBootstrap(
     });
 
     return { eventCount: rawEvents.length, latestSeq, unreadCount };
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.response?.status === 401) {
+      return { eventCount: 0, latestSeq: 0, unreadCount: 0 };
+    }
     console.error('[SyncEngine] Failed to hydrate bootstrap snapshot:', err);
     throw err;
   }

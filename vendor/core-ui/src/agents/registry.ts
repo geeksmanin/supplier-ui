@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { AgentConfig, SamwadAgent } from './types';
 
 // Global singleton map of registered agents
@@ -58,7 +58,7 @@ export function getAllAgents(): AgentConfig[] {
  * Reactive hook for UI components to consume registered agents
  */
 export function useAgents() {
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     const handleChange = () => setTick((prev) => prev + 1);
@@ -68,8 +68,10 @@ export function useAgents() {
     };
   }, []);
 
+  const agents = useMemo(() => getAllAgents(), [tick]);
+
   return {
-    agents: getAllAgents(),
+    agents,
     getAgent,
   };
 }

@@ -63,7 +63,20 @@ export function resolveMediaUrl(uploadIdOrUrl: string, options?: ResolveMediaOpt
   if (!uploadIdOrUrl) return '';
 
   const trimmed = uploadIdOrUrl.trim();
-  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+  if (trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('blob:')) {
+    if (typeof window !== 'undefined') {
+      try {
+        const parsed = new URL(trimmed);
+        if (parsed.origin !== window.location.origin) {
+          return ''; // Cross-origin blob URLs are blocked by browser security
+        }
+      } catch {
+        return '';
+      }
+    }
     return trimmed;
   }
 

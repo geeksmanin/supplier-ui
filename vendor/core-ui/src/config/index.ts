@@ -373,7 +373,24 @@ export const resolveAppConfig = <T = Record<string, any>>(
     } catch (e) {}
   }
 
-  // 2. Local LAN IP / Wi-Fi Developer Server / Loopback
+  // 2. Build-Time Environment Flags (Vite MODE / VITE_APP_ENV)
+  let buildMode = '';
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
+    const env = (import.meta as any).env;
+    buildMode = (env.VITE_APP_ENV || env.MODE || (env.PROD ? 'production' : '') || '').toLowerCase();
+
+    if (buildMode === 'staging' || buildMode === 'stage') {
+      return activeStaging;
+    }
+    if (buildMode === 'testing' || buildMode === 'test') {
+      return activeTesting;
+    }
+    if (buildMode === 'production' || buildMode === 'prod' || env.PROD) {
+      return activeProd;
+    }
+  }
+
+  // 3. Local LAN IP / Wi-Fi Developer Server / Loopback
   if (typeof window !== 'undefined') {
     const host = window.location.hostname.toLowerCase();
     const isLanIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.endsWith('.local');
@@ -392,23 +409,6 @@ export const resolveAppConfig = <T = Record<string, any>>(
         commentsApiBaseUrl: activeLocal.commentsApiBaseUrl ? mapLocalUrl(activeLocal.commentsApiBaseUrl) : undefined,
         notificationApiBaseUrl: activeLocal.notificationApiBaseUrl ? mapLocalUrl(activeLocal.notificationApiBaseUrl) : undefined,
       };
-    }
-  }
-
-  // 3. Build-Time Environment Flags (Vite MODE / VITE_APP_ENV)
-  let buildMode = '';
-  if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
-    const env = (import.meta as any).env;
-    buildMode = (env.VITE_APP_ENV || env.MODE || (env.PROD ? 'production' : '') || '').toLowerCase();
-
-    if (buildMode === 'staging' || buildMode === 'stage') {
-      return activeStaging;
-    }
-    if (buildMode === 'testing' || buildMode === 'test') {
-      return activeTesting;
-    }
-    if (buildMode === 'production' || buildMode === 'prod' || env.PROD) {
-      return activeProd;
     }
   }
 

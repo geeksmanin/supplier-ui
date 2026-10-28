@@ -311,6 +311,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   };
 
   const fetchNotifications = async () => {
+    const activeToken = token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+    if (!activeToken || !userId) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
     setLoading(true);
     try {
       // 1. Instant load from IndexedDB (0ms latency!)
@@ -334,7 +340,10 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
             lastEventIdRef.current = fresh[0].id;
             return;
           }
-        } catch (streamErr) {
+        } catch (streamErr: any) {
+          if (streamErr?.response?.status === 401) {
+            return;
+          }
           console.warn('[Notification] Stream sync fallback to standard endpoint:', streamErr);
         }
       }
@@ -376,7 +385,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         }));
         saveStreamEvents(records).catch(() => {});
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.response?.status === 401) {
+        setNotifications([]);
+        setUnreadCount(0);
+        return;
+      }
       console.error('Failed to fetch notifications:', err);
     } finally {
       setLoading(false);
@@ -983,7 +997,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   };
 
   useEffect(() => {
-    if (!userId) {
+    const activeToken = token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null);
+    if (!userId || !activeToken) {
       setNotifications([]);
       setUnreadCount(0);
       return;
