@@ -84,6 +84,23 @@ export const resolveTenantFromUrl = (targetUrl?: string): string | null => {
 };
 
 /**
+ * Synchronizes core configuration attributes into window.runtimeConfig
+ * for legacy compatibility with third-party scripts and dynamic api clients.
+ */
+export const syncWindowRuntimeConfig = (cfg: AppConfig<any>): void => {
+  if (typeof window === 'undefined') return;
+  const existing = (window as any).runtimeConfig || {};
+  (window as any).runtimeConfig = {
+    ...existing,
+    apiBaseUrl: cfg.apiBaseUrl,
+    tenantCode: cfg.tenantCode,
+    notificationApiBaseUrl: (cfg as any).notificationApiBaseUrl || existing.notificationApiBaseUrl,
+    ticketingApiBaseUrl: (cfg as any).ticketingApiBaseUrl || existing.ticketingApiBaseUrl,
+    commentsApiBaseUrl: (cfg as any).commentsApiBaseUrl || existing.commentsApiBaseUrl,
+  };
+};
+
+/**
  * Stores a valid organization tenant code in persistent storage and updates global configuration.
  * IMPORTANT: If "business" or empty is passed, it is NOT stored as an active organization tenant,
  * and instead marks the global configuration as unresolved (requires workspace selection).
@@ -114,6 +131,7 @@ export const storeTenantCode = (tenantCode: string, tenantName?: string): boolea
     };
 
     (window as any).__geeksmanActiveConfig = nextConfig;
+    syncWindowRuntimeConfig(nextConfig);
     window.dispatchEvent(new CustomEvent('app_config_change_event', { detail: nextConfig }));
     window.dispatchEvent(new CustomEvent('app_workspace_change_event', { detail: 'business' }));
     return false;
@@ -251,6 +269,7 @@ export const initializeConfig = <T = Record<string, any>>(config: AppConfig<T>):
     config.requiresWorkspaceSelection = isBusiness;
 
     (window as any).__geeksmanActiveConfig = config;
+    syncWindowRuntimeConfig(config);
     window.dispatchEvent(new CustomEvent('app_config_change_event', { detail: config }));
   }
   return config;
@@ -331,6 +350,7 @@ export const setAppConfig = <T = Record<string, any>>(updates: Partial<AppConfig
     }
 
     (window as any).__geeksmanActiveConfig = nextConfig;
+    syncWindowRuntimeConfig(nextConfig);
     window.dispatchEvent(new CustomEvent('app_config_change_event', { detail: nextConfig }));
   }
 

@@ -219,7 +219,9 @@ export const createApiClient = (options: CreateClientOptions) => {
         return `${savedUrl.replace(/\/$/, '')}${options.suffix}`;
       }
 
-      const config = window.runtimeConfig as any;
+      const appConfig = getAppConfig() as any;
+      const legacyRuntimeConfig = (typeof window !== 'undefined' ? (window as any).runtimeConfig : undefined) || {};
+      const config = { ...appConfig, ...legacyRuntimeConfig };
       if (options.runtimeConfigKey && config?.[options.runtimeConfigKey]) {
         const url = config[options.runtimeConfigKey];
         if (isLocalHost || isLanIp || (!url.includes('localhost') && !url.includes('127.0.0.1') && !url.includes('10.0.2.2'))) {
