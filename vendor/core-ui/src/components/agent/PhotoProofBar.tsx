@@ -159,3 +159,4 @@ export const PhotoProofBar: React.FC<PhotoProofBarProps> = ({
     </div>
   );
 };
+
