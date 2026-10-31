@@ -230,6 +230,12 @@ export { AgentRoomPage, SamwadAgentRoomPage } from './components/agent/AgentRoom
 export type { AgentRoomPageProps } from './components/agent/AgentRoomPage';
 export { AgentChatView } from './components/agent/AgentChatView';
 export type { AgentChatViewProps } from './components/agent/AgentChatView';
+export { OperationCardShell } from './components/agent/OperationCardShell';
+export type { OperationCardShellProps } from './components/agent/OperationCardShell';
+export { CompactQuantityTaker } from './components/agent/CompactQuantityTaker';
+export type { CompactQuantityTakerProps, MultiplierOption } from './components/agent/CompactQuantityTaker';
+export { PhotoProofBar } from './components/agent/PhotoProofBar';
+export type { PhotoProofBarProps } from './components/agent/PhotoProofBar';
 export { useTenantUsers } from './hooks/useTenantUsers';
 export type { TenantUserItem } from './hooks/useTenantUsers';
 export { useSalesOrderLookup } from './hooks/useSalesOrderLookup';
