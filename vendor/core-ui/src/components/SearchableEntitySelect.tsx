@@ -93,6 +93,10 @@ export interface SearchableEntitySelectProps<T> {
   createNewText?: string | ((searchTerm: string) => string);
   /** Refresh callback */
   onRefresh?: () => void;
+  /** Optional slot for right element inside search box (e.g., QR/Barcode scanner button) */
+  rightElement?: React.ReactNode;
+  /** Custom max height constraint for the options list (default: 180px for compact/filter, 200px otherwise) */
+  maxListHeight?: number | string;
 }
 
 export function SearchableEntitySelect<T = any>({
@@ -113,6 +117,8 @@ export function SearchableEntitySelect<T = any>({
   required = false,
   clearable = true,
   leftIcon,
+  rightElement,
+  maxListHeight,
   style,
   dropdownStyle,
   previewStyle,
@@ -609,6 +615,20 @@ export function SearchableEntitySelect<T = any>({
           </button>
         )}
 
+        {/* Optional Right Action Element (e.g., QR Scanner Trigger) */}
+        {rightElement && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              flexShrink: 0,
+              padding: '0 2px',
+            }}
+          >
+            {rightElement}
+          </div>
+        )}
+
         {/* Clear Button */}
         {clearable && !disabled && (selectedValues.length > 0 || searchTerm) && (
           <button
@@ -696,7 +716,14 @@ export function SearchableEntitySelect<T = any>({
           }}
         >
           {/* Options List directly */}
-          <div ref={listRef} style={{ maxHeight: '240px', overflowY: 'auto', padding: '4px' }}>
+          <div
+            ref={listRef}
+            style={{
+              maxHeight: maxListHeight || dropdownStyle?.maxHeight || (variant === 'filter' ? '180px' : '200px'),
+              overflowY: 'auto',
+              padding: '4px',
+            }}
+          >
             {fetchError ? (
               <div style={{ padding: '0.75rem', fontSize: '0.82rem', color: '#ef4444', textAlign: 'center' }}>
                 ⚠ {fetchError}

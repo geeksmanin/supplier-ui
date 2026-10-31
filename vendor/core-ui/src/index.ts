@@ -180,7 +180,7 @@ export * from './eventstream';
 export * from './components/FastVoucher';
 
 // Multi-Branch Scoping, Switcher & Context Subsystem
-export { BranchProvider, useBranch } from './context/BranchContext';
+export { BranchProvider, useBranch, performBranchSwitchReload } from './context/BranchContext';
 export type { BranchInfo, BranchContextType } from './context/BranchContext';
 export { BranchSelector } from './components/BranchSelector';
 export type { BranchSelectorProps } from './components/BranchSelector';
@@ -230,7 +230,11 @@ export { AgentRoomPage, SamwadAgentRoomPage } from './components/agent/AgentRoom
 export type { AgentRoomPageProps } from './components/agent/AgentRoomPage';
 export { AgentChatView } from './components/agent/AgentChatView';
 export type { AgentChatViewProps } from './components/agent/AgentChatView';
-export { OperationCardShell } from './components/agent/OperationCardShell';
+export {
+  OperationCardShell,
+  OperationCardShellDesktop,
+  OperationCardShellMobile,
+} from './components/agent/OperationCardShell';
 export type { OperationCardShellProps } from './components/agent/OperationCardShell';
 export { CompactQuantityTaker } from './components/agent/CompactQuantityTaker';
 export type { CompactQuantityTakerProps, MultiplierOption } from './components/agent/CompactQuantityTaker';
