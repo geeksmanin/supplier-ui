@@ -657,6 +657,8 @@ export function SearchableEntitySelect<T = any>({
         <button
           type="button"
           tabIndex={-1}
+          data-testid="select-chevron-btn"
+          aria-label="Toggle options dropdown"
           onClick={(e) => {
             e.stopPropagation();
             if (!disabled) {

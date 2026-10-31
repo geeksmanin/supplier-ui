@@ -100,6 +100,7 @@ export const OperationCardShellMobile: React.FC<OperationCardShellProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Close card"
+            data-testid="stock-operation-close-btn"
             style={{
               background: 'none',
               border: 'none',

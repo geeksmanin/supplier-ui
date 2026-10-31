@@ -103,6 +103,8 @@ export { PrintPage } from './components/PrintPage';
 export { printHTML } from './utils/printHelper';
 export { BarcodeQRScannerModal } from './components/BarcodeQRScannerModal';
 export type { BarcodeQRScannerModalProps } from './components/BarcodeQRScannerModal';
+export { useBarcodeLookup } from './hooks/useBarcodeLookup';
+export type { UseBarcodeLookupOptions, UseBarcodeLookupReturn } from './hooks/useBarcodeLookup';
 export { GstCaptchaModal } from './components/GstCaptchaModal';
 export type { GstCaptchaModalProps } from './components/GstCaptchaModal';
 export { fetchOfficialGstCaptcha, fetchOfficialGstTaxpayerDetails, fetchQuickGstDetails } from './services/gstService';
