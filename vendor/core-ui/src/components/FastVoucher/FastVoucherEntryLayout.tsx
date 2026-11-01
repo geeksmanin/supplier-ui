@@ -459,6 +459,23 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
           setSearchResults(merged);
           setIsSearchOpen(merged.length > 0);
           setSelectedResultIndex(0);
+
+          // Eagerly trigger stock inquiries for all returned variants immediately
+          if (catalogConfig?.showStock) {
+            merged.forEach((item) => {
+              const vId = String(item.id || item.variant_id || '');
+              if (vId) {
+                window.dispatchEvent(
+                  new CustomEvent('inventory_stock_request', {
+                    detail: {
+                      variant_id: vId,
+                      warehouse_id: catalogConfig?.warehouseId,
+                    },
+                  })
+                );
+              }
+            });
+          }
         }
       } catch (err) {
         console.error('Failed to search products', err);
