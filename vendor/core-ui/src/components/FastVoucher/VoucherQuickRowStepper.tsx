@@ -6,6 +6,7 @@ import {
 } from './FastVoucherEntryLayout.types';
 import { Check, X, Layers, Calendar, Tag, Percent } from 'lucide-react';
 import { Select } from '../Select';
+import { apiClient } from '../../api/client';
 
 interface VoucherQuickRowStepperProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
   const [mrp, setMrp] = useState<number>(0);
   const [unitPrice, setUnitPrice] = useState<number>(0);
   const [discountPercent, setDiscountPercent] = useState<number>(0);
+  const [dynamicBatches, setDynamicBatches] = useState<Array<{ batch_code: string; expiry_date?: string; mrp?: number; available_quantity?: number }>>([]);
 
   const qtyInputRef = useRef<HTMLInputElement>(null);
   const packagingSelectRef = useRef<HTMLSelectElement>(null);
@@ -43,6 +45,11 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
   const expiryInputRef = useRef<HTMLInputElement>(null);
   const rateInputRef = useRef<HTMLInputElement>(null);
   const discountInputRef = useRef<HTMLInputElement>(null);
+
+  // Resolved list of batches: props stockBatches take priority, followed by dynamically fetched batches
+  const effectiveBatches = useMemo(() => {
+    return stockBatches.length > 0 ? stockBatches : dynamicBatches;
+  }, [stockBatches, dynamicBatches]);
 
   // Synchronize state when item changes or opens
   useEffect(() => {
@@ -56,6 +63,45 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
     setMrp(item.mrp || 0);
     setUnitPrice(item.unit_price || 0);
     setDiscountPercent(item.discount_percent || 0);
+
+    // If batchMode === 'select' and no stockBatches were passed via props, fetch batches directly from inventory
+    if (batchMode === 'select' && stockBatches.length === 0 && item.variant_id) {
+      let isCancelled = false;
+      const fetchItemBatches = async () => {
+        try {
+          const res = await apiClient.get('/inventory/batches', {
+            params: {
+              inventory_item_id: String(item.variant_id),
+              limit: 50,
+            },
+          }).catch(() => null);
+
+          if (!isCancelled && res?.data?.data && Array.isArray(res.data.data)) {
+            const fetched = res.data.data.map((b: any) => ({
+              batch_code: b.batch_code || b.batch_number || `BATCH-${b.id}`,
+              expiry_date: b.expiry_date?.Valid ? b.expiry_date.Time?.substring(0, 10) : b.expiry_date || '',
+              mrp: Number(b.mrp || item.unit_price || 0),
+              available_quantity: Number(b.available_quantity ?? b.quantity ?? 0),
+            }));
+            setDynamicBatches(fetched);
+
+            if (fetched.length > 0 && !item.batch_code) {
+              setBatchCode(fetched[0].batch_code);
+              if (fetched[0].expiry_date) setExpiryDate(fetched[0].expiry_date);
+              if (fetched[0].mrp) setMrp(fetched[0].mrp);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to load item batches in stepper', err);
+        }
+      };
+      fetchItemBatches();
+      return () => {
+        isCancelled = true;
+      };
+    } else {
+      setDynamicBatches([]);
+    }
 
     // Default batch if select mode and stock batches available
     if (batchMode === 'select' && stockBatches.length > 0 && !item.batch_code) {
@@ -72,7 +118,7 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
       }
     }, 50);
     return () => clearTimeout(timer);
-  }, [isOpen, item, batchMode]);
+  }, [isOpen, item, batchMode, stockBatches]);
 
   // Derived financial calculations for this line
   const calculations = useMemo(() => {
@@ -113,7 +159,7 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
 
   const handleBatchSelect = (code: string) => {
     setBatchCode(code);
-    const matched = stockBatches.find((b) => b.batch_code === code);
+    const matched = effectiveBatches.find((b) => b.batch_code === code);
     if (matched) {
       if (matched.expiry_date) setExpiryDate(matched.expiry_date);
       if (matched.mrp) setMrp(matched.mrp);
@@ -195,8 +241,26 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
             {isEditMode ? 'EDIT' : 'ADD'}
           </div>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '0.925rem', color: '#1e293b' }}>
-              {item.product_name}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.925rem', color: '#1e293b' }}>
+                {item.product_name}
+              </span>
+              {item.metadata?.available_quantity !== undefined && (
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '9999px',
+                    backgroundColor: Number(item.metadata.available_quantity) > 0 ? '#dcfce7' : '#fee2e2',
+                    color: Number(item.metadata.available_quantity) > 0 ? '#166534' : '#991b1b',
+                    border: Number(item.metadata.available_quantity) > 0 ? '1px solid #bbf7d0' : '1px solid #fecaca',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  🟢 Stock: {Number(item.metadata.available_quantity)} {item.packaging_name || 'Units'}
+                </span>
+              )}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace' }}>
               SKU: {item.sku_code || '-'} {item.tax_percent ? `• GST: ${item.tax_percent}%` : ''}
@@ -329,11 +393,11 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
                   rateInputRef.current?.focus();
                 }
               }}
-              options={stockBatches.map((b) => ({
+              options={effectiveBatches.map((b) => ({
                 value: b.batch_code,
                 label: `${b.batch_code} ${b.expiry_date ? `(Exp: ${b.expiry_date})` : ''} ${b.available_quantity != null ? `• Avail: ${b.available_quantity}` : ''}`.trim()
               }))}
-              placeholder="-- Select Batch --"
+              placeholder={effectiveBatches.length === 0 ? 'Loading batches...' : '-- Select Batch --'}
               style={{ fontSize: '0.8rem' }}
             />
           </div>

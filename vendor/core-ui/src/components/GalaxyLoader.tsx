@@ -287,14 +287,18 @@ export const GalaxyLoader: React.FC<GalaxyLoaderProps> = ({
       mouseRef.current.active = false;
     };
 
-    canvas.addEventListener('pointermove', handlePointerMove);
-    canvas.addEventListener('pointerleave', handlePointerLeave);
+    if (canvas && typeof canvas.addEventListener === 'function') {
+      canvas.addEventListener('pointermove', handlePointerMove);
+      canvas.addEventListener('pointerleave', handlePointerLeave);
+    }
 
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', handleResize);
-      canvas.removeEventListener('pointermove', handlePointerMove);
-      canvas.removeEventListener('pointerleave', handlePointerLeave);
+      if (canvas && typeof canvas.removeEventListener === 'function') {
+        canvas.removeEventListener('pointermove', handlePointerMove);
+        canvas.removeEventListener('pointerleave', handlePointerLeave);
+      }
     };
   }, [isLight, isGreen, bgColor]);
 

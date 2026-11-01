@@ -338,7 +338,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
       setSearchLoading(true);
       try {
         const variantEndpoint = catalogConfig?.searchEndpoint || '/catalogue/variants';
-        const [variantsRes, productsRes] = await Promise.allSettled([
+        const searchPromises: Promise<any>[] = [
           apiClient.get(variantEndpoint, {
             params: {
               search: searchQuery,
@@ -352,7 +352,32 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
               limit: 12,
             },
           }),
-        ]);
+        ];
+
+        // If showStock is true, also query live inventory stock balances to enrich search results with accurate ledger numbers
+        if (catalogConfig?.showStock) {
+          searchPromises.push(
+            apiClient.get('/inventory/stock-ledgers/summary', {
+              params: {
+                category: 'LOCATIONS',
+                ...(catalogConfig.warehouseId ? { location_id: catalogConfig.warehouseId } : {}),
+              },
+            }).catch(() => null)
+          );
+        }
+
+        const [variantsRes, productsRes, stockSummaryRes] = await Promise.allSettled(searchPromises);
+
+        const stockMap: Record<string, number> = {};
+        if (stockSummaryRes && stockSummaryRes.status === 'fulfilled' && stockSummaryRes.value?.data) {
+          const summaries = Array.isArray(stockSummaryRes.value.data.data) ? stockSummaryRes.value.data.data : [];
+          for (const s of summaries) {
+            const vId = String(s.variant_id || s.item_id || '');
+            if (vId) {
+              stockMap[vId] = (stockMap[vId] || 0) + Number(s.net_balance || 0);
+            }
+          }
+        }
 
         const rawVariants =
           variantsRes.status === 'fulfilled'
@@ -379,8 +404,11 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
         rawVariants.forEach((v: any) => {
           const vId = String(v.id || v.variant_id || '');
           if (vId) seenVariantIds.add(vId);
+          const liveStock = stockMap[vId] !== undefined ? stockMap[vId] : v.available_quantity ?? v.current_stock ?? v.stock ?? 0;
           merged.push({
             ...v,
+            available_quantity: Math.max(0, liveStock),
+            current_stock: Math.max(0, liveStock),
             _itemType: 'variant',
           });
         });
@@ -399,8 +427,11 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
             const singleVId = String(singleV.id || singleV.variant_id || '');
             if (singleVId && !seenVariantIds.has(singleVId)) {
               seenVariantIds.add(singleVId);
+              const liveStock = stockMap[singleVId] !== undefined ? stockMap[singleVId] : singleV.available_quantity ?? singleV.current_stock ?? singleV.stock ?? 0;
               merged.push({
                 ...singleV,
+                available_quantity: Math.max(0, liveStock),
+                current_stock: Math.max(0, liveStock),
                 product: p,
                 _itemType: 'variant',
               });
@@ -483,7 +514,11 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
       packagings,
       batch_code: initialBatchCode,
       expiry_date: initialExpiry,
-      metadata: { ...(rawProduct.metadata || {}), batches },
+      metadata: {
+        ...(rawProduct.metadata || {}),
+        batches,
+        available_quantity: rawProduct.available_quantity ?? rawProduct.current_stock ?? rawProduct.stock ?? 0,
+      },
       unit_price: price,
       tax_percent: taxRate,
       discount_percent: 0,
