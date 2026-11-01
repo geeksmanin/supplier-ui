@@ -588,6 +588,18 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
     }, 50);
   };
 
+  // Memoized stock batches for active stepper item to prevent infinite re-renders
+  const memoizedStepperBatches = useMemo(() => {
+    const raw = activeStepperItem?.metadata?.batches;
+    if (!Array.isArray(raw) || raw.length === 0) return [];
+    return raw.map((b: any) => ({
+      batch_code: b.batch_code || b.batch_number || `BATCH-${b.id}`,
+      expiry_date: b.expiry_date,
+      mrp: b.mrp,
+      available_quantity: Number(b.available_quantity ?? b.quantity ?? 0),
+    }));
+  }, [activeStepperItem?.metadata?.batches]);
+
   return (
     <div
       style={{
@@ -1236,14 +1248,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                 item={activeStepperItem}
                 batchMode={batchMode}
                 allowRateOverride={pricingConfig.allowRateOverride}
-                stockBatches={
-                  (activeStepperItem?.metadata?.batches || []).map((b: any) => ({
-                    batch_code: b.batch_code || b.batch_number || `BATCH-${b.id}`,
-                    expiry_date: b.expiry_date,
-                    mrp: b.mrp,
-                    available_quantity: Number(b.available_quantity ?? b.quantity ?? 0),
-                  }))
-                }
+                onOpenStockDrilldown={(it) => onOpenStockDrilldown?.(it as any)}
+                stockBatches={memoizedStepperBatches}
                 onCommit={handleCommitStepperItem}
                 onCancel={() => {
                   setIsStepperOpen(false);
@@ -1319,29 +1325,6 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                         <td style={{ padding: '8px 10px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <div style={{ fontWeight: 700, color: '#1e293b' }}>{row.product_name}</div>
-                            {catalogConfig?.showStock && (
-                              <button
-                                type="button"
-                                data-testid={`stock-drilldown-badge-${idx}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onOpenStockDrilldown?.(row);
-                                }}
-                                style={{
-                                  padding: '1px 6px',
-                                  fontSize: '0.68rem',
-                                  fontWeight: 700,
-                                  borderRadius: '9999px',
-                                  backgroundColor: '#eff6ff',
-                                  color: '#2563eb',
-                                  border: '1px solid #bfdbfe',
-                                  cursor: onOpenStockDrilldown ? 'pointer' : 'default',
-                                }}
-                                title="Click to view Stock Breakdown & Ledger"
-                              >
-                                Stock Drilldown ↗
-                              </button>
-                            )}
                           </div>
                           {row.remarks && (
                             <div style={{ fontSize: '0.7rem', color: '#64748b', fontStyle: 'italic' }}>

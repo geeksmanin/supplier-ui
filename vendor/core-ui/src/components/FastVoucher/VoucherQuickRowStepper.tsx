@@ -6,7 +6,6 @@ import {
 } from './FastVoucherEntryLayout.types';
 import { Check, X, Layers, Calendar, Tag, Percent } from 'lucide-react';
 import { Select } from '../Select';
-import { apiClient } from '../../api/client';
 
 interface VoucherQuickRowStepperProps {
   isOpen: boolean;
@@ -17,6 +16,7 @@ interface VoucherQuickRowStepperProps {
   onCommit: (item: VoucherLineItem) => void;
   onCancel: () => void;
   isEditMode?: boolean;
+  onOpenStockDrilldown?: (item: Partial<VoucherLineItem> & { available_quantity?: number }) => void;
 }
 
 export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
@@ -28,6 +28,7 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
   onCommit,
   onCancel,
   isEditMode = false,
+  onOpenStockDrilldown,
 }) => {
   const [qty, setQty] = useState<number>(1);
   const [packagingName, setPackagingName] = useState<string>('Unit');
@@ -47,6 +48,10 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
   const rateInputRef = useRef<HTMLInputElement>(null);
   const discountInputRef = useRef<HTMLInputElement>(null);
 
+  // Guards against duplicate request firing & infinite loops
+  const lastRequestedBatchVariantRef = useRef<string | null>(null);
+  const lastRequestedStockVariantRef = useRef<string | null>(null);
+
   // Resolved list of batches: props stockBatches take priority, followed by dynamically fetched batches
   const effectiveBatches = useMemo(() => {
     return stockBatches.length > 0 ? stockBatches : dynamicBatches;
@@ -54,7 +59,11 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
 
   // Synchronize state when item changes or opens
   useEffect(() => {
-    if (!isOpen || !item) return;
+    if (!isOpen || !item) {
+      lastRequestedBatchVariantRef.current = null;
+      lastRequestedStockVariantRef.current = null;
+      return;
+    }
 
     setQty(item.quantity ?? 1);
     setPackagingName(item.packaging_name || 'Unit');
@@ -66,26 +75,33 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
     setDiscountPercent(item.discount_percent || 0);
     setLiveStock(item.metadata?.available_quantity !== undefined ? Number(item.metadata.available_quantity) : null);
 
-    // Listen for live stock updates for this variant
-    if (item.variant_id) {
-      const vId = String(item.variant_id);
+    const vIdStr = item.variant_id ? String(item.variant_id) : '';
+
+    // Listen for live stock updates for this variant (single request guard)
+    let stockCleanup: (() => void) | undefined;
+    if (vIdStr) {
       const handleStockUpdate = (e: any) => {
         const detail = e?.detail;
-        if (detail && String(detail.variant_id) === vId) {
+        if (detail && String(detail.variant_id) === vIdStr) {
           setLiveStock(Number(detail.passed_quantity ?? detail.available_quantity ?? 0));
         }
       };
       window.addEventListener('inventory_stock_updated', handleStockUpdate);
-      window.dispatchEvent(
-        new CustomEvent('inventory_stock_request', {
-          detail: { variant_id: vId },
-        })
-      );
+      stockCleanup = () => window.removeEventListener('inventory_stock_updated', handleStockUpdate);
+
+      if (lastRequestedStockVariantRef.current !== vIdStr) {
+        lastRequestedStockVariantRef.current = vIdStr;
+        window.dispatchEvent(
+          new CustomEvent('inventory_stock_request', {
+            detail: { variant_id: vIdStr },
+          })
+        );
+      }
     }
 
-    // If batchMode === 'select' and no stockBatches were passed via props, request batches via domain event bus & direct fallback
-    if (batchMode === 'select' && stockBatches.length === 0 && item.variant_id) {
-      const vIdStr = String(item.variant_id);
+    // If batchMode === 'select' and no stockBatches were passed via props, request batches via domain event bus exactly once
+    let batchCleanup: (() => void) | undefined;
+    if (batchMode === 'select' && stockBatches.length === 0 && vIdStr) {
       const handleBatchesResolved = (e: any) => {
         const detail = e?.detail;
         if (detail && String(detail.variant_id) === vIdStr) {
@@ -101,42 +117,19 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
       };
 
       window.addEventListener('inventory_batch_updated', handleBatchesResolved);
-      window.dispatchEvent(
-        new CustomEvent('inventory_batch_request', {
-          detail: {
-            variant_id: vIdStr,
-          },
-        })
-      );
+      batchCleanup = () => window.removeEventListener('inventory_batch_updated', handleBatchesResolved);
 
-      // Direct fallback to inventory batches endpoint
-      apiClient.get('/inventory/batches', {
-        params: {
-          inventory_item_id: vIdStr,
-          limit: 50,
-        },
-      }).then((res) => {
-        const rawBatches = Array.isArray(res?.data?.data) ? res.data.data : [];
-        if (rawBatches.length > 0) {
-          const mapped = rawBatches.map((b: any) => ({
-            batch_code: b.batch_code || b.batch_number || `BATCH-${b.id}`,
-            expiry_date: b.expiry_date?.Valid ? b.expiry_date.Time?.substring(0, 10) : b.expiry_date || '',
-            mrp: Number(b.mrp || 0),
-            available_quantity: Number(b.available_quantity ?? b.quantity ?? 0),
-          }));
-          setDynamicBatches(mapped);
-          if (!item.batch_code && mapped.length > 0) {
-            setBatchCode(mapped[0].batch_code);
-            if (mapped[0].expiry_date) setExpiryDate(mapped[0].expiry_date);
-            if (mapped[0].mrp) setMrp(mapped[0].mrp);
-          }
-        }
-      }).catch(() => null);
-
-      return () => {
-        window.removeEventListener('inventory_batch_updated', handleBatchesResolved);
-      };
-    } else {
+      if (lastRequestedBatchVariantRef.current !== vIdStr) {
+        lastRequestedBatchVariantRef.current = vIdStr;
+        window.dispatchEvent(
+          new CustomEvent('inventory_batch_request', {
+            detail: {
+              variant_id: vIdStr,
+            },
+          })
+        );
+      }
+    } else if (stockBatches.length > 0) {
       setDynamicBatches([]);
     }
 
@@ -154,8 +147,13 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
         qtyInputRef.current.select();
       }
     }, 50);
-    return () => clearTimeout(timer);
-  }, [isOpen, item, batchMode, stockBatches]);
+
+    return () => {
+      clearTimeout(timer);
+      stockCleanup?.();
+      batchCleanup?.();
+    };
+  }, [isOpen, item?.id, item?.variant_id, batchMode, stockBatches.length]);
 
   // Derived financial calculations for this line
   const calculations = useMemo(() => {
@@ -285,21 +283,38 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
               {(() => {
                 const stockVal = liveStock !== null ? liveStock : (item.metadata?.available_quantity !== undefined ? Number(item.metadata.available_quantity) : null);
                 if (stockVal === null) return null;
+                const inStock = stockVal > 0;
                 return (
-                  <span
+                  <button
+                    type="button"
+                    data-testid="stepper-stock-breakdown-btn"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onOpenStockDrilldown?.({
+                        ...item,
+                        available_quantity: stockVal,
+                      });
+                    }}
                     style={{
                       fontSize: '0.72rem',
                       fontWeight: 700,
                       padding: '2px 8px',
                       borderRadius: '9999px',
-                      backgroundColor: stockVal > 0 ? '#dcfce7' : '#fee2e2',
-                      color: stockVal > 0 ? '#166534' : '#991b1b',
-                      border: stockVal > 0 ? '1px solid #bbf7d0' : '1px solid #fecaca',
+                      backgroundColor: inStock ? '#dcfce7' : '#fee2e2',
+                      color: inStock ? '#166534' : '#991b1b',
+                      border: inStock ? '1px solid #bbf7d0' : '1px solid #fecaca',
                       whiteSpace: 'nowrap',
+                      cursor: onOpenStockDrilldown ? 'pointer' : 'default',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
                     }}
+                    title={onOpenStockDrilldown ? 'Click to view 5-location warehouse stock breakdown' : undefined}
                   >
-                    {stockVal > 0 ? `🟢 Stock: ${stockVal} ${packagingName || 'Units'} In Stock` : '🔴 Out of Stock'}
-                  </span>
+                    <span>{inStock ? `🟢 Stock: ${stockVal} ${packagingName || 'Units'} In Stock` : '🔴 Out of Stock'}</span>
+                    {onOpenStockDrilldown && <span style={{ opacity: 0.65, fontSize: '0.65rem' }}>↗</span>}
+                  </button>
                 );
               })()}
             </div>
