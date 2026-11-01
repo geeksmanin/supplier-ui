@@ -64,40 +64,33 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
     setUnitPrice(item.unit_price || 0);
     setDiscountPercent(item.discount_percent || 0);
 
-    // If batchMode === 'select' and no stockBatches were passed via props, fetch batches directly from inventory
+    // If batchMode === 'select' and no stockBatches were passed via props, request batches via domain event bus
     if (batchMode === 'select' && stockBatches.length === 0 && item.variant_id) {
-      let isCancelled = false;
-      const fetchItemBatches = async () => {
-        try {
-          const res = await apiClient.get('/inventory/batches', {
-            params: {
-              inventory_item_id: String(item.variant_id),
-              limit: 50,
-            },
-          }).catch(() => null);
+      const handleBatchesResolved = (e: any) => {
+        const detail = e?.detail;
+        if (detail && String(detail.variant_id) === String(item.variant_id)) {
+          const fetched = Array.isArray(detail.batches) ? detail.batches : [];
+          setDynamicBatches(fetched);
 
-          if (!isCancelled && res?.data?.data && Array.isArray(res.data.data)) {
-            const fetched = res.data.data.map((b: any) => ({
-              batch_code: b.batch_code || b.batch_number || `BATCH-${b.id}`,
-              expiry_date: b.expiry_date?.Valid ? b.expiry_date.Time?.substring(0, 10) : b.expiry_date || '',
-              mrp: Number(b.mrp || item.unit_price || 0),
-              available_quantity: Number(b.available_quantity ?? b.quantity ?? 0),
-            }));
-            setDynamicBatches(fetched);
-
-            if (fetched.length > 0 && !item.batch_code) {
-              setBatchCode(fetched[0].batch_code);
-              if (fetched[0].expiry_date) setExpiryDate(fetched[0].expiry_date);
-              if (fetched[0].mrp) setMrp(fetched[0].mrp);
-            }
+          if (fetched.length > 0 && !item.batch_code) {
+            setBatchCode(fetched[0].batch_code);
+            if (fetched[0].expiry_date) setExpiryDate(fetched[0].expiry_date);
+            if (fetched[0].mrp) setMrp(fetched[0].mrp);
           }
-        } catch (err) {
-          console.error('Failed to load item batches in stepper', err);
         }
       };
-      fetchItemBatches();
+
+      window.addEventListener('inventory_batch_updated', handleBatchesResolved);
+      window.dispatchEvent(
+        new CustomEvent('inventory_batch_request', {
+          detail: {
+            variant_id: String(item.variant_id),
+          },
+        })
+      );
+
       return () => {
-        isCancelled = true;
+        window.removeEventListener('inventory_batch_updated', handleBatchesResolved);
       };
     } else {
       setDynamicBatches([]);

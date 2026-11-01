@@ -325,6 +325,50 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
     },
   });
 
+  // 3. Dynamic Live Stock Ingestion via Domain Event Bus (Decoupled & Non-blocking)
+  const [liveStockMap, setLiveStockMap] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!catalogConfig?.showStock) return;
+
+    const handleStockUpdate = (e: any) => {
+      const delta = e?.detail;
+      if (!delta?.variant_id) return;
+      const vId = String(delta.variant_id);
+      const passed = Number(delta.passed_quantity ?? delta.available_quantity ?? 0);
+      setLiveStockMap((prev) => ({
+        ...prev,
+        [vId]: passed,
+      }));
+    };
+
+    window.addEventListener('inventory_stock_updated', handleStockUpdate);
+    return () => {
+      window.removeEventListener('inventory_stock_updated', handleStockUpdate);
+    };
+  }, [catalogConfig?.showStock]);
+
+  // Request stock for displayed search results without blocking UI
+  useEffect(() => {
+    if (!catalogConfig?.showStock || searchResults.length === 0) return;
+
+    searchResults.forEach((res) => {
+      if (res._itemType === 'variant') {
+        const vId = String(res.id || res.variant_id || '');
+        if (vId) {
+          window.dispatchEvent(
+            new CustomEvent('inventory_stock_request', {
+              detail: {
+                variant_id: vId,
+                warehouse_id: catalogConfig?.warehouseId,
+              },
+            })
+          );
+        }
+      }
+    });
+  }, [searchResults, catalogConfig?.showStock, catalogConfig?.warehouseId]);
+
   // 4. Debounced Product Catalog & Variant Dual Search
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -354,30 +398,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
           }),
         ];
 
-        // If showStock is true, also query live inventory stock balances to enrich search results with accurate ledger numbers
-        if (catalogConfig?.showStock) {
-          searchPromises.push(
-            apiClient.get('/inventory/stock-ledgers/summary', {
-              params: {
-                category: 'LOCATIONS',
-                ...(catalogConfig.warehouseId ? { location_id: catalogConfig.warehouseId } : {}),
-              },
-            }).catch(() => null)
-          );
-        }
-
-        const [variantsRes, productsRes, stockSummaryRes] = await Promise.allSettled(searchPromises);
-
-        const stockMap: Record<string, number> = {};
-        if (stockSummaryRes && stockSummaryRes.status === 'fulfilled' && stockSummaryRes.value?.data) {
-          const summaries = Array.isArray(stockSummaryRes.value.data.data) ? stockSummaryRes.value.data.data : [];
-          for (const s of summaries) {
-            const vId = String(s.variant_id || s.item_id || '');
-            if (vId) {
-              stockMap[vId] = (stockMap[vId] || 0) + Number(s.net_balance || 0);
-            }
-          }
-        }
+        // Progressive Instant Search: Catalog resolves without waiting for inventory ledger
+        const [variantsRes, productsRes] = await Promise.allSettled(searchPromises);
 
         const rawVariants =
           variantsRes.status === 'fulfilled'
@@ -404,11 +426,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
         rawVariants.forEach((v: any) => {
           const vId = String(v.id || v.variant_id || '');
           if (vId) seenVariantIds.add(vId);
-          const liveStock = stockMap[vId] !== undefined ? stockMap[vId] : v.available_quantity ?? v.current_stock ?? v.stock ?? 0;
           merged.push({
             ...v,
-            available_quantity: Math.max(0, liveStock),
-            current_stock: Math.max(0, liveStock),
             _itemType: 'variant',
           });
         });
@@ -427,11 +446,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
             const singleVId = String(singleV.id || singleV.variant_id || '');
             if (singleVId && !seenVariantIds.has(singleVId)) {
               seenVariantIds.add(singleVId);
-              const liveStock = stockMap[singleVId] !== undefined ? stockMap[singleVId] : singleV.available_quantity ?? singleV.current_stock ?? singleV.stock ?? 0;
               merged.push({
                 ...singleV,
-                available_quantity: Math.max(0, liveStock),
-                current_stock: Math.max(0, liveStock),
                 product: p,
                 _itemType: 'variant',
               });
@@ -502,8 +518,13 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
       initialExpiry = sortedBatches[0].expiry_date || '';
     }
 
+    const vIdStr = String(rawProduct.id || rawProduct.variant_id || '');
+    const currentStock = liveStockMap[vIdStr] !== undefined
+      ? liveStockMap[vIdStr]
+      : (rawProduct.available_quantity ?? rawProduct.current_stock ?? rawProduct.stock ?? 0);
+
     const draftLine: Partial<VoucherLineItem> = {
-      variant_id: String(rawProduct.id),
+      variant_id: vIdStr,
       product_id: rawProduct.product_id ? String(rawProduct.product_id) : undefined,
       sku_code: sku,
       product_name: pName,
@@ -517,7 +538,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
       metadata: {
         ...(rawProduct.metadata || {}),
         batches,
-        available_quantity: rawProduct.available_quantity ?? rawProduct.current_stock ?? rawProduct.stock ?? 0,
+        available_quantity: currentStock,
       },
       unit_price: price,
       tax_percent: taxRate,
@@ -1111,21 +1132,27 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                                 📦 Variant
                               </span>
                             )}
-                            {catalogConfig?.showStock && !isProduct && (
-                              <span
-                                style={{
-                                  fontSize: '0.65rem',
-                                  fontWeight: 700,
-                                  padding: '2px 6px',
-                                  borderRadius: '9999px',
-                                  backgroundColor: (Number(res.available_quantity ?? res.stock ?? 0) > 0) ? '#dcfce7' : '#fee2e2',
-                                  color: (Number(res.available_quantity ?? res.stock ?? 0) > 0) ? '#166534' : '#991b1b',
-                                  border: (Number(res.available_quantity ?? res.stock ?? 0) > 0) ? '1px solid #bbf7d0' : '1px solid #fecaca',
-                                }}
-                              >
-                                🟢 Stock: {Number(res.available_quantity ?? res.stock ?? 0)}
-                              </span>
-                            )}
+                            {catalogConfig?.showStock && !isProduct && (() => {
+                              const vId = String(res.id || res.variant_id || '');
+                              const hasStock = liveStockMap[vId] !== undefined;
+                              const stockQty = hasStock ? liveStockMap[vId] : Number(res.available_quantity ?? res.stock ?? 0);
+                              return (
+                                <span
+                                  style={{
+                                    fontSize: '0.65rem',
+                                    fontWeight: 700,
+                                    padding: '2px 6px',
+                                    borderRadius: '9999px',
+                                    backgroundColor: stockQty > 0 ? '#dcfce7' : (hasStock ? '#fee2e2' : '#f1f5f9'),
+                                    color: stockQty > 0 ? '#166534' : (hasStock ? '#991b1b' : '#64748b'),
+                                    border: stockQty > 0 ? '1px solid #bbf7d0' : (hasStock ? '1px solid #fecaca' : '1px solid #e2e8f0'),
+                                    transition: 'all 0.2s ease',
+                                  }}
+                                >
+                                  {hasStock ? (stockQty > 0 ? `🟢 Stock: ${stockQty}` : `🔴 Out of Stock`) : `⏳ Stock: ...`}
+                                </span>
+                              );
+                            })()}
                           </div>
                           <div style={{ fontSize: '0.72rem', color: '#64748b', fontFamily: 'monospace', marginTop: '2px' }}>
                             {isProduct ? (
