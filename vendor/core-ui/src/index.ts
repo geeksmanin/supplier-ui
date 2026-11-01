@@ -246,5 +246,8 @@ export { useTenantUsers } from './hooks/useTenantUsers';
 export type { TenantUserItem } from './hooks/useTenantUsers';
 export { useSalesOrderLookup } from './hooks/useSalesOrderLookup';
 export type { SalesOrderLookupResult } from './hooks/useSalesOrderLookup';
+export { useCurrentUserPhoto } from './hooks/useCurrentUserPhoto';
+export type { UseCurrentUserPhotoResult, UserPhotoCandidate } from './hooks/useCurrentUserPhoto';
+
 
 
