@@ -50,7 +50,9 @@ export interface VoucherPartyConfig {
 export interface VoucherCatalogConfig {
   searchEndpoint?: string;
   searchParams?: Record<string, any>;
+  showStock?: boolean;
   validateStock?: boolean;
+  showStockDrilldown?: boolean;
   warehouseId?: string;
   placeholder?: string;
 }
@@ -168,6 +170,9 @@ export interface FastVoucherEntryLayoutProps {
   // Secondary Details (F3 Drawer)
   moreDetailsBadgeCount?: number;
   renderMoreDetailsDrawer?: (isOpen: boolean, onClose: () => void) => React.ReactNode;
+
+  // Stock Drilldown Integration
+  onOpenStockDrilldown?: (item: VoucherLineItem) => void;
 
   // Slot Override for Right Pane (defaults to built-in live preview)
   renderRightPane?: () => React.ReactNode;

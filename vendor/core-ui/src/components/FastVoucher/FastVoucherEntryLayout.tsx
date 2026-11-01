@@ -68,6 +68,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
   isSaving = false,
   saveButtonLabel = 'Save Document (F10)',
   headerExtraActions,
+  onOpenStockDrilldown,
   enableBillParking = true,
   onParkBill: externalParkBill,
   onRecallBill: externalRecallBill,
@@ -453,6 +454,23 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
       { name: rawProduct.packaging_name || 'Unit', size: Number(rawProduct.packaging_size || 1), is_default: true },
     ];
 
+    const batches = rawProduct.batches || rawProduct.stock_batches || [];
+    let initialBatchCode = rawProduct.batch_code || '';
+    let initialExpiry = rawProduct.expiry_date || '';
+
+    // Smart Batch Selection:
+    // If only 1 batch exists, auto-select it by default with 0 clicks
+    // If multiple batches exist, pre-select the FEFO batch (first batch sorted by expiry)
+    if (batchMode === 'select' && Array.isArray(batches) && batches.length > 0) {
+      const sortedBatches = [...batches].sort((a: any, b: any) => {
+        if (!a.expiry_date) return 1;
+        if (!b.expiry_date) return -1;
+        return new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
+      });
+      initialBatchCode = sortedBatches[0].batch_code || sortedBatches[0].batch_number || '';
+      initialExpiry = sortedBatches[0].expiry_date || '';
+    }
+
     const draftLine: Partial<VoucherLineItem> = {
       variant_id: String(rawProduct.id),
       product_id: rawProduct.product_id ? String(rawProduct.product_id) : undefined,
@@ -463,6 +481,9 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
       packaging_name: packagings[0]?.name || 'Unit',
       packaging_size: packagings[0]?.size || 1,
       packagings,
+      batch_code: initialBatchCode,
+      expiry_date: initialExpiry,
+      metadata: { ...(rawProduct.metadata || {}), batches },
       unit_price: price,
       tax_percent: taxRate,
       discount_percent: 0,
@@ -1055,6 +1076,21 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                                 📦 Variant
                               </span>
                             )}
+                            {catalogConfig?.showStock && !isProduct && (
+                              <span
+                                style={{
+                                  fontSize: '0.65rem',
+                                  fontWeight: 700,
+                                  padding: '2px 6px',
+                                  borderRadius: '9999px',
+                                  backgroundColor: (Number(res.available_quantity ?? res.stock ?? 0) > 0) ? '#dcfce7' : '#fee2e2',
+                                  color: (Number(res.available_quantity ?? res.stock ?? 0) > 0) ? '#166534' : '#991b1b',
+                                  border: (Number(res.available_quantity ?? res.stock ?? 0) > 0) ? '1px solid #bbf7d0' : '1px solid #fecaca',
+                                }}
+                              >
+                                🟢 Stock: {Number(res.available_quantity ?? res.stock ?? 0)}
+                              </span>
+                            )}
                           </div>
                           <div style={{ fontSize: '0.72rem', color: '#64748b', fontFamily: 'monospace', marginTop: '2px' }}>
                             {isProduct ? (
@@ -1121,6 +1157,14 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                 item={activeStepperItem}
                 batchMode={batchMode}
                 allowRateOverride={pricingConfig.allowRateOverride}
+                stockBatches={
+                  (activeStepperItem?.metadata?.batches || []).map((b: any) => ({
+                    batch_code: b.batch_code || b.batch_number || `BATCH-${b.id}`,
+                    expiry_date: b.expiry_date,
+                    mrp: b.mrp,
+                    available_quantity: Number(b.available_quantity ?? b.quantity ?? 0),
+                  }))
+                }
                 onCommit={handleCommitStepperItem}
                 onCancel={() => {
                   setIsStepperOpen(false);
@@ -1194,7 +1238,32 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                           {idx + 1}
                         </td>
                         <td style={{ padding: '8px 10px' }}>
-                          <div style={{ fontWeight: 700, color: '#1e293b' }}>{row.product_name}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ fontWeight: 700, color: '#1e293b' }}>{row.product_name}</div>
+                            {catalogConfig?.showStock && (
+                              <button
+                                type="button"
+                                data-testid={`stock-drilldown-badge-${idx}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onOpenStockDrilldown?.(row);
+                                }}
+                                style={{
+                                  padding: '1px 6px',
+                                  fontSize: '0.68rem',
+                                  fontWeight: 700,
+                                  borderRadius: '9999px',
+                                  backgroundColor: '#eff6ff',
+                                  color: '#2563eb',
+                                  border: '1px solid #bfdbfe',
+                                  cursor: onOpenStockDrilldown ? 'pointer' : 'default',
+                                }}
+                                title="Click to view Stock Breakdown & Ledger"
+                              >
+                                Stock Drilldown ↗
+                              </button>
+                            )}
+                          </div>
                           {row.remarks && (
                             <div style={{ fontSize: '0.7rem', color: '#64748b', fontStyle: 'italic' }}>
                               {row.remarks}
