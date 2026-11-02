@@ -29,10 +29,12 @@ const applyDynamicBranding = async (target: 'staff' | 'customer') => {
   };
 
   const workspace = config.tenantCode;
+  const host = window.location.host;
+  const isCustomHost = !!host && !host.includes('localhost') && !host.includes('127.0.0.1');
 
   try {
-    const res = await apiClient.get(`/tenant/workspace`, {
-      params: { workspace }
+    const res = await apiClient.get('/tenant/resolve', {
+      params: isCustomHost ? { host } : { code: workspace }
     });
     const info = res.data?.data;
     if (info) {
