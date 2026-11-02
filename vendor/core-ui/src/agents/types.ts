@@ -51,6 +51,7 @@ export interface AgentTabProps {
 }
 
 export type AgentType = 'assistant' | 'triage' | 'workspace';
+export type AgentApplication = 'samwad' | 'customer' | 'staff' | 'all';
 
 export interface AgentTab {
   id: string;
@@ -83,6 +84,18 @@ export interface AgentConfig {
   isVerified: boolean; // Renders official VerifiedBlueTick badge
   isPinned: boolean; // Pinned in verified agent rows
   searchPlaceholder?: string;
+  /**
+   * Target applications where this agent is surfaced:
+   * - 'samwad': Samwad operations messenger & assistant hub
+   * - 'customer': ERP Customer self-service portal
+   * - 'staff': ERP Staff desktop and progressive web app
+   * - 'all': Surfaced across all Geeksman applications
+   */
+  applications?: AgentApplication[];
+  /**
+   * Categorization and search tags (e.g. ['samwad', 'customer', 'stock', 'support', 'crm'])
+   */
+  tags?: string[];
   /**
    * Self-configured badge metrics provider.
    * Enables agents to dynamically compute and supply their own queue counts,
