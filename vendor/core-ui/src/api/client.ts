@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getAppConfig } from '../config';
+import { getAppConfig, storeTenantCode } from '../config';
 import { isNativePlatform } from '../native/platform';
 import { getCurrentUser } from '../utils/auth';
 
@@ -127,12 +127,19 @@ export const resolveTenantCodeFromServer = async (): Promise<string> => {
         }
       });
 
-      const tenantCode = response.data?.data?.tenant_code;
+      const data = response.data?.data;
+      const tenantCode = data?.tenant_code;
       if (tenantCode) {
-        config.tenantCode = tenantCode;
-        localStorage.setItem('tenant_code', tenantCode);
-        localStorage.setItem('workspace_code', tenantCode);
-        if (response.data?.data?.name) localStorage.setItem('tenant_name', response.data.data.name);
+        storeTenantCode(tenantCode, data?.name);
+        localStorage.setItem('workspace_code', data?.workspace || tenantCode);
+        const logo = data?.logo_url || data?.staff_logo_url || data?.customer_logo_url;
+        if (logo) {
+          localStorage.setItem('tenant_logo_url', logo);
+          localStorage.setItem('branding_logo', logo);
+        }
+        if (data?.name) {
+          localStorage.setItem('branding_name', data.name);
+        }
         return tenantCode;
       }
     } catch (err) {

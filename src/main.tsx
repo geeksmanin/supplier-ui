@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { registerSupplierPortalModule } from './register';
 import './index.css';
-import { apiClient } from '@geeksman/core-ui';
+import { apiClient, resolveTenantCodeFromServer } from '@geeksman/core-ui';
 import { getAppConfig } from './config';
 
 // Initialize configuration
@@ -79,8 +79,16 @@ const applyDynamicBranding = async (target: 'staff' | 'customer') => {
   }
 };
 
-applyDynamicBranding('customer').finally(() => {
-  ReactDOM.createRoot(document.getElementById('root')!).render(
-    <App />
-  );
-});
+resolveTenantCodeFromServer()
+  .then(async () => {
+    await applyDynamicBranding('customer');
+    ReactDOM.createRoot(document.getElementById('root')!).render(
+      <App />
+    );
+  })
+  .catch((err) => {
+    console.error('Failed to bootstrap application:', err);
+    ReactDOM.createRoot(document.getElementById('root')!).render(
+      <App />
+    );
+  });
