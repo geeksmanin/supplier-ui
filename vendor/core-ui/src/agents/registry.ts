@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { AgentConfig, AgentApplication, SamwadAgent } from './types';
+import { AgentConfig, SamwadAgent } from './types';
 
 // Global singleton map of registered agents
 const agentsMap = new Map<string, AgentConfig>();
@@ -40,29 +40,12 @@ export function getAgent(idOrSlug: string): AgentConfig | undefined {
 }
 
 /**
- * Helper to determine if an agent belongs to a specific application target.
+ * Return all unique registered agents sorted by pinned state and name
  */
-export function isAgentForApp(agent: AgentConfig, app: AgentApplication): boolean {
-  if (app === 'all') return true;
-  if (agent.applications && agent.applications.length > 0) {
-    return agent.applications.includes(app) || agent.applications.includes('all');
-  }
-  if (agent.tags && agent.tags.length > 0) {
-    return agent.tags.includes(app) || agent.tags.includes('all');
-  }
-  return false;
-}
-
-/**
- * Return all unique registered agents sorted by pinned state and name,
- * optionally filtered by target application ('samwad' | 'customer' | 'staff').
- */
-export function getAllAgents(app?: AgentApplication): AgentConfig[] {
+export function getAllAgents(): AgentConfig[] {
   const unique = new Map<string, AgentConfig>();
   agentsMap.forEach((agent) => {
-    if (!app || isAgentForApp(agent, app)) {
-      unique.set(agent.id, agent);
-    }
+    unique.set(agent.id, agent);
   });
   return Array.from(unique.values()).sort((a, b) => {
     if (a.isPinned && !b.isPinned) return -1;
@@ -72,21 +55,9 @@ export function getAllAgents(app?: AgentApplication): AgentConfig[] {
 }
 
 /**
- * Retrieve all agents tagged for a specific target application.
+ * Reactive hook for UI components to consume registered agents
  */
-export function getAgentsForApp(app: AgentApplication): AgentConfig[] {
-  return getAllAgents(app);
-}
-
-export const getSamwadAgents = () => getAgentsForApp('samwad');
-export const getCustomerAgents = () => getAgentsForApp('customer');
-export const getStaffAgents = () => getAgentsForApp('staff');
-
-/**
- * Reactive hook for UI components to consume registered agents,
- * optionally filtered by application scope.
- */
-export function useAgents(app?: AgentApplication) {
+export function useAgents() {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -97,7 +68,7 @@ export function useAgents(app?: AgentApplication) {
     };
   }, []);
 
-  const agents = useMemo(() => getAllAgents(app), [tick, app]);
+  const agents = useMemo(() => getAllAgents(), [tick]);
 
   return {
     agents,
@@ -108,8 +79,8 @@ export function useAgents(app?: AgentApplication) {
 // Backward-compatibility aliases for Samwad
 export const registerSamwadAgent = registerAgent;
 export const getSamwadAgent = getAgent;
-export const getAllSamwadAgents = () => getAllAgents('samwad');
-export const useSamwadAgents = () => useAgents('samwad');
+export const getAllSamwadAgents = getAllAgents;
+export const useSamwadAgents = useAgents;
 
 // =========================================================================
 // Pluggable Operational Card Registry
