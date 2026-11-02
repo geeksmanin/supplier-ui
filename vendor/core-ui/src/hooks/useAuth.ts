@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient, resolveTenantByCode, TenantMetadata } from '../api/client';
 import { useAppConfig } from './useAppConfig';
@@ -67,6 +67,31 @@ export function useLogin(): UseLoginReturn {
   const [workspaceName, setWorkspaceName] = useState<string>(() => {
     return configTenantName || lastUsedWorkspaceName || '';
   });
+
+  // Sync activeWorkspace whenever config resolves a new tenant or fires workspace update events
+  useEffect(() => {
+    if (configTenantCode && !isBusinessTenant(configTenantCode)) {
+      setActiveWorkspace(configTenantCode);
+    }
+    if (configTenantName) {
+      setWorkspaceName(configTenantName);
+    }
+  }, [configTenantCode, configTenantName, isBusinessTenant]);
+
+  useEffect(() => {
+    const handleWorkspaceChangeEvent = (e: any) => {
+      const code = e?.detail;
+      if (code && !isBusinessTenant(code)) {
+        setActiveWorkspace(code);
+        const savedName = localStorage.getItem('tenant_name') || localStorage.getItem('branding_name');
+        if (savedName) setWorkspaceName(savedName);
+      }
+    };
+    window.addEventListener('app_workspace_change_event', handleWorkspaceChangeEvent);
+    return () => {
+      window.removeEventListener('app_workspace_change_event', handleWorkspaceChangeEvent);
+    };
+  }, [isBusinessTenant]);
 
   const [resolvedTenantMeta, setResolvedTenantMeta] = useState<TenantMetadata | null>(null);
   const [isResolvingTenant, setIsResolvingTenant] = useState<boolean>(false);

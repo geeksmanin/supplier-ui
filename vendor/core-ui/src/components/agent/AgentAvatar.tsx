@@ -36,6 +36,62 @@ export const AgentAvatar: React.FC<AgentAvatarProps> = ({
         </svg>
       );
     }
+    // 2. High-definition 3D volumetric glyph for Business Profile Manager
+    if (
+      icon === 'business-profile-manager' ||
+      icon === 'business' ||
+      icon === 'profile-manager' ||
+      icon === '👥' ||
+      icon === '🏢'
+    ) {
+      const s = Math.round(size * 0.62);
+      return (
+        <svg
+          width={s}
+          height={s}
+          viewBox="0 0 48 48"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <defs>
+            <linearGradient id="bpmTop" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#60A5FA" />
+              <stop offset="100%" stopColor="#2563EB" />
+            </linearGradient>
+            <linearGradient id="bpmLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#2563EB" />
+              <stop offset="100%" stopColor="#1D4ED8" />
+            </linearGradient>
+            <linearGradient id="bpmRight" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#1D4ED8" />
+              <stop offset="100%" stopColor="#1E3A8A" />
+            </linearGradient>
+            <linearGradient id="bpmGlass" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#BAE6FD" />
+              <stop offset="100%" stopColor="#38BDF8" />
+            </linearGradient>
+            <linearGradient id="bpmPillar" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#F59E0B" />
+              <stop offset="100%" stopColor="#D97706" />
+            </linearGradient>
+          </defs>
+          <path d="M24 6 L38 14 L24 22 L10 14 Z" fill="url(#bpmTop)" stroke="#1D4ED8" strokeWidth="0.8" />
+          <path d="M10 14 L24 22 L24 42 L10 34 Z" fill="url(#bpmLeft)" stroke="#1E3A8A" strokeWidth="0.8" />
+          <path d="M24 22 L38 14 L38 34 L24 42 Z" fill="url(#bpmRight)" stroke="#1E3A8A" strokeWidth="0.8" />
+          <path d="M13 18 L16 19.8 L16 23.5 L13 21.8 Z" fill="url(#bpmGlass)" />
+          <path d="M18 20.8 L21 22.5 L21 26.2 L18 24.5 Z" fill="url(#bpmGlass)" />
+          <path d="M13 25 L16 26.8 L16 30.5 L13 28.8 Z" fill="url(#bpmGlass)" />
+          <path d="M18 27.8 L21 29.5 L21 33.2 L18 31.5 Z" fill="url(#bpmGlass)" />
+          <path d="M27 22.5 L30 20.8 L30 24.5 L27 26.2 Z" fill="url(#bpmGlass)" />
+          <path d="M32 19.8 L35 18 L35 21.8 L32 23.5 Z" fill="url(#bpmGlass)" />
+          <path d="M27 29.5 L30 27.8 L30 31.5 L27 33.2 Z" fill="url(#bpmGlass)" />
+          <path d="M32 26.8 L35 25 L35 28.8 L32 30.5 Z" fill="url(#bpmGlass)" />
+          <path d="M22 36 L26 38.3 L26 42 L22 39.7 Z" fill="url(#bpmPillar)" />
+          <line x1="24" y1="2" x2="24" y2="6" stroke="#93C5FD" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="24" cy="2" r="1.5" fill="#38BDF8" />
+        </svg>
+      );
+    }
     // 2. Properly scaled emoji strings
     if (typeof icon === 'string') {
       return (
