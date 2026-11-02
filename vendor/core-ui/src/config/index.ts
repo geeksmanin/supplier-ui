@@ -61,20 +61,13 @@ export const resolveTenantFromUrl = (targetUrl?: string): string | null => {
       if (clean) return clean;
     }
 
-    // 2. Subdomain extraction from hostname (e.g. synchx.pos.geeksman.co.in or pos.a3pl.in)
+    // 2. Platform root subdomain extraction (e.g. synchx.geeksman.co.in -> synchx)
     const isIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
     if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1' && !hostname.endsWith('.localhost') && !isIp) {
-      const parts = hostname.split('.');
-      const appPrefixes = [
-        'admin', 'platform', 'www', 'pos', 'samwad', 'samvad',
-        'chat', 'staff', 'customer', 'portal', 'catalogue', 'catalog',
-        'app', 'api', 'business', 'geeksman',
-      ];
-      if (parts.length > 1) {
-        if (!appPrefixes.includes(parts[0])) {
+      if (hostname.includes('geeksman.') || hostname.includes('anyrdp.')) {
+        const parts = hostname.split('.');
+        if (parts.length > 2 && parts[0] !== 'admin' && parts[0] !== 'platform' && parts[0] !== 'www') {
           return parts[0];
-        } else if (parts.length > 2 && !appPrefixes.includes(parts[1])) {
-          return parts[1];
         }
       }
     }

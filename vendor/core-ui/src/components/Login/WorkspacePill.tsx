@@ -51,8 +51,10 @@ export function cleanWorkspaceCode(raw: string): string {
         clean = queryWs;
       } else {
         const parts = url.hostname.split('.');
-        if (parts.length > 2 && !['www', 'app', 'staff', 'customer', 'portal', 'samwad'].includes(parts[0])) {
+        if (parts.length > 2 && (url.hostname.includes('geeksman.') || url.hostname.includes('anyrdp.'))) {
           clean = parts[0];
+        } else {
+          clean = url.hostname;
         }
       }
     } catch (e) {}
