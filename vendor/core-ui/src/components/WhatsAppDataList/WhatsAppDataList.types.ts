@@ -44,6 +44,10 @@ export interface WhatsAppDataListProps<T = any> {
   isLoading?: boolean;
   isRefreshing?: boolean;
   onRefresh?: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
+  totalCount?: number;
   searchPlaceholder?: string;
   searchQuery?: string;
   onSearchChange?: (val: string) => void;

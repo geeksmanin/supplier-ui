@@ -11,6 +11,10 @@ export function WhatsAppDataListMobile<T = any>({
   isLoading = false,
   isRefreshing = false,
   onRefresh,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore,
+  totalCount,
   searchPlaceholder = 'Search...',
   searchQuery,
   onSearchChange,
@@ -49,7 +53,14 @@ export function WhatsAppDataListMobile<T = any>({
   }, []);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    setScrollTop(e.currentTarget.scrollTop);
+    const target = e.currentTarget;
+    setScrollTop(target.scrollTop);
+    if (hasMore && !isLoadingMore && onLoadMore) {
+      const distanceFromBottom = target.scrollHeight - (target.scrollTop + target.clientHeight);
+      if (distanceFromBottom < 120) {
+        onLoadMore();
+      }
+    }
   };
 
   const handleSearchChange = (val: string) => {
@@ -359,6 +370,49 @@ export function WhatsAppDataListMobile<T = any>({
                   );
                 })}
                 {bottomSpacerHeight > 0 && <div style={{ height: `${bottomSpacerHeight}px`, width: '100%' }} />}
+                {hasMore && (
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderTop: '1px solid #F0F2F5',
+                      backgroundColor: '#FAFAFA',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onLoadMore?.()}
+                      disabled={isLoadingMore}
+                      style={{
+                        background: '#FFFFFF',
+                        border: '1px solid #CBD5E1',
+                        borderRadius: '18px',
+                        padding: '6px 16px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: '#008069',
+                        cursor: isLoadingMore ? 'default' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                      }}
+                    >
+                      {isLoadingMore ? (
+                        <>
+                          <RefreshCw size={13} style={{ animation: 'spin 0.8s linear infinite' }} />
+                          <span>Loading more...</span>
+                        </>
+                      ) : (
+                        <span>
+                          Load More {totalCount ? `(${items.length} of ${totalCount.toLocaleString()})` : ''}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

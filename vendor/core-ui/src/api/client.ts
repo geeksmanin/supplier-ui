@@ -309,3 +309,41 @@ export const createApiClient = (options: CreateClientOptions) => {
   return client;
 };
 
+export interface SamwadThreadsParams {
+  limit?: number;
+  offset?: number;
+  query?: string;
+  type?: string;
+  status?: string;
+  priority?: string;
+  assignee_id?: string;
+  updated_after?: string;
+  search?: string;
+  [key: string]: any;
+}
+
+export async function requestSamwadThreads(params?: Record<string, any>) {
+  return apiClient.get('/samwad/threads', { params });
+}
+
+export async function requestActiveThreadIDs(): Promise<string[]> {
+  try {
+    const res = await apiClient.get('/samwad/threads/active-ids');
+    const list = res.data?.data || res.data || [];
+    return Array.isArray(list) ? list : [];
+  } catch (e: any) {
+    console.warn('Failed to fetch active thread IDs manifest:', e);
+    return [];
+  }
+}
+
+export async function requestThreadMessages(threadId: string, params?: Record<string, any>) {
+  return apiClient.get(`/samwad/threads/${threadId}/messages`, { params });
+}
+
+export async function postThreadMessage(threadId: string, payload: any) {
+  return apiClient.post(`/samwad/threads/${threadId}/messages`, payload);
+}
+
+
+
