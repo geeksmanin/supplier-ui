@@ -49,10 +49,15 @@ export const ProductSelect: React.FC<ProductSelectProps> = ({
     }
   };
 
-  const handleScanSuccess = async (decodedCode: string) => {
+  const handleScanSuccess = async (decodedCode: any) => {
     setScannerOpen(false);
     if (!decodedCode) return;
-    const match = await lookupBarcode(decodedCode);
+    const clean = (typeof decodedCode === 'string'
+      ? decodedCode
+      : (decodedCode?.sku_code || decodedCode?.raw_code || decodedCode?.barcode || decodedCode?.code || String(decodedCode || ''))
+    ).trim();
+    if (!clean || clean === '[object Object]') return;
+    const match = await lookupBarcode(clean);
     if (match) {
       handleSelect(match.variant_id, match);
     }

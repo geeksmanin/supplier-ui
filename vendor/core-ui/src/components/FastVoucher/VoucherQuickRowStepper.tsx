@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  VoucherLineItem, 
-  VoucherBatchMode, 
-  VoucherPackagingOption 
+import React from 'react';
+import {
+  VoucherLineItem,
+  VoucherBatchMode,
 } from './FastVoucherEntryLayout.types';
-import { Check, X, Layers, Calendar, Tag, Percent } from 'lucide-react';
-import { Select } from '../Select';
+import { Check, X } from 'lucide-react';
+import { useVoucherQuickRowStepper } from './useVoucherQuickRowStepper';
+import { VoucherQuickRowStepperInputs } from './VoucherQuickRowStepperInputs';
 
 interface VoucherQuickRowStepperProps {
   isOpen: boolean;
@@ -30,206 +30,39 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
   isEditMode = false,
   onOpenStockDrilldown,
 }) => {
-  const [qty, setQty] = useState<number>(1);
-  const [packagingName, setPackagingName] = useState<string>('Unit');
-  const [packagingSize, setPackagingSize] = useState<number>(1);
-  const [batchCode, setBatchCode] = useState<string>('');
-  const [expiryDate, setExpiryDate] = useState<string>('');
-  const [mrp, setMrp] = useState<number>(0);
-  const [unitPrice, setUnitPrice] = useState<number>(0);
-  const [discountPercent, setDiscountPercent] = useState<number>(0);
-  const [dynamicBatches, setDynamicBatches] = useState<Array<{ batch_code: string; expiry_date?: string; mrp?: number; available_quantity?: number }>>([]);
-  const [liveStock, setLiveStock] = useState<number | null>(null);
-
-  const qtyInputRef = useRef<HTMLInputElement>(null);
-  const packagingSelectRef = useRef<HTMLSelectElement>(null);
-  const batchInputRef = useRef<HTMLInputElement | HTMLSelectElement>(null);
-  const expiryInputRef = useRef<HTMLInputElement>(null);
-  const rateInputRef = useRef<HTMLInputElement>(null);
-  const discountInputRef = useRef<HTMLInputElement>(null);
-
-  // Guards against duplicate request firing & infinite loops
-  const lastRequestedBatchVariantRef = useRef<string | null>(null);
-  const lastRequestedStockVariantRef = useRef<string | null>(null);
-
-  // Resolved list of batches: props stockBatches take priority, followed by dynamically fetched batches
-  const effectiveBatches = useMemo(() => {
-    return stockBatches.length > 0 ? stockBatches : dynamicBatches;
-  }, [stockBatches, dynamicBatches]);
-
-  // Synchronize state when item changes or opens
-  useEffect(() => {
-    if (!isOpen || !item) {
-      lastRequestedBatchVariantRef.current = null;
-      lastRequestedStockVariantRef.current = null;
-      return;
-    }
-
-    setQty(item.quantity ?? 1);
-    setPackagingName(item.packaging_name || 'Unit');
-    setPackagingSize(item.packaging_size || 1);
-    setBatchCode(item.batch_code || '');
-    setExpiryDate(item.expiry_date || '');
-    setMrp(item.mrp || 0);
-    setUnitPrice(item.unit_price || 0);
-    setDiscountPercent(item.discount_percent || 0);
-    setLiveStock(item.metadata?.available_quantity !== undefined ? Number(item.metadata.available_quantity) : null);
-
-    const vIdStr = item.variant_id ? String(item.variant_id) : '';
-
-    // Listen for live stock updates for this variant (single request guard)
-    let stockCleanup: (() => void) | undefined;
-    if (vIdStr) {
-      const handleStockUpdate = (e: any) => {
-        const detail = e?.detail;
-        if (detail && String(detail.variant_id) === vIdStr) {
-          setLiveStock(Number(detail.passed_quantity ?? detail.available_quantity ?? 0));
-        }
-      };
-      window.addEventListener('inventory_stock_updated', handleStockUpdate);
-      stockCleanup = () => window.removeEventListener('inventory_stock_updated', handleStockUpdate);
-
-      if (lastRequestedStockVariantRef.current !== vIdStr) {
-        lastRequestedStockVariantRef.current = vIdStr;
-        window.dispatchEvent(
-          new CustomEvent('inventory_stock_request', {
-            detail: { variant_id: vIdStr },
-          })
-        );
-      }
-    }
-
-    // If batchMode === 'select' and no stockBatches were passed via props, request batches via domain event bus exactly once
-    let batchCleanup: (() => void) | undefined;
-    if (batchMode === 'select' && stockBatches.length === 0 && vIdStr) {
-      const handleBatchesResolved = (e: any) => {
-        const detail = e?.detail;
-        if (detail && String(detail.variant_id) === vIdStr) {
-          const fetched = Array.isArray(detail.batches) ? detail.batches : [];
-          setDynamicBatches(fetched);
-
-          if (fetched.length > 0 && !item.batch_code) {
-            setBatchCode(fetched[0].batch_code);
-            if (fetched[0].expiry_date) setExpiryDate(fetched[0].expiry_date);
-            if (fetched[0].mrp) setMrp(fetched[0].mrp);
-          }
-        }
-      };
-
-      window.addEventListener('inventory_batch_updated', handleBatchesResolved);
-      batchCleanup = () => window.removeEventListener('inventory_batch_updated', handleBatchesResolved);
-
-      if (lastRequestedBatchVariantRef.current !== vIdStr) {
-        lastRequestedBatchVariantRef.current = vIdStr;
-        window.dispatchEvent(
-          new CustomEvent('inventory_batch_request', {
-            detail: {
-              variant_id: vIdStr,
-            },
-          })
-        );
-      }
-    } else if (stockBatches.length > 0) {
-      setDynamicBatches([]);
-    }
-
-    // Default batch if select mode and stock batches available
-    if (batchMode === 'select' && stockBatches.length > 0 && !item.batch_code) {
-      setBatchCode(stockBatches[0].batch_code);
-      if (stockBatches[0].expiry_date) setExpiryDate(stockBatches[0].expiry_date);
-      if (stockBatches[0].mrp) setMrp(stockBatches[0].mrp);
-    }
-
-    // Auto-focus quantity field and select all text
-    const timer = setTimeout(() => {
-      if (qtyInputRef.current) {
-        qtyInputRef.current.focus();
-        qtyInputRef.current.select();
-      }
-    }, 50);
-
-    return () => {
-      clearTimeout(timer);
-      stockCleanup?.();
-      batchCleanup?.();
-    };
-  }, [isOpen, item?.id, item?.variant_id, batchMode, stockBatches.length]);
-
-  // Derived financial calculations for this line
-  const calculations = useMemo(() => {
-    const rawQty = Math.max(0, Number(qty) || 0);
-    const rawRate = Math.max(0, Number(unitPrice) || 0);
-    const rawDisc = Math.min(100, Math.max(0, Number(discountPercent) || 0));
-    const taxRate = Number(item?.tax_percent || 0);
-
-    const isInclusive = Boolean(item?.tax_inclusive ?? item?.metadata?.is_price_tax_inclusive);
-    const baseAmount = rawQty * rawRate;
-    const discAmount = (baseAmount * rawDisc) / 100;
-    const grossAfterDisc = Math.max(0, baseAmount - discAmount);
-
-    let taxableAmount = grossAfterDisc;
-    let taxAmount = (taxableAmount * taxRate) / 100;
-
-    if (isInclusive && taxRate > 0) {
-      taxableAmount = +(grossAfterDisc / (1 + taxRate / 100)).toFixed(2);
-      taxAmount = +(grossAfterDisc - taxableAmount).toFixed(2);
-    }
-
-    const lineTotal = isInclusive ? grossAfterDisc : taxableAmount + taxAmount;
-
-    return {
-      baseAmount: Number(baseAmount.toFixed(2)),
-      discAmount: Number(discAmount.toFixed(2)),
-      taxAmount: Number(taxAmount.toFixed(2)),
-      lineTotal: Number(lineTotal.toFixed(2)),
-    };
-  }, [qty, unitPrice, discountPercent, item]);
+  const {
+    qty,
+    setQty,
+    packagingName,
+    batchCode,
+    setBatchCode,
+    expiryDate,
+    setExpiryDate,
+    unitPrice,
+    setUnitPrice,
+    discountPercent,
+    setDiscountPercent,
+    liveStock,
+    effectiveBatches,
+    calculations,
+    qtyInputRef,
+    packagingSelectRef,
+    batchInputRef,
+    expiryInputRef,
+    rateInputRef,
+    discountInputRef,
+    handlePackagingChange,
+    handleBatchSelect,
+    handleCommit,
+  } = useVoucherQuickRowStepper({
+    isOpen,
+    item,
+    batchMode,
+    stockBatches,
+    onCommit,
+  });
 
   if (!isOpen || !item) return null;
-
-  const handlePackagingChange = (opt: VoucherPackagingOption) => {
-    setPackagingName(opt.name);
-    setPackagingSize(opt.size);
-  };
-
-  const handleBatchSelect = (code: string) => {
-    setBatchCode(code);
-    const matched = effectiveBatches.find((b) => b.batch_code === code);
-    if (matched) {
-      if (matched.expiry_date) setExpiryDate(matched.expiry_date);
-      if (matched.mrp) setMrp(matched.mrp);
-    }
-  };
-
-  const handleCommit = () => {
-    if (qty <= 0) return;
-
-    const committedItem: VoucherLineItem = {
-      id: item.id || `line-${Date.now()}`,
-      variant_id: item.variant_id || '',
-      product_id: item.product_id,
-      sku_code: item.sku_code || '',
-      product_name: item.product_name || 'Item',
-      image_url: item.image_url,
-      quantity: Number(qty),
-      packaging_name: packagingName,
-      packaging_size: Number(packagingSize),
-      packagings: item.packagings,
-      batch_code: batchCode.trim() || undefined,
-      expiry_date: expiryDate.trim() || undefined,
-      mrp: Number(mrp) || undefined,
-      unit_price: Number(unitPrice),
-      tax_percent: Number(item.tax_percent || 0),
-      tax_amount: calculations.taxAmount,
-      discount_percent: Number(discountPercent),
-      discount_amount: calculations.discAmount,
-      line_total: calculations.lineTotal,
-      remarks: item.remarks,
-      metadata: item.metadata,
-    };
-
-    onCommit(committedItem);
-  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -247,13 +80,13 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
         left: 0,
         right: 0,
         marginTop: '6px',
-        backgroundColor: '#ffffff',
-        border: '1px solid #3b82f6',
+        backgroundColor: 'var(--color-bg-primary, #ffffff)',
+        border: '1px solid var(--color-primary, #3b82f6)',
         borderRadius: '12px',
         boxShadow: '0 12px 30px rgba(37, 99, 235, 0.15), 0 4px 12px rgba(0, 0, 0, 0.08)',
         zIndex: 50,
         padding: '1rem 1.25rem',
-        animation: 'fadeInSlide 0.15s ease-out',
+        animation: 'fadeInSlide 0.2s cubic-bezier(0.25, 0.1, 0.25, 1)',
       }}
     >
       {/* Header with Product Name & Sku */}
@@ -264,8 +97,8 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
               width: '28px',
               height: '28px',
               borderRadius: '6px',
-              backgroundColor: '#eff6ff',
-              color: '#2563eb',
+              backgroundColor: 'var(--color-primary-light, #eff6ff)',
+              color: 'var(--color-primary, #2563eb)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -277,7 +110,7 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontWeight: 700, fontSize: '0.925rem', color: '#1e293b' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.925rem', color: 'var(--color-text-primary, #1e293b)' }}>
                 {item.product_name}
               </span>
               {(() => {
@@ -341,258 +174,32 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
       </div>
 
       {/* Stepper Inputs Row */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${batchMode !== 'none' ? (batchMode === 'create' ? 6 : 5) : 4}, minmax(0, 1fr))`,
-          gap: '0.75rem',
-          alignItems: 'end',
-        }}
-      >
-        {/* 1. Quantity */}
-        <div>
-          <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-            Quantity *
-          </label>
-          <input
-            ref={qtyInputRef}
-            type="number"
-            min="0.01"
-            step="any"
-            value={qty || ''}
-            onChange={(e) => setQty(Number(e.target.value))}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                if (packagingSelectRef.current) {
-                  packagingSelectRef.current.focus();
-                } else if (batchInputRef.current) {
-                  batchInputRef.current.focus();
-                } else if (rateInputRef.current) {
-                  rateInputRef.current.focus();
-                }
-              }
-            }}
-            style={{
-              width: '100%',
-              padding: '7px 10px',
-              fontSize: '0.875rem',
-              fontWeight: 700,
-              borderRadius: '6px',
-              border: '1.5px solid #2563eb',
-              outline: 'none',
-              backgroundColor: '#eff6ff',
-              color: '#1e3a8a',
-            }}
-          />
-        </div>
-
-        {/* 2. Packaging / UOM */}
-        <div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-            <Layers size={11} /> Unit / Pack
-          </label>
-          {item.packagings && item.packagings.length > 1 ? (
-            <Select
-              value={packagingName}
-              onChange={(val) => {
-                const opt = item.packagings?.find((p) => p.name === String(val));
-                if (opt) handlePackagingChange(opt);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  if (batchInputRef.current) {
-                    batchInputRef.current.focus();
-                  } else if (rateInputRef.current) {
-                    rateInputRef.current.focus();
-                  }
-                }
-              }}
-              options={(item.packagings || []).map((p) => ({
-                value: p.name,
-                label: `${p.name} (${p.size > 1 ? `${p.size} pcs` : 'Unit'})`
-              }))}
-              style={{ fontSize: '0.8rem' }}
-            />
-          ) : (
-            <input
-              type="text"
-              readOnly
-              value={packagingName || 'Unit'}
-              style={{
-                width: '100%',
-                padding: '7px 10px',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                borderRadius: '6px',
-                border: '1px solid #e2e8f0',
-                backgroundColor: '#f8fafc',
-                color: '#64748b',
-              }}
-            />
-          )}
-        </div>
-
-        {/* 3. Batch (Select mode: FEFO dropdown; Create mode: text input) */}
-        {batchMode === 'select' && (
-          <div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-              <Tag size={11} /> Batch (FEFO)
-            </label>
-            <Select
-              value={batchCode}
-              onChange={(val) => handleBatchSelect(String(val))}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  rateInputRef.current?.focus();
-                }
-              }}
-              options={effectiveBatches.map((b) => ({
-                value: b.batch_code,
-                label: `${b.batch_code} ${b.expiry_date ? `(Exp: ${b.expiry_date})` : ''} ${b.available_quantity != null ? `• Avail: ${b.available_quantity}` : ''}`.trim()
-              }))}
-              placeholder={effectiveBatches.length === 0 ? 'Loading batches...' : '-- Select Batch --'}
-              style={{ fontSize: '0.8rem' }}
-            />
-          </div>
-        )}
-
-        {batchMode === 'create' && (
-          <>
-            <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                <Tag size={11} /> Batch No
-              </label>
-              <input
-                ref={batchInputRef as any}
-                type="text"
-                placeholder="e.g. B2026-X"
-                value={batchCode}
-                onChange={(e) => setBatchCode(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    expiryInputRef.current?.focus();
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  padding: '7px 10px',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                <Calendar size={11} /> Expiry (MM/YY)
-              </label>
-              <input
-                ref={expiryInputRef}
-                type="text"
-                placeholder="12/28"
-                value={expiryDate}
-                onChange={(e) => setExpiryDate(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    rateInputRef.current?.focus();
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  padding: '7px 10px',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                }}
-              />
-            </div>
-          </>
-        )}
-
-        {/* 4. Unit Price / Rate */}
-        <div>
-          <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-            Unit Rate (₹) *
-          </label>
-          <input
-            ref={rateInputRef}
-            type="number"
-            step="any"
-            readOnly={!allowRateOverride}
-            value={unitPrice || ''}
-            onChange={(e) => setUnitPrice(Number(e.target.value))}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                discountInputRef.current?.focus();
-              }
-            }}
-            style={{
-              width: '100%',
-              padding: '7px 10px',
-              fontSize: '0.875rem',
-              fontWeight: 700,
-              borderRadius: '6px',
-              border: allowRateOverride ? '1px solid #cbd5e1' : '1px solid #e2e8f0',
-              backgroundColor: allowRateOverride ? '#ffffff' : '#f8fafc',
-            }}
-          />
-        </div>
-
-        {/* 5. Discount % */}
-        <div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-            <Percent size={11} /> Disc %
-          </label>
-          <input
-            ref={discountInputRef}
-            type="number"
-            min="0"
-            max="100"
-            step="any"
-            placeholder="0"
-            value={discountPercent === 0 ? '' : discountPercent}
-            onFocus={(e) => {
-              if (Number(e.target.value) === 0) {
-                e.target.value = '';
-              }
-              e.target.select();
-            }}
-            onClick={(e) => {
-              const target = e.target as HTMLInputElement;
-              if (Number(target.value) === 0) {
-                target.value = '';
-              }
-              target.select();
-            }}
-            onChange={(e) => {
-              const raw = e.target.value;
-              setDiscountPercent(raw === '' ? 0 : Number(raw));
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleCommit();
-              }
-            }}
-            style={{
-              width: '100%',
-              padding: '7px 10px',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              borderRadius: '6px',
-              border: '1px solid #cbd5e1',
-            }}
-          />
-        </div>
-      </div>
+      <VoucherQuickRowStepperInputs
+        item={item}
+        batchMode={batchMode}
+        allowRateOverride={allowRateOverride}
+        qty={qty}
+        setQty={setQty}
+        packagingName={packagingName}
+        handlePackagingChange={handlePackagingChange}
+        batchCode={batchCode}
+        setBatchCode={setBatchCode}
+        handleBatchSelect={handleBatchSelect}
+        effectiveBatches={effectiveBatches}
+        expiryDate={expiryDate}
+        setExpiryDate={setExpiryDate}
+        unitPrice={unitPrice}
+        setUnitPrice={setUnitPrice}
+        discountPercent={discountPercent}
+        setDiscountPercent={setDiscountPercent}
+        qtyInputRef={qtyInputRef}
+        packagingSelectRef={packagingSelectRef}
+        batchInputRef={batchInputRef}
+        expiryInputRef={expiryInputRef}
+        rateInputRef={rateInputRef}
+        discountInputRef={discountInputRef}
+        handleCommit={handleCommit}
+      />
 
       {/* Footer Breakdown & Commit Button */}
       <div

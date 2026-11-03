@@ -22,16 +22,12 @@ export const BarcodeQRScannerModalMobile: React.FC<BarcodeQRScannerModalProps> =
   const [cameraActive, setCameraActive] = useState(false);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [isHoldingScan, setIsHoldingScan] = useState(false);
-  const isHoldingScanRef = useRef(false);
+  const [isScannedSuccess, setIsScannedSuccess] = useState(false);
+  const isProcessingRef = useRef(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    isHoldingScanRef.current = isHoldingScan;
-  }, [isHoldingScan]);
 
   const stopCamera = useCallback(() => {
     if (animFrameRef.current) {
@@ -44,16 +40,24 @@ export const BarcodeQRScannerModalMobile: React.FC<BarcodeQRScannerModalProps> =
     }
     if (videoRef.current) videoRef.current.srcObject = null;
     setCameraActive(false);
-    setIsHoldingScan(false);
+    setIsScannedSuccess(false);
+    isProcessingRef.current = false;
   }, []);
 
   const handleProcessCode = useCallback(async (code: string) => {
-    if (!code) return;
+    if (!code) {
+      isProcessingRef.current = false;
+      setIsScannedSuccess(false);
+      return;
+    }
     const item = await lookupCode(code);
     if (item) {
       onScanSuccess(item);
       stopCamera();
       onClose();
+    } else {
+      isProcessingRef.current = false;
+      setIsScannedSuccess(false);
     }
   }, [lookupCode, onScanSuccess, stopCamera, onClose]);
 
@@ -80,6 +84,8 @@ export const BarcodeQRScannerModalMobile: React.FC<BarcodeQRScannerModalProps> =
       }
       setCameraActive(true);
       setFacingMode(facing);
+      isProcessingRef.current = false;
+      setIsScannedSuccess(false);
     } catch (err: any) {
       setCameraActive(false);
       const msg =
@@ -105,6 +111,20 @@ export const BarcodeQRScannerModalMobile: React.FC<BarcodeQRScannerModalProps> =
 
   useEffect(() => () => stopCamera(), [stopCamera]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        stopCamera();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [isOpen, stopCamera, onClose]);
+
   const onVideoReady = useCallback(() => {
     if (!('BarcodeDetector' in window)) return;
 
@@ -114,14 +134,20 @@ export const BarcodeQRScannerModalMobile: React.FC<BarcodeQRScannerModalProps> =
 
     const checkFrame = async () => {
       const video = videoRef.current;
-      if (isHoldingScanRef.current && video && video.readyState >= video.HAVE_ENOUGH_DATA) {
+      if (!isProcessingRef.current && video && video.readyState >= video.HAVE_ENOUGH_DATA) {
         try {
           const barcodes = await detector.detect(video);
           if (barcodes?.length > 0) {
             const rawValue = barcodes[0].rawValue;
             if (rawValue) {
-              stopCamera();
-              await handleProcessCode(rawValue);
+              isProcessingRef.current = true;
+              setIsScannedSuccess(true);
+              try {
+                if (navigator.vibrate) navigator.vibrate(60);
+              } catch (_) {}
+              setTimeout(async () => {
+                await handleProcessCode(rawValue);
+              }, 350);
               return;
             }
           }
@@ -130,7 +156,7 @@ export const BarcodeQRScannerModalMobile: React.FC<BarcodeQRScannerModalProps> =
       animFrameRef.current = requestAnimationFrame(checkFrame);
     };
     animFrameRef.current = requestAnimationFrame(checkFrame);
-  }, [handleProcessCode, stopCamera]);
+  }, [handleProcessCode]);
 
   if (!isOpen) return null;
 
@@ -233,7 +259,7 @@ export const BarcodeQRScannerModalMobile: React.FC<BarcodeQRScannerModalProps> =
             height: '100%',
             objectFit: 'cover',
             display: cameraActive ? 'block' : 'none',
-            filter: isHoldingScan ? 'none' : 'blur(16px)',
+            filter: isScannedSuccess ? 'brightness(1.15)' : 'none',
             transition: 'filter 0.25s cubic-bezier(0.25, 0.1, 0.25, 1)',
           }}
         />
@@ -257,34 +283,35 @@ export const BarcodeQRScannerModalMobile: React.FC<BarcodeQRScannerModalProps> =
                 height: '50%',
                 maxWidth: 340,
                 maxHeight: 220,
-                border: isHoldingScan ? '2px solid #22C55E' : '2px dashed rgba(255, 255, 255, 0.5)',
+                border: isScannedSuccess ? '3px solid #22C55E' : '2px dashed rgba(255, 255, 255, 0.65)',
                 borderRadius: 14,
-                boxShadow: isHoldingScan ? '0 0 0 9999px rgba(0, 0, 0, 0.45), 0 0 16px rgba(34, 197, 94, 0.4)' : '0 0 0 9999px rgba(0, 0, 0, 0.6)',
+                boxShadow: isScannedSuccess
+                  ? '0 0 0 9999px rgba(0, 0, 0, 0.45), 0 0 24px rgba(34, 197, 94, 0.6)'
+                  : '0 0 0 9999px rgba(0, 0, 0, 0.55)',
                 transition: 'all 0.2s ease',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              {!isHoldingScan && (
+              {isScannedSuccess ? (
                 <div
                   style={{
-                    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                    backgroundColor: 'rgba(22, 163, 74, 0.95)',
                     backdropFilter: 'blur(8px)',
-                    padding: '8px 14px',
+                    padding: '8px 16px',
                     borderRadius: 20,
                     color: '#FFFFFF',
-                    fontSize: 12,
-                    fontWeight: 600,
+                    fontSize: 13,
+                    fontWeight: 700,
                     textAlign: 'center',
                     pointerEvents: 'none',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
                   }}
                 >
-                  Hold button below to focus camera
+                  ✓ Scanned! Loading...
                 </div>
-              )}
-
-              {isHoldingScan && (
+              ) : (
                 <div
                   style={{
                     position: 'absolute',
@@ -336,44 +363,37 @@ export const BarcodeQRScannerModalMobile: React.FC<BarcodeQRScannerModalProps> =
           gap: 14,
         }}
       >
-        {/* Press & Hold Scan Action */}
+        {/* Continuous Active Scan Indicator */}
         {cameraActive && (
-          <button
-            type="button"
-            onMouseDown={() => setIsHoldingScan(true)}
-            onMouseUp={() => setIsHoldingScan(false)}
-            onMouseLeave={() => setIsHoldingScan(false)}
-            onTouchStart={(e) => {
-              e.preventDefault();
-              setIsHoldingScan(true);
-            }}
-            onTouchEnd={(e) => {
-              e.preventDefault();
-              setIsHoldingScan(false);
-            }}
-            onTouchCancel={() => setIsHoldingScan(false)}
+          <div
             style={{
               width: '100%',
-              height: 48,
+              height: 46,
               borderRadius: 12,
-              border: 'none',
-              backgroundColor: isHoldingScan ? '#16A34A' : '#2563EB',
+              backgroundColor: isScannedSuccess ? '#16A34A' : '#1E293B',
               color: '#FFFFFF',
-              fontSize: 15,
-              fontWeight: 700,
-              cursor: 'pointer',
-              userSelect: 'none',
+              fontSize: 14,
+              fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 8,
-              boxShadow: isHoldingScan ? '0 0 0 4px rgba(22, 163, 74, 0.4)' : '0 4px 12px rgba(37, 99, 235, 0.3)',
-              transform: isHoldingScan ? 'scale(0.98)' : 'scale(1)',
-              transition: 'all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)',
+              border: isScannedSuccess ? '1px solid #22C55E' : '1px solid #334155',
+              boxShadow: isScannedSuccess ? '0 0 16px rgba(34, 197, 94, 0.4)' : 'none',
+              transition: 'all 0.2s ease',
             }}
           >
-            <span>{isHoldingScan ? 'Scanning... (Release to Stop)' : 'Press & Hold to Scan Code'}</span>
-          </button>
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                backgroundColor: isScannedSuccess ? '#FFFFFF' : '#22C55E',
+                boxShadow: isScannedSuccess ? '0 0 8px #FFFFFF' : '0 0 8px #22C55E',
+              }}
+            />
+            <span>{isScannedSuccess ? '✓ Scanned! Loading Item...' : 'Point camera at Barcode / QR Code'}</span>
+          </div>
         )}
 
         {/* Aligned Hardware Gun / Manual Input Row (Toggled via showTextInput) */}

@@ -30,7 +30,7 @@ export function useBarcodeLookup(options: UseBarcodeLookupOptions = {}): UseBarc
     if (!cleanCode) return null;
 
     if (!lookupUrl) {
-      return { sku_code: cleanCode, raw_code: cleanCode };
+      return cleanCode;
     }
 
     setScanning(true);
@@ -43,9 +43,9 @@ export function useBarcodeLookup(options: UseBarcodeLookupOptions = {}): UseBarc
         showToast(`Item found: ${list[0].sku_code || list[0].name || cleanCode}`, 'success');
         return list[0];
       }
-      return { sku_code: cleanCode, raw_code: cleanCode };
+      return cleanCode;
     } catch {
-      return { sku_code: cleanCode, raw_code: cleanCode };
+      return cleanCode;
     } finally {
       setScanning(false);
     }

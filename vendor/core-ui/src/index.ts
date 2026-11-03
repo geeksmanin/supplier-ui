@@ -248,6 +248,8 @@ export { useSalesOrderLookup } from './hooks/useSalesOrderLookup';
 export type { SalesOrderLookupResult } from './hooks/useSalesOrderLookup';
 export { useCurrentUserPhoto } from './hooks/useCurrentUserPhoto';
 export type { UseCurrentUserPhotoResult, UserPhotoCandidate } from './hooks/useCurrentUserPhoto';
+export { fetchLocationsList } from './services/locationService';
+export type { CoreLocationItem, FetchLocationsOptions } from './services/locationService';
 
 
 

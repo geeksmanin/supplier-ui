@@ -1,604 +1,97 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { 
-  FastVoucherEntryLayoutProps, 
-  VoucherLineItem, 
-  VoucherPartyOption 
-} from './FastVoucherEntryLayout.types';
-import { useVoucherKeyboard } from './useVoucherKeyboard';
+import React from 'react';
+import { FastVoucherEntryLayoutProps } from './FastVoucherEntryLayout.types';
 import { VoucherQuickRowStepper } from './VoucherQuickRowStepper';
 import { VoucherLiveInvoicePreview } from './VoucherLiveInvoicePreview';
 import { VoucherParkedBillsModal } from './VoucherParkedBillsModal';
-import { useVoucherParking, ParkedBill } from './useVoucherParking';
-import { useFormDraft, DraftBanner } from '../../hooks/useFormDraft';
-import { 
-  Search, 
-  Plus, 
-  Trash2, 
-  Edit2, 
-  Calendar, 
-  Layers, 
-  Save, 
-  RotateCcw, 
-  ChevronRight, 
-  X, 
-  Tag, 
-  Clock, 
-  ArrowLeft,
-  Sparkles,
-  ShoppingBag,
-  ExternalLink
-} from 'lucide-react';
-import { normalizeSearchToken } from '../SearchableEntitySelect';
-import { apiClient } from '../../api/client';
-import { useVariantMatrixModal } from './useVariantMatrixModal';
+import { DraftBanner } from '../../hooks/useFormDraft';
+import { Search, X } from 'lucide-react';
+import { useFastVoucherOrchestrator } from './useFastVoucherOrchestrator';
+import { FastVoucherHeaderRibbon } from './FastVoucherHeaderRibbon';
+import { FastVoucherCatalogSearchDropdown } from './FastVoucherCatalogSearchDropdown';
+import { FastVoucherTableSection } from './FastVoucherTableSection';
 
-export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
-  voucherType,
-  documentTitle,
-  voucherNumber,
-  voucherDate,
-  onVoucherDateChange,
-  status = 'DRAFT',
-  companyGstin,
-  companyStateCode,
-  partyConfig,
-  catalogConfig,
-  batchMode = 'none',
-  pricingConfig = { mode: 'auto_from_party', allowRateOverride: true },
-  selectedParty,
-  onPartySelect,
-  renderPartySelect,
-  items,
-  onAddItem,
-  onAddItems,
-  onUpdateItem,
-  onRemoveItem,
-  summary,
-  onSummaryChange,
-  onUpdateSummaryField,
-  documentDiscountAmount = 0,
-  documentDiscountPercent = 0,
-  onDocumentDiscountChange,
-  shippingCharges = 0,
-  onShippingChargesChange,
-  isRoundOffEnabled = true,
-  onRoundOffToggle,
-  onSave,
-  onCancel,
-  isSaving = false,
-  saveButtonLabel = 'Save Document (F10)',
-  headerExtraActions,
-  onOpenStockDrilldown,
-  enableBillParking = true,
-  onParkBill: externalParkBill,
-  onRecallBill: externalRecallBill,
-  onClearForm,
-  parkedBillsCount: externalParkedBillsCount,
-  draftKey,
-  isEdit = false,
-  moreDetails,
-  onRestoreDraft,
-  moreDetailsBadgeCount = 0,
-  renderMoreDetailsDrawer,
-  renderRightPane,
-}) => {
-  // Navigation & focus refs
-  const partyInputRef = useRef<HTMLInputElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const discountInputRef = useRef<HTMLInputElement>(null);
-  const freightInputRef = useRef<HTMLInputElement>(null);
-  const tableRef = useRef<HTMLDivElement>(null);
+export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (props) => {
+  const {
+    documentTitle,
+    voucherNumber,
+    voucherDate,
+    onVoucherDateChange,
+    status = 'DRAFT',
+    companyGstin,
+    companyStateCode,
+    partyConfig,
+    catalogConfig,
+    batchMode = 'none',
+    pricingConfig = { mode: 'auto_from_party', allowRateOverride: true },
+    selectedParty,
+    onPartySelect,
+    renderPartySelect,
+    items,
+    onRemoveItem,
+    summary,
+    onSummaryChange,
+    documentDiscountAmount = 0,
+    documentDiscountPercent = 0,
+    onDocumentDiscountChange,
+    shippingCharges = 0,
+    onShippingChargesChange,
+    isRoundOffEnabled = true,
+    onRoundOffToggle,
+    onSave,
+    onCancel,
+    isSaving = false,
+    saveButtonLabel = 'Save Document (F10)',
+    headerExtraActions,
+    onOpenStockDrilldown,
+    enableBillParking = true,
+    moreDetailsBadgeCount = 0,
+    renderMoreDetailsDrawer,
+    renderRightPane,
+  } = props;
 
-  // Stepper & search state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [selectedResultIndex, setSelectedResultIndex] = useState<number>(0);
-
-  const [activeStepperItem, setActiveStepperItem] = useState<Partial<VoucherLineItem> | null>(null);
-  const [isStepperOpen, setIsStepperOpen] = useState(false);
-  const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
-
-  // Drawer and selection states
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [focusedRowIndex, setFocusedRowIndex] = useState<number | null>(null);
-
-  // Party dropdown state
-  const [isPartyDropdownOpen, setIsPartyDropdownOpen] = useState(false);
-  const [partySearchQuery, setPartySearchQuery] = useState('');
-  const [asyncPartyOptions, setAsyncPartyOptions] = useState<VoucherPartyOption[]>([]);
-  const [partyLoading, setPartyLoading] = useState(false);
-
-  // 1. Built-in Bill Parking Hook (F6 / F7)
-  const parking = useVoucherParking({
-    voucherType,
-    onRestoreBill: (bill: ParkedBill) => {
-      if (externalRecallBill) {
-        externalRecallBill(bill);
-      } else if (onRestoreDraft) {
-        onRestoreDraft(bill);
-      } else {
-        if (bill.party && onPartySelect) onPartySelect(bill.party);
-        if (Array.isArray(bill.items) && onAddItems) {
-          onAddItems(bill.items);
-        }
-      }
-    },
-  });
-
-  const [isParkedModalOpen, setIsParkedModalOpen] = useState(false);
-  const activeParkedCount = externalParkedBillsCount !== undefined ? externalParkedBillsCount : parking.parkedCount;
-
-  // 2. Draft Auto-Save & Recovery Hook
-  const draftHook = useFormDraft({
-    formKey: draftKey || `${voucherType}-fast-draft`,
-    formData: {
-      selectedParty,
-      voucherDate,
-      items,
-      summary,
-      moreDetails,
-      documentDiscountAmount,
-      documentDiscountPercent,
-      shippingCharges,
-      isRoundOffEnabled,
-    },
-    isEdit: Boolean(isEdit || !draftKey),
-    enabled: Boolean(draftKey && !isEdit),
-    onRestore: (restored) => {
-      onRestoreDraft?.(restored);
-    },
-  });
-
-  const handleParkBill = useCallback(async () => {
-    if (externalParkBill) {
-      externalParkBill();
-      return;
-    }
-    const bill = await parking.parkCurrentBill({
-      party: selectedParty || null,
-      voucherDate,
-      items,
-      summary,
-      moreDetails,
-    });
-    if (bill) {
-      if (onClearForm) {
-        onClearForm();
-      }
-      if (draftKey && draftHook.handleClearDraft) {
-        draftHook.handleClearDraft();
-      }
-    }
-  }, [externalParkBill, onClearForm, parking, selectedParty, voucherDate, items, summary, moreDetails, draftKey, draftHook.handleClearDraft]);
-
-  // 3. Hook up Global Keyboard Orchestrator
-  useVoucherKeyboard({
+  const {
     partyInputRef,
     searchInputRef,
     discountInputRef,
     freightInputRef,
     tableRef,
+    isSearchFocused,
+    setIsSearchFocused,
+    activeStepperItem,
+    setActiveStepperItem,
     isStepperOpen,
+    setIsStepperOpen,
+    editingRowIndex,
+    setEditingRowIndex,
     isDrawerOpen,
-    isModalOpen: isPartyDropdownOpen || isParkedModalOpen,
-    itemsCount: items.length,
+    setIsDrawerOpen,
     focusedRowIndex,
     setFocusedRowIndex,
-    onFocusParty: () => {
-      partyInputRef.current?.focus();
-      setIsPartyDropdownOpen(true);
-    },
-    onFocusSearch: () => {
-      searchInputRef.current?.focus();
-      setIsSearchOpen(true);
-    },
-    onFocusDiscount: () => {
-      discountInputRef.current?.focus();
-      discountInputRef.current?.select();
-    },
-    onFocusFreight: () => {
-      freightInputRef.current?.focus();
-      freightInputRef.current?.select();
-    },
-    onToggleDrawer: () => setIsDrawerOpen((prev) => !prev),
-    onParkBill: enableBillParking ? handleParkBill : undefined,
-    onRecallBillModal: enableBillParking ? () => setIsParkedModalOpen(true) : undefined,
-    onSubmit: onSave,
-    onEditRow: (idx) => {
-      const itemToEdit = items[idx];
-      if (itemToEdit) {
-        setEditingRowIndex(idx);
-        setActiveStepperItem(itemToEdit);
-        setIsStepperOpen(true);
-      }
-    },
-    onDeleteRow: (idx) => onRemoveItem(idx),
-    onCloseStepper: () => {
-      setIsStepperOpen(false);
-      setActiveStepperItem(null);
-      setEditingRowIndex(null);
-    },
-    onCloseDrawer: () => setIsDrawerOpen(false),
-  });
-
-  // 4. Fetch or filter party options (Memoized to prevent render loops)
-  const partyOptions = useMemo(() => {
-    if (partyConfig?.options) {
-      if (!partySearchQuery.trim()) return partyConfig.options;
-      const q = normalizeSearchToken(partySearchQuery);
-      return partyConfig.options.filter((o) => {
-        const normLabel = normalizeSearchToken(o.label || '');
-        const normGstin = o.gstin ? normalizeSearchToken(o.gstin) : '';
-        const normPhone = o.phone ? normalizeSearchToken(o.phone) : '';
-        return normLabel.includes(q) || normGstin.includes(q) || normPhone.includes(q);
-      });
-    }
-    return asyncPartyOptions;
-  }, [partyConfig?.options, partySearchQuery, asyncPartyOptions]);
-
-  useEffect(() => {
-    if (!isPartyDropdownOpen) return;
-
-    if (partyConfig?.onSearch) {
-      let isCancelled = false;
-      setPartyLoading(true);
-      partyConfig
-        .onSearch(partySearchQuery)
-        .then((res) => {
-          if (!isCancelled && Array.isArray(res)) setAsyncPartyOptions(res);
-        })
-        .catch((err) => {
-          console.error('Failed onSearch parties', err);
-        })
-        .finally(() => {
-          if (!isCancelled) setPartyLoading(false);
-        });
-      return () => {
-        isCancelled = true;
-      };
-    }
-
-    if (!partyConfig?.searchEndpoint) return;
-
-    let isCancelled = false;
-    const fetchParties = async () => {
-      setPartyLoading(true);
-      try {
-        const res = await apiClient.get(partyConfig.searchEndpoint!, {
-          params: {
-            search: partySearchQuery,
-            ...(partyConfig.searchParams || {}),
-            limit: 50,
-          },
-        });
-        const list = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-        if (!isCancelled) {
-          setAsyncPartyOptions(
-            list.map((it: any) => ({
-              value: String(it.id || it.uuid),
-              label: it.name || it.display_name || it.company_name || 'Party',
-              gstin: it.tax_number || it.gstin || it.tax_id,
-              phone: it.phone || it.contact_number || it.primary_contact_phone,
-              email: it.email,
-              state: it.state || it.billing_address?.state,
-              state_code: it.state_code,
-              meta: it,
-            }))
-          );
-        }
-      } catch (err) {
-        console.error('Failed to fetch parties', err);
-      } finally {
-        if (!isCancelled) setPartyLoading(false);
-      }
-    };
-
-    const timer = setTimeout(fetchParties, 200);
-    return () => {
-      isCancelled = true;
-      clearTimeout(timer);
-    };
-  }, [partySearchQuery, isPartyDropdownOpen, partyConfig?.onSearch, partyConfig?.searchEndpoint, JSON.stringify(partyConfig?.searchParams)]);
-
-  // 3. Variant Matrix Multi-Select Hook for Parent Products
-  const {
-    openVariantMatrix,
+    parking,
+    isParkedModalOpen,
+    setIsParkedModalOpen,
+    activeParkedCount,
+    draftHook,
+    handleParkBill,
+    isPartyDropdownOpen,
+    setIsPartyDropdownOpen,
+    partySearchQuery,
+    setPartySearchQuery,
+    partyLoading,
+    partyOptions,
+    searchQuery,
+    setSearchQuery,
+    searchResults,
+    isSearchOpen,
+    setIsSearchOpen,
+    selectedResultIndex,
+    setSelectedResultIndex,
+    liveStockMap,
     renderVariantMatrixModal,
-  } = useVariantMatrixModal({
-    onAddVariants: (newItems) => {
-      if (onAddItems) {
-        onAddItems(newItems);
-      } else {
-        newItems.forEach((it) => onAddItem(it));
-      }
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 50);
-    },
-    onClose: () => {
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 50);
-    },
-  });
-
-  // 3. Dynamic Live Stock Ingestion via Domain Event Bus (Decoupled & Non-blocking)
-  const [liveStockMap, setLiveStockMap] = useState<Record<string, number>>({});
-
-  useEffect(() => {
-    if (!catalogConfig?.showStock) return;
-
-    const handleStockUpdate = (e: any) => {
-      const delta = e?.detail;
-      if (!delta?.variant_id) return;
-      const vId = String(delta.variant_id);
-      const passed = Number(delta.passed_quantity ?? delta.available_quantity ?? 0);
-      setLiveStockMap((prev) => ({
-        ...prev,
-        [vId]: passed,
-      }));
-    };
-
-    window.addEventListener('inventory_stock_updated', handleStockUpdate);
-    return () => {
-      window.removeEventListener('inventory_stock_updated', handleStockUpdate);
-    };
-  }, [catalogConfig?.showStock]);
-
-  // Request stock for displayed search results without blocking UI
-  useEffect(() => {
-    if (!catalogConfig?.showStock || searchResults.length === 0) return;
-
-    searchResults.forEach((res) => {
-      if (res._itemType === 'variant') {
-        const vId = String(res.id || res.variant_id || '');
-        if (vId) {
-          window.dispatchEvent(
-            new CustomEvent('inventory_stock_request', {
-              detail: {
-                variant_id: vId,
-                warehouse_id: catalogConfig?.warehouseId,
-              },
-            })
-          );
-        }
-      }
-    });
-  }, [searchResults, catalogConfig?.showStock, catalogConfig?.warehouseId]);
-
-  // 4. Debounced Product Catalog & Variant Dual Search
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      setIsSearchOpen(false);
-      return;
-    }
-
-    let isCancelled = false;
-    const fetchProducts = async () => {
-      setSearchLoading(true);
-      try {
-        const variantEndpoint = catalogConfig?.searchEndpoint || '/catalogue/variants';
-        const searchPromises: Promise<any>[] = [
-          apiClient.get(variantEndpoint, {
-            params: {
-              search: searchQuery,
-              ...(catalogConfig?.searchParams || {}),
-              limit: 25,
-            },
-          }),
-          apiClient.get('/catalogue/products', {
-            params: {
-              search: searchQuery,
-              limit: 12,
-            },
-          }),
-        ];
-
-        // Progressive Instant Search: Catalog resolves without waiting for inventory ledger
-        const [variantsRes, productsRes] = await Promise.allSettled(searchPromises);
-
-        const rawVariants =
-          variantsRes.status === 'fulfilled'
-            ? Array.isArray(variantsRes.value.data?.data)
-              ? variantsRes.value.data.data
-              : Array.isArray(variantsRes.value.data)
-              ? variantsRes.value.data
-              : []
-            : [];
-
-        const rawProducts =
-          productsRes.status === 'fulfilled'
-            ? Array.isArray(productsRes.value.data?.data)
-              ? productsRes.value.data.data
-              : Array.isArray(productsRes.value.data)
-              ? productsRes.value.data
-              : []
-            : [];
-
-        const merged: any[] = [];
-        const seenVariantIds = new Set<string>();
-
-        // 1. Add Variants first with _itemType: 'variant' (exact SKU/barcode matches)
-        rawVariants.forEach((v: any) => {
-          const vId = String(v.id || v.variant_id || '');
-          if (vId) seenVariantIds.add(vId);
-          merged.push({
-            ...v,
-            _itemType: 'variant',
-          });
-        });
-
-        // 2. Add Parent Products with _itemType: 'product' ONLY if they have MULTIPLE variants (> 1).
-        // Products with a single variant are already covered in the variant list (or promoted as a single variant).
-        rawProducts.forEach((p: any) => {
-          const variants = Array.isArray(p.variants) ? p.variants : [];
-          if (variants.length > 1) {
-            merged.push({
-              ...p,
-              _itemType: 'product',
-            });
-          } else if (variants.length === 1) {
-            const singleV = variants[0];
-            const singleVId = String(singleV.id || singleV.variant_id || '');
-            if (singleVId && !seenVariantIds.has(singleVId)) {
-              seenVariantIds.add(singleVId);
-              merged.push({
-                ...singleV,
-                product: p,
-                _itemType: 'variant',
-              });
-            }
-          }
-        });
-
-        if (!isCancelled) {
-          setSearchResults(merged);
-          setIsSearchOpen(merged.length > 0);
-          setSelectedResultIndex(0);
-
-          // Eagerly trigger stock inquiries for all returned variants immediately
-          if (catalogConfig?.showStock) {
-            merged.forEach((item) => {
-              const vId = String(item.id || item.variant_id || '');
-              if (vId) {
-                window.dispatchEvent(
-                  new CustomEvent('inventory_stock_request', {
-                    detail: {
-                      variant_id: vId,
-                      warehouse_id: catalogConfig?.warehouseId,
-                    },
-                  })
-                );
-              }
-            });
-          }
-        }
-      } catch (err) {
-        console.error('Failed to search products', err);
-      } finally {
-        if (!isCancelled) setSearchLoading(false);
-      }
-    };
-
-    const timer = setTimeout(fetchProducts, 180);
-    return () => {
-      isCancelled = true;
-      clearTimeout(timer);
-    };
-  }, [searchQuery, catalogConfig?.searchEndpoint]);
-
-  // 5. Handle Product Selection from Search Bar
-  const handleSelectProduct = (rawProduct: any) => {
-    // If it's a parent / main product
-    if (rawProduct._itemType === 'product') {
-      const variants = Array.isArray(rawProduct.variants) ? rawProduct.variants : [];
-      if (variants.length === 1) {
-        handleSelectProduct({ ...variants[0], _itemType: 'variant', product: rawProduct });
-        return;
-      }
-      setIsSearchOpen(false);
-      setSearchQuery('');
-      openVariantMatrix(rawProduct);
-      return;
-    }
-
-    // Otherwise, single variant -> open Stepper
-    const pName = rawProduct.product?.name || rawProduct.product_name || rawProduct.name || 'Product';
-    const sku = rawProduct.sku_code || rawProduct.sku || '';
-    const price = Number(
-      rawProduct.sale_price ?? rawProduct.salePrice ?? rawProduct.price ?? rawProduct.selling_price ?? rawProduct.unit_cost ?? rawProduct.mrp ?? 0
-    );
-    const taxRate = Number(rawProduct.tax_percent ?? rawProduct.tax_rate ?? rawProduct.gst_rate ?? 0);
-
-    const packagings = rawProduct.packagings || [
-      { name: rawProduct.packaging_name || 'Unit', size: Number(rawProduct.packaging_size || 1), is_default: true },
-    ];
-
-    const batches = rawProduct.batches || rawProduct.stock_batches || [];
-    let initialBatchCode = rawProduct.batch_code || '';
-    let initialExpiry = rawProduct.expiry_date || '';
-
-    // Smart Batch Selection:
-    // If only 1 batch exists, auto-select it by default with 0 clicks
-    // If multiple batches exist, pre-select the FEFO batch (first batch sorted by expiry)
-    if (batchMode === 'select' && Array.isArray(batches) && batches.length > 0) {
-      const sortedBatches = [...batches].sort((a: any, b: any) => {
-        if (!a.expiry_date) return 1;
-        if (!b.expiry_date) return -1;
-        return new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
-      });
-      initialBatchCode = sortedBatches[0].batch_code || sortedBatches[0].batch_number || '';
-      initialExpiry = sortedBatches[0].expiry_date || '';
-    }
-
-    const vIdStr = String(rawProduct.id || rawProduct.variant_id || '');
-    const currentStock = liveStockMap[vIdStr] !== undefined
-      ? liveStockMap[vIdStr]
-      : (rawProduct.available_quantity ?? rawProduct.current_stock ?? rawProduct.stock ?? 0);
-
-    const draftLine: Partial<VoucherLineItem> = {
-      variant_id: vIdStr,
-      product_id: rawProduct.product_id ? String(rawProduct.product_id) : undefined,
-      sku_code: sku,
-      product_name: pName,
-      image_url: rawProduct.image_url || rawProduct.image_path,
-      quantity: 1,
-      packaging_name: packagings[0]?.name || 'Unit',
-      packaging_size: packagings[0]?.size || 1,
-      packagings,
-      batch_code: initialBatchCode,
-      expiry_date: initialExpiry,
-      metadata: {
-        ...(rawProduct.metadata || {}),
-        batches,
-        available_quantity: currentStock,
-      },
-      unit_price: price,
-      tax_percent: taxRate,
-      discount_percent: 0,
-      mrp: Number(rawProduct.mrp || price),
-    };
-
-    setEditingRowIndex(null);
-    setActiveStepperItem(draftLine);
-    setIsStepperOpen(true);
-    setIsSearchOpen(false);
-    setSearchQuery('');
-  };
-
-  // 5. Handle Stepper Commit (Add or Edit row)
-  const handleCommitStepperItem = (committedItem: VoucherLineItem) => {
-    if (editingRowIndex !== null) {
-      onUpdateItem(editingRowIndex, committedItem);
-    } else {
-      onAddItem(committedItem);
-    }
-
-    setIsStepperOpen(false);
-    setActiveStepperItem(null);
-    setEditingRowIndex(null);
-
-    // Automatically return cursor focus to Product Search for next item
-    setTimeout(() => {
-      searchInputRef.current?.focus();
-    }, 50);
-  };
-
-  // Memoized stock batches for active stepper item to prevent infinite re-renders
-  const memoizedStepperBatches = useMemo(() => {
-    const raw = activeStepperItem?.metadata?.batches;
-    if (!Array.isArray(raw) || raw.length === 0) return [];
-    return raw.map((b: any) => ({
-      batch_code: b.batch_code || b.batch_number || `BATCH-${b.id}`,
-      expiry_date: b.expiry_date,
-      mrp: b.mrp,
-      available_quantity: Number(b.available_quantity ?? b.quantity ?? 0),
-    }));
-  }, [activeStepperItem?.metadata?.batches]);
+    handleSelectProduct,
+    handleCommitStepperItem,
+    memoizedStepperBatches,
+  } = useFastVoucherOrchestrator(props);
 
   return (
     <div
@@ -622,334 +115,39 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
         />
       )}
 
-      {/* ────────────────── TOP STICKY CONTEXT BAR ────────────────── */}
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0.65rem 1.25rem',
-          backgroundColor: '#ffffff',
-          borderBottom: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
-          zIndex: 30,
-        }}
-      >
-        {/* Left: Document Title & Party Selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-          {onCancel && (
-            <button
-              onClick={onCancel}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '32px',
-                height: '32px',
-                borderRadius: '6px',
-                border: '1px solid #e2e8f0',
-                backgroundColor: '#ffffff',
-                cursor: 'pointer',
-                color: '#64748b',
-              }}
-              title="Back"
-            >
-              <ArrowLeft size={16} />
-            </button>
-          )}
+      {/* Top Sticky Header Ribbon */}
+      <FastVoucherHeaderRibbon
+        documentTitle={documentTitle}
+        status={status}
+        voucherNumber={voucherNumber}
+        onCancel={onCancel}
+        partyConfig={partyConfig}
+        selectedParty={selectedParty}
+        onPartySelect={onPartySelect}
+        renderPartySelect={renderPartySelect}
+        partyOptions={partyOptions}
+        isPartyDropdownOpen={isPartyDropdownOpen}
+        setIsPartyDropdownOpen={setIsPartyDropdownOpen}
+        partySearchQuery={partySearchQuery}
+        setPartySearchQuery={setPartySearchQuery}
+        partyLoading={partyLoading}
+        partyInputRef={partyInputRef}
+        searchInputRef={searchInputRef}
+        voucherDate={voucherDate}
+        onVoucherDateChange={onVoucherDateChange}
+        isDrawerOpen={isDrawerOpen}
+        setIsDrawerOpen={setIsDrawerOpen}
+        moreDetailsBadgeCount={moreDetailsBadgeCount}
+        enableBillParking={enableBillParking}
+        handleParkBill={handleParkBill}
+        setIsParkedModalOpen={setIsParkedModalOpen}
+        activeParkedCount={activeParkedCount}
+        headerExtraActions={headerExtraActions}
+      />
 
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-              <span style={{ fontWeight: 800, fontSize: '1rem', color: '#0f172a' }}>
-                {documentTitle}
-              </span>
-              <span
-                style={{
-                  fontSize: '0.7rem',
-                  fontWeight: 800,
-                  padding: '2px 6px',
-                  borderRadius: '9999px',
-                  backgroundColor: '#fef3c7',
-                  color: '#b45309',
-                  border: '1px solid #fde68a',
-                }}
-              >
-                {status}
-              </span>
-            </div>
-            {voucherNumber && (
-              <div style={{ fontSize: '0.75rem', color: '#64748b', fontFamily: 'monospace' }}>
-                Doc #: {voucherNumber}
-              </div>
-            )}
-          </div>
-
-          {/* Vertical Divider */}
-          <div style={{ width: '1px', height: '28px', backgroundColor: '#e2e8f0', margin: '0 0.25rem' }} />
-
-          {/* Party Selector (F2) */}
-          <div style={{ position: 'relative', width: '320px' }}>
-            {renderPartySelect ? (
-              renderPartySelect({ selectedParty, onPartySelect })
-            ) : partyConfig.renderPartySelect ? (
-              partyConfig.renderPartySelect({ selectedParty, onPartySelect })
-            ) : (
-              <>
-                <div
-                  onClick={() => {
-                    setIsPartyDropdownOpen(true);
-                    partyInputRef.current?.focus();
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '6px 10px',
-                    borderRadius: '8px',
-                    border: isPartyDropdownOpen ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
-                    backgroundColor: '#ffffff',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
-                    <span style={{ color: '#64748b', marginRight: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
-                      {partyConfig.label}:
-                    </span>
-                    <strong style={{ color: selectedParty ? '#0f172a' : '#94a3b8' }}>
-                      {selectedParty ? selectedParty.label : partyConfig.placeholder || `Select ${partyConfig.label}...`}
-                    </strong>
-                    {selectedParty?.gstin && (
-                      <span style={{ marginLeft: '6px', fontSize: '0.7rem', color: '#64748b', fontFamily: 'monospace' }}>
-                        ({selectedParty.gstin})
-                      </span>
-                    )}
-                  </div>
-                  <span
-                    style={{
-                      fontSize: '0.65rem',
-                      fontWeight: 800,
-                      padding: '2px 5px',
-                      borderRadius: '4px',
-                      backgroundColor: '#eff6ff',
-                      color: '#2563eb',
-                      border: '1px solid #dbeafe',
-                    }}
-                  >
-                    F2
-                  </span>
-                </div>
-
-            {/* Party Dropdown Popover */}
-            {isPartyDropdownOpen && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  width: '380px',
-                  marginTop: '4px',
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '10px',
-                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.1)',
-                  zIndex: 60,
-                  padding: '0.5rem',
-                }}
-              >
-                <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
-                  <Search size={14} style={{ position: 'absolute', left: '8px', top: '9px', color: '#94a3b8' }} />
-                  <input
-                    ref={partyInputRef}
-                    type="text"
-                    className="bare-input"
-                    data-bare-input="true"
-                    placeholder={`Search ${partyConfig.label} by name, GSTIN...`}
-                    value={partySearchQuery}
-                    onChange={(e) => setPartySearchQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Escape') {
-                        setIsPartyDropdownOpen(false);
-                      } else if (e.key === 'Enter' && partyOptions.length > 0) {
-                        onPartySelect?.(partyOptions[0]);
-                        setIsPartyDropdownOpen(false);
-                        searchInputRef.current?.focus();
-                      }
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '6px 8px 6px 28px',
-                      fontSize: '0.8rem',
-                      borderRadius: '6px',
-                      border: '1px solid #cbd5e1',
-                      outline: 'none',
-                    }}
-                    autoFocus
-                  />
-                </div>
-
-                <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
-                  {partyLoading ? (
-                    <div style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.75rem', color: '#64748b' }}>
-                      Loading options...
-                    </div>
-                  ) : partyOptions.length > 0 ? (
-                    partyOptions.map((opt) => (
-                      <div
-                        key={opt.value}
-                        onClick={() => {
-                          onPartySelect?.(opt);
-                          setIsPartyDropdownOpen(false);
-                          setTimeout(() => searchInputRef.current?.focus(), 50);
-                        }}
-                        style={{
-                          padding: '6px 8px',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '0.8rem',
-                          backgroundColor: selectedParty?.value === opt.value ? '#eff6ff' : 'transparent',
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
-                        onMouseLeave={(e) =>
-                          (e.currentTarget.style.backgroundColor = selectedParty?.value === opt.value ? '#eff6ff' : 'transparent')
-                        }
-                      >
-                        <div style={{ fontWeight: 700, color: '#1e293b' }}>{opt.label}</div>
-                        {opt.gstin && (
-                          <div style={{ fontSize: '0.7rem', color: '#64748b', fontFamily: 'monospace' }}>
-                            GSTIN: {opt.gstin} {opt.state ? `• ${opt.state}` : ''}
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <div style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.75rem', color: '#94a3b8' }}>
-                      No {partyConfig.label.toLowerCase()} found
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Right: Date, More Details (F3), and Park Bill (F6) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-          {/* Date Picker */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', color: '#475569' }}>
-            <Calendar size={14} style={{ color: '#64748b' }} />
-            <input
-              type="date"
-              value={voucherDate}
-              onChange={(e) => onVoucherDateChange?.(e.target.value)}
-              style={{
-                border: '1px solid #cbd5e1',
-                borderRadius: '6px',
-                padding: '4px 6px',
-                fontSize: '0.75rem',
-                outline: 'none',
-                fontWeight: 600,
-              }}
-            />
-          </div>
-
-          {/* More Details (F3) */}
-          <button
-            onClick={() => setIsDrawerOpen((prev) => !prev)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '5px 10px',
-              borderRadius: '6px',
-              border: '1px solid #cbd5e1',
-              backgroundColor: isDrawerOpen ? '#eff6ff' : '#ffffff',
-              color: isDrawerOpen ? '#2563eb' : '#475569',
-              fontSize: '0.75rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            <span>More Info</span>
-            {moreDetailsBadgeCount > 0 && (
-              <span
-                style={{
-                  fontSize: '0.65rem',
-                  backgroundColor: '#2563eb',
-                  color: '#ffffff',
-                  borderRadius: '9999px',
-                  padding: '1px 5px',
-                }}
-              >
-                {moreDetailsBadgeCount}
-              </span>
-            )}
-            <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>[F3]</span>
-          </button>
-
-          {/* Park Bill (F6) & Recall (F7) */}
-          {enableBillParking && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-              <button
-                type="button"
-                onClick={handleParkBill}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '5px 10px',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  backgroundColor: '#ffffff',
-                  color: '#475569',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-                title="Park current bill into IndexedDB (F6)"
-              >
-                <Clock size={13} style={{ color: '#d97706' }} />
-                <span>Park</span>
-                <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>[F6]</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsParkedModalOpen(true)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '5px 8px',
-                  borderRadius: '6px',
-                  border: activeParkedCount > 0 ? '1px solid #fde68a' : '1px solid #cbd5e1',
-                  backgroundColor: activeParkedCount > 0 ? '#fef3c7' : '#ffffff',
-                  color: activeParkedCount > 0 ? '#b45309' : '#475569',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-                title="Recall held/parked bills (F7)"
-              >
-                <span>Held ({activeParkedCount})</span>
-                <span style={{ fontSize: '0.65rem', color: activeParkedCount > 0 ? '#b45309' : '#94a3b8' }}>[F7]</span>
-              </button>
-            </div>
-          )}
-
-          {/* Header Extra Actions (e.g., Switch to Classic Form) */}
-          {headerExtraActions && (
-            <div style={{ display: 'inline-flex', alignItems: 'center' }}>
-              {headerExtraActions}
-            </div>
-          )}
-        </div>
-      </header>
-
-      {/* ────────────────── MAIN BODY: SPLIT VIEW ────────────────── */}
+      {/* Main Body: Split View */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Left Column (68% width): Central Product Search & Tabular Items Table */}
+        {/* Left Column: Product Search & Items Table */}
         <div
           style={{
             flex: 1,
@@ -975,7 +173,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                 boxShadow: (isSearchFocused || isSearchOpen)
                   ? '0 0 0 3px rgba(37, 99, 235, 0.15), 0 2px 8px rgba(37, 99, 235, 0.1)'
                   : 'none',
-                transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                transition: 'border-color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.2s cubic-bezier(0.25, 0.1, 0.25, 1)',
               }}
             >
               <Search
@@ -984,7 +182,6 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                   color: (isSearchFocused || isSearchOpen) ? '#2563eb' : '#94a3b8',
                   marginRight: '8px',
                   flexShrink: 0,
-                  transition: 'color 0.15s ease',
                 }}
               />
               <input
@@ -1045,7 +242,6 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
                   color: (isSearchFocused || isSearchOpen) ? '#2563eb' : '#64748b',
                   border: (isSearchFocused || isSearchOpen) ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
                   whiteSpace: 'nowrap',
-                  transition: 'all 0.15s ease',
                 }}
               >
                 F4
@@ -1054,191 +250,14 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
 
             {/* Search Autocomplete Results Dropdown */}
             {isSearchOpen && searchResults.length > 0 && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: '1.25rem',
-                  right: '1.25rem',
-                  marginTop: '4px',
-                  backgroundColor: '#ffffff',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '10px',
-                  boxShadow: '0 12px 30px rgba(0, 0, 0, 0.14)',
-                  zIndex: 45,
-                  maxHeight: '320px',
-                  overflowY: 'auto',
-                  padding: '6px',
-                }}
-              >
-                {searchResults.map((res, idx) => {
-                  const isProduct = res._itemType === 'product';
-                  const pName = isProduct ? res.name : (res.product?.name || res.product_name || res.name || 'Product');
-                  const sku = res.sku_code || res.sku || '';
-                  const price =
-                    res.sale_price ?? res.salePrice ?? res.price ?? res.selling_price ?? res.unit_cost ?? res.mrp ?? 0;
-                  const isSelected = idx === selectedResultIndex;
-                  const variantCount = Array.isArray(res.variants) ? res.variants.length : 0;
-
-                  return (
-                    <div
-                      key={`${res._itemType || 'item'}-${res.id || idx}`}
-                      data-testid={`search-result-${idx}`}
-                      className="fast-voucher-search-result-row"
-                      onClick={() => handleSelectProduct(res)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '11px 14px',
-                        margin: '4px 2px',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        backgroundColor: isSelected ? (isProduct ? '#eef2ff' : '#eff6ff') : '#ffffff',
-                        border: isSelected ? (isProduct ? '2px solid #4f46e5' : '2px solid #2563eb') : '1px solid #e2e8f0',
-                        boxShadow: isSelected
-                          ? '0 0 0 2px rgba(37, 99, 235, 0.25), 0 4px 14px rgba(37, 99, 235, 0.18)'
-                          : '0 1px 2px rgba(0, 0, 0, 0.02)',
-                        transform: isSelected ? 'scale(1.002)' : 'none',
-                        transition: 'all 0.15s ease-in-out',
-                      }}
-                      onMouseEnter={() => setSelectedResultIndex(idx)}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div
-                          style={{
-                            width: '26px',
-                            height: '26px',
-                            borderRadius: '6px',
-                            backgroundColor: isSelected ? (isProduct ? '#4f46e5' : '#2563eb') : '#f1f5f9',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: isSelected ? '#ffffff' : '#64748b',
-                            fontSize: '0.72rem',
-                            fontWeight: 800,
-                            transition: 'all 0.15s ease',
-                          }}
-                        >
-                          {idx + 1}
-                        </div>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span
-                              style={{
-                                fontWeight: 700,
-                                fontSize: '0.875rem',
-                                color: isSelected ? (isProduct ? '#3730a3' : '#1e40af') : '#1e293b',
-                              }}
-                            >
-                              {pName}
-                            </span>
-                            {isProduct ? (
-                              <span
-                                style={{
-                                  fontSize: '0.65rem',
-                                  fontWeight: 800,
-                                  padding: '2px 6px',
-                                  borderRadius: '9999px',
-                                  backgroundColor: '#e0e7ff',
-                                  color: '#4338ca',
-                                  border: '1px solid #c7d2fe',
-                                }}
-                              >
-                                🏷️ Main Product {variantCount > 0 ? `(${variantCount} variants)` : ''}
-                              </span>
-                            ) : (
-                              <span
-                                style={{
-                                  fontSize: '0.65rem',
-                                  fontWeight: 700,
-                                  padding: '2px 5px',
-                                  borderRadius: '9999px',
-                                  backgroundColor: '#f1f5f9',
-                                  color: '#64748b',
-                                }}
-                              >
-                                📦 Variant
-                              </span>
-                            )}
-                            {catalogConfig?.showStock && !isProduct && (() => {
-                              const vId = String(res.id || res.variant_id || '');
-                              const hasStock = liveStockMap[vId] !== undefined;
-                              const stockQty = hasStock ? liveStockMap[vId] : Number(res.available_quantity ?? res.stock ?? 0);
-                              return (
-                                <span
-                                  style={{
-                                    fontSize: '0.65rem',
-                                    fontWeight: 700,
-                                    padding: '2px 6px',
-                                    borderRadius: '9999px',
-                                    backgroundColor: stockQty > 0 ? '#dcfce7' : (hasStock ? '#fee2e2' : '#f1f5f9'),
-                                    color: stockQty > 0 ? '#166534' : (hasStock ? '#991b1b' : '#64748b'),
-                                    border: stockQty > 0 ? '1px solid #bbf7d0' : (hasStock ? '1px solid #fecaca' : '1px solid #e2e8f0'),
-                                    transition: 'all 0.2s ease',
-                                  }}
-                                >
-                                  {hasStock ? (stockQty > 0 ? `🟢 Stock: ${stockQty}` : `🔴 Out of Stock`) : `⏳ Stock: ...`}
-                                </span>
-                              );
-                            })()}
-                          </div>
-                          <div style={{ fontSize: '0.72rem', color: '#64748b', fontFamily: 'monospace', marginTop: '2px' }}>
-                            {isProduct ? (
-                              <span>
-                                {res.brand_name ? `${res.brand_name} • ` : ''}
-                                {res.category_name ? `${res.category_name} • ` : ''}
-                                Select variants matrix (Brand, Model, Qty) ↳
-                              </span>
-                            ) : (
-                              <span>
-                                SKU: {sku || '-'} {res.tax_percent ? `• Tax: ${res.tax_percent}%` : ''}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{ textAlign: 'right' }}>
-                        {isProduct ? (
-                          <div
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              backgroundColor: '#4f46e5',
-                              color: '#ffffff',
-                              fontSize: '0.72rem',
-                              fontWeight: 700,
-                              padding: '5px 9px',
-                              borderRadius: '6px',
-                              boxShadow: '0 1px 3px rgba(79, 70, 229, 0.3)',
-                            }}
-                          >
-                            <span>Matrix Multi-Select ↳</span>
-                          </div>
-                        ) : (
-                          <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#2563eb' }}>
-                            ₹{Number(price).toFixed(2)}
-                          </div>
-                        )}
-                        {isSelected && (
-                          <div
-                            style={{
-                              fontSize: '0.68rem',
-                              color: isProduct ? '#4338ca' : '#1d4ed8',
-                              fontWeight: 700,
-                              marginTop: '2px',
-                            }}
-                          >
-                            Press Enter ↵
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <FastVoucherCatalogSearchDropdown
+                searchResults={searchResults}
+                selectedResultIndex={selectedResultIndex}
+                setSelectedResultIndex={setSelectedResultIndex}
+                handleSelectProduct={handleSelectProduct}
+                catalogConfig={catalogConfig}
+                liveStockMap={liveStockMap}
+              />
             )}
 
             {/* Quick Row Stepper Popover */}
@@ -1263,194 +282,22 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
           </div>
 
           {/* Dense Tabular Items Table */}
-          <div ref={tableRef} style={{ flex: 1, overflowY: 'auto', padding: '0 1.25rem' }}>
-            {items.length === 0 ? (
-              <div
-                style={{
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#94a3b8',
-                  padding: '3rem 1rem',
-                }}
-              >
-                <ShoppingBag size={48} style={{ opacity: 0.35, marginBottom: '0.75rem' }} />
-                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#64748b' }}>No items added yet</div>
-                <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>
-                  Press <strong style={{ color: '#2563eb' }}>F4</strong> to search products or scan a barcode
-                </div>
-              </div>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem', marginTop: '0.5rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1.5px solid #cbd5e1', color: '#475569', textAlign: 'left' }}>
-                    <th style={{ padding: '8px 6px', width: '40px', textAlign: 'center' }}>#</th>
-                    <th style={{ padding: '8px 10px' }}>Item Description</th>
-                    <th style={{ padding: '8px 8px', width: '90px' }}>SKU</th>
-                    {batchMode !== 'none' && <th style={{ padding: '8px 8px', width: '110px' }}>Batch / Exp</th>}
-                    <th style={{ padding: '8px 8px', width: '90px' }}>Unit</th>
-                    <th style={{ padding: '8px 8px', width: '70px', textAlign: 'right' }}>Qty</th>
-                    <th style={{ padding: '8px 8px', width: '90px', textAlign: 'right' }}>Rate (₹)</th>
-                    <th style={{ padding: '8px 8px', width: '65px', textAlign: 'right' }}>Disc %</th>
-                    <th style={{ padding: '8px 8px', width: '65px', textAlign: 'right' }}>Tax %</th>
-                    <th style={{ padding: '8px 10px', width: '110px', textAlign: 'right' }}>Total (₹)</th>
-                    <th style={{ padding: '8px 6px', width: '60px', textAlign: 'center' }}>Act</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((row, idx) => {
-                    const isFocused = focusedRowIndex === idx;
-
-                    return (
-                      <tr
-                        key={row.id || idx}
-                        style={{
-                          borderBottom: '1px solid #f1f5f9',
-                          backgroundColor: isFocused ? '#eff6ff' : idx % 2 === 0 ? '#ffffff' : '#f8fafc',
-                          outline: isFocused ? '2px solid #3b82f6' : 'none',
-                          cursor: 'pointer',
-                        }}
-                        onClick={() => setFocusedRowIndex(idx)}
-                        onDoubleClick={() => {
-                          setEditingRowIndex(idx);
-                          setActiveStepperItem(row);
-                          setIsStepperOpen(true);
-                        }}
-                      >
-                        <td style={{ padding: '8px 6px', textAlign: 'center', fontWeight: 700, color: '#64748b' }}>
-                          {idx + 1}
-                        </td>
-                        <td style={{ padding: '8px 10px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <div style={{ fontWeight: 700, color: '#1e293b' }}>{row.product_name}</div>
-                          </div>
-                          {row.remarks && (
-                            <div style={{ fontSize: '0.7rem', color: '#64748b', fontStyle: 'italic' }}>
-                              {row.remarks}
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ padding: '8px 8px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#64748b' }}>
-                          {row.sku_code || '-'}
-                        </td>
-                        {batchMode !== 'none' && (
-                          <td style={{ padding: '8px 8px' }}>
-                            <span style={{ fontWeight: 600, color: '#334155' }}>{row.batch_code || '-'}</span>
-                            {row.expiry_date && (
-                              <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Exp: {row.expiry_date}</div>
-                            )}
-                          </td>
-                        )}
-                        <td style={{ padding: '8px 8px', color: '#475569' }}>
-                          {row.packaging_name || 'Unit'}
-                          {row.packaging_size > 1 ? ` (${row.packaging_size}s)` : ''}
-                        </td>
-                        <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>
-                          {row.quantity}
-                        </td>
-                        <td style={{ padding: '8px 8px', textAlign: 'right', color: '#334155' }}>
-                          ₹{Number(row.unit_price).toFixed(2)}
-                        </td>
-                        <td style={{ padding: '8px 8px', textAlign: 'right', color: row.discount_percent ? '#dc2626' : '#94a3b8' }}>
-                          {row.discount_percent ? `${row.discount_percent}%` : '-'}
-                        </td>
-                        <td style={{ padding: '8px 8px', textAlign: 'right', color: '#059669', fontSize: '0.75rem' }}>
-                          {row.tax_percent ? `${row.tax_percent}%` : '-'}
-                        </td>
-                        <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 800, color: '#2563eb' }}>
-                          ₹{Number(row.line_total).toFixed(2)}
-                        </td>
-                        <td style={{ padding: '8px 6px', textAlign: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingRowIndex(idx);
-                                setActiveStepperItem(row);
-                                setIsStepperOpen(true);
-                              }}
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                padding: '3px',
-                                color: '#64748b',
-                              }}
-                              title="Edit line (E)"
-                            >
-                              <Edit2 size={13} />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onRemoveItem(idx);
-                              }}
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                padding: '3px',
-                                color: '#ef4444',
-                              }}
-                              title="Delete line (Del)"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          {/* Hotkey Cheatsheet Strip */}
-          <div
-            style={{
-              padding: '0.5rem 1.25rem',
-              backgroundColor: '#f8fafc',
-              borderTop: '1px solid #e2e8f0',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              fontSize: '0.72rem',
-              color: '#64748b',
+          <FastVoucherTableSection
+            items={items}
+            batchMode={batchMode}
+            tableRef={tableRef}
+            focusedRowIndex={focusedRowIndex}
+            setFocusedRowIndex={setFocusedRowIndex}
+            onEditRow={(idx, row) => {
+              setEditingRowIndex(idx);
+              setActiveStepperItem(row);
+              setIsStepperOpen(true);
             }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <span>
-                <strong style={{ color: '#2563eb' }}>[F2]</strong> Party
-              </span>
-              <span>
-                <strong style={{ color: '#2563eb' }}>[F4]</strong> Search
-              </span>
-              <span>
-                <strong style={{ color: '#2563eb' }}>[↓]</strong> Table Nav
-              </span>
-              <span>
-                <strong style={{ color: '#2563eb' }}>[E]</strong> Edit Row
-              </span>
-              <span>
-                <strong style={{ color: '#2563eb' }}>[Del]</strong> Delete
-              </span>
-              <span>
-                <strong style={{ color: '#2563eb' }}>[F3]</strong> More Info
-              </span>
-              <span>
-                <strong style={{ color: '#2563eb' }}>[F6]</strong> Park
-              </span>
-            </div>
-            <div>
-              <strong style={{ color: '#059669' }}>[F10]</strong> Save / Submit
-            </div>
-          </div>
+            onRemoveItem={onRemoveItem}
+          />
         </div>
 
-        {/* Right Column (32% width): Real-Time Live Document / Invoice Preview */}
+        {/* Right Column: Live Document Preview */}
         <div
           style={{
             width: '32%',
@@ -1495,7 +342,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
         </div>
       </div>
 
-      {/* ────────────────── F3 SECONDARY DETAILS DRAWER ────────────────── */}
+      {/* F3 Secondary Details Drawer */}
       {isDrawerOpen && (
         <div
           style={{
@@ -1544,7 +391,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
         </div>
       )}
 
-      {/* ────────────────── PARKED BILLS RECALL MODAL (F7) ────────────────── */}
+      {/* Parked Bills Recall Modal (F7) */}
       <VoucherParkedBillsModal
         isOpen={isParkedModalOpen}
         onClose={() => setIsParkedModalOpen(false)}
@@ -1554,7 +401,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = ({
         voucherTitle={documentTitle}
       />
 
-      {/* ────────────────── PRODUCT VARIANT MATRIX MODAL ────────────────── */}
+      {/* Product Variant Matrix Modal */}
       {renderVariantMatrixModal()}
     </div>
   );
