@@ -738,6 +738,55 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
             try { meta = JSON.parse(meta); } catch {}
           }
           const mod = meta?.module || 'samwad';
+          const msgBody = meta?.content || meta?.message || meta?.text || meta?.body || syncNotif.message || syncNotif.body || '';
+
+          if (tenantCode && userId) {
+            saveStreamEvents([
+              {
+                id: syncNotif.id || `sync-${Date.now()}`,
+                seq: Date.now(),
+                tenant_code: tenantCode,
+                user_id: userId,
+                module: mod,
+                type: 'silent_sync',
+                title: syncNotif.title || '',
+                message: msgBody,
+                link: syncNotif.link,
+                metadata: syncNotif.metadata,
+                is_read: true,
+                created_at: syncNotif.created_at || new Date().toISOString(),
+              },
+            ]).catch(() => {});
+          }
+
+          const convId = meta?.conversation_id || meta?.thread_id;
+          if (convId && (msgBody || meta?.media_url || meta?.photos?.length || meta?.voucher_number || meta?.operation)) {
+            const senderId = meta?.created_by?.id || meta?.sender_id || 'unknown';
+            const senderName = meta?.created_by?.name || meta?.sender_name || 'User';
+            const msgId = meta?.id || meta?.message_id || syncNotif.id || `sync-${Date.now()}`;
+
+            saveChatMessage({
+              id: msgId,
+              conversation_id: convId,
+              sender_id: senderId,
+              sender_name: senderName,
+              content: msgBody,
+              images: meta?.images,
+              attachments: meta?.attachments,
+              status: 'sent',
+              timestamp: syncNotif.created_at || new Date().toISOString(),
+              metadata: meta,
+            }).catch(() => {});
+
+            broadcastEvent('MESSAGE_STATUS_CHANGED', {
+              payload: {
+                message_id: msgId,
+                conversation_id: convId,
+                status: 'sent',
+              },
+            });
+          }
+
           broadcastEvent('EVENT_APPENDED', {
             tenant_code: tenantCode,
             user_id: userId,
@@ -745,9 +794,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
               id: syncNotif.id || `sync-${Date.now()}`,
               seq: 0,
               module: mod,
-              type: 'silent_sync',
+              type: meta?.type || 'silent_sync',
               title: syncNotif.title || '',
-              message: syncNotif.message || syncNotif.body || '',
+              message: msgBody,
               link: syncNotif.link,
               metadata: syncNotif.metadata,
               is_read: true,
@@ -867,7 +916,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
             'chat_message', 'thread_message', 'mention',
             'samwad_message', 'samwad_mention',   // ← canonical samwad types
             'samwad_silent_sync',                  // ← sender's own-device sync event
-          ].includes(notifType) || Boolean(parsedMeta?.is_chat_message);
+            'stock_voucher',                       // ← live stock voucher card
+          ].includes(notifType) || Boolean(parsedMeta?.is_chat_message) || Boolean(parsedMeta?.voucher_number) || Boolean(parsedMeta?.operation);
 
           if (convId && msgContent && isExplicitChat) {
             const senderId = parsedMeta?.created_by?.id || parsedMeta?.sender_id || 'unknown';
