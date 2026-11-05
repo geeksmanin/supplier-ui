@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { resolveMediaUrl } from '../utils/media';
 import { useCachedMediaUrl } from '../utils/mediaCache';
+import { ImageLightboxModal } from './ImageLightboxModal';
 
 export interface ImageThumbnailWithZoomProps {
   src?: string;
@@ -10,6 +11,7 @@ export interface ImageThumbnailWithZoomProps {
   zoomSize?: number;
   rounded?: number | string;
   fallbackIcon?: React.ReactNode;
+  enableLightbox?: boolean;
   onClick?: (e: React.MouseEvent) => void;
   style?: React.CSSProperties;
 }
@@ -21,16 +23,18 @@ export const ImageThumbnailWithZoom: React.FC<ImageThumbnailWithZoomProps> = ({
   zoomSize = 200,
   rounded = 6,
   fallbackIcon,
+  enableLightbox = true,
   onClick,
   style,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [popoverPos, setPopoverPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const cachedUrl = useCachedMediaUrl(src);
 
   const handleMouseEnter = () => {
-    if (!src || !containerRef.current) return;
+    if (!src || !containerRef.current || isLightboxOpen) return;
     const rect = containerRef.current.getBoundingClientRect();
     let left = rect.right + 12;
     let top = rect.top - (zoomSize - rect.height) / 2;
@@ -50,6 +54,18 @@ export const ImageThumbnailWithZoom: React.FC<ImageThumbnailWithZoomProps> = ({
 
   const handleMouseLeave = () => {
     setIsHovered(false);
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (onClick) {
+      onClick(e);
+      return;
+    }
+    if (enableLightbox && src) {
+      e.stopPropagation();
+      setIsHovered(false);
+      setIsLightboxOpen(true);
+    }
   };
 
   if (!src) {
@@ -97,86 +113,96 @@ export const ImageThumbnailWithZoom: React.FC<ImageThumbnailWithZoomProps> = ({
   const fullUrl = cachedUrl || resolveMediaUrl(src);
 
   return (
-    <div
-      ref={containerRef}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onClick={onClick}
-      style={{
-        width: `${size}px`,
-        height: `${size}px`,
-        borderRadius: typeof rounded === 'number' ? `${rounded}px` : rounded,
-        backgroundColor: '#ffffff',
-        border: '1px solid #cbd5e1',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-        flexShrink: 0,
-        cursor: onClick ? 'pointer' : 'default',
-        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-        position: 'relative',
-        ...style,
-      }}
-    >
-      <img
+    <>
+      <div
+        ref={containerRef}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onClick={handleClick}
+        style={{
+          width: `${size}px`,
+          height: `${size}px`,
+          borderRadius: typeof rounded === 'number' ? `${rounded}px` : rounded,
+          backgroundColor: '#ffffff',
+          border: '1px solid #cbd5e1',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          flexShrink: 0,
+          cursor: onClick || enableLightbox ? 'pointer' : 'default',
+          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+          position: 'relative',
+          ...style,
+        }}
+      >
+        <img
+          src={fullUrl}
+          alt={alt}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            display: 'block',
+          }}
+          loading="lazy"
+        />
+
+        {isHovered &&
+          !isLightboxOpen &&
+          typeof document !== 'undefined' &&
+          ReactDOM.createPortal(
+            <div
+              style={{
+                position: 'fixed',
+                top: `${popoverPos.top}px`,
+                left: `${popoverPos.left}px`,
+                width: `${zoomSize}px`,
+                height: `${zoomSize}px`,
+                borderRadius: '12px',
+                backgroundColor: '#ffffff',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.15)',
+                padding: '6px',
+                zIndex: 99999,
+                pointerEvents: 'none',
+                animation: 'imgZoomFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxSizing: 'border-box',
+              }}
+            >
+              <img
+                src={fullUrl}
+                alt={alt}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  borderRadius: '8px',
+                  backgroundColor: '#f8fafc',
+                  display: 'block',
+                }}
+              />
+              <style>{`
+                @keyframes imgZoomFadeIn {
+                  from { opacity: 0; transform: scale(0.92); }
+                  to { opacity: 1; transform: scale(1); }
+                }
+              `}</style>
+            </div>,
+            document.body
+          )}
+      </div>
+
+      <ImageLightboxModal
+        isOpen={isLightboxOpen}
         src={fullUrl}
         alt={alt}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          display: 'block',
-        }}
-        loading="lazy"
+        onClose={() => setIsLightboxOpen(false)}
       />
-
-      {isHovered &&
-        typeof document !== 'undefined' &&
-        ReactDOM.createPortal(
-          <div
-            style={{
-              position: 'fixed',
-              top: `${popoverPos.top}px`,
-              left: `${popoverPos.left}px`,
-              width: `${zoomSize}px`,
-              height: `${zoomSize}px`,
-              borderRadius: '12px',
-              backgroundColor: '#ffffff',
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.15)',
-              padding: '6px',
-              zIndex: 99999,
-              pointerEvents: 'none',
-              animation: 'imgZoomFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxSizing: 'border-box',
-            }}
-          >
-            <img
-              src={fullUrl}
-              alt={alt}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                borderRadius: '8px',
-                backgroundColor: '#f8fafc',
-                display: 'block',
-              }}
-            />
-            <style>{`
-              @keyframes imgZoomFadeIn {
-                from { opacity: 0; transform: scale(0.92); }
-                to { opacity: 1; transform: scale(1); }
-              }
-            `}</style>
-          </div>,
-          document.body
-        )}
-    </div>
+    </>
   );
 };
