@@ -53,6 +53,8 @@ export type { TableRowActionsProps } from './components/TableRowActions';
 export { ConfirmModal } from './components/ConfirmModal';
 export { DocumentPreviewModal } from './components/DocumentPreviewModal';
 export type { DocumentPreviewModalProps } from './components/DocumentPreviewModal';
+export { ImageLightboxModal } from './components/ImageLightboxModal';
+export type { ImageLightboxModalProps } from './components/ImageLightboxModal.types';
 export { Profile } from './components/Profile';
 export { ProfileMobile } from './components/ProfileMobile';
 export { ImageUpload } from './components/ImageUpload';
