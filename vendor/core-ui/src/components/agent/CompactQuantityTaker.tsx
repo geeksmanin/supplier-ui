@@ -103,6 +103,13 @@ export const CompactQuantityTaker: React.FC<CompactQuantityTakerProps> = ({
 }) => {
   const isFreeText = String(qtyMode).toLowerCase() === 'free_text';
   const numericPackCount = typeof packCount === 'number' ? packCount : parseInt(packCount, 10) || 1;
+  const activeMult = availableMultipliers.find((m) => m.key === selectedMultiplierKey) || availableMultipliers[0];
+  const multSize = activeMult?.factor || (activeMult as any)?.size || 1;
+  const stepperUnitLabel = isFreeText
+    ? unitName
+    : multSize === 1
+      ? (activeMult?.label || (activeMult as any)?.name || unitName)
+      : `${activeMult?.label || (activeMult as any)?.name || 'Packs'} (${multSize}×)`;
 
   return (
     <div
@@ -225,7 +232,7 @@ export const CompactQuantityTaker: React.FC<CompactQuantityTakerProps> = ({
             whiteSpace: 'nowrap',
           }}
         >
-          {isFreeText ? unitName : `Packs (${selectedMultiplierKey || '1×'})`}
+          {stepperUnitLabel}
         </span>
       </div>
     </div>
