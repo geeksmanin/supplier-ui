@@ -25,7 +25,41 @@ export const BarcodeQRScannerModalDesktop: React.FC<BarcodeQRScannerModalProps> 
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isScannedSuccess, setIsScannedSuccess] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [isHoldingToScan, setIsHoldingToScan] = useState(false);
+  const [continuousScan, setContinuousScan] = useState(false);
   const isProcessingRef = useRef(false);
+  const isHoldingRef = useRef(false);
+  const continuousScanRef = useRef(false);
+
+  useEffect(() => {
+    isHoldingRef.current = isHoldingToScan;
+  }, [isHoldingToScan]);
+
+  useEffect(() => {
+    continuousScanRef.current = continuousScan;
+  }, [continuousScan]);
+
+  const applyZoom = useCallback(async (newZoom: number) => {
+    const clamped = Math.min(Math.max(newZoom, 1), 4);
+    setZoom(clamped);
+    if (streamRef.current) {
+      const track = streamRef.current.getVideoTracks()[0];
+      if (track) {
+        try {
+          const capabilities = (track.getCapabilities?.() as any) || {};
+          if (capabilities.zoom) {
+            const minZ = capabilities.zoom.min || 1;
+            const maxZ = capabilities.zoom.max || 4;
+            const hwZoom = Math.min(Math.max(clamped, minZ), maxZ);
+            await (track as any).applyConstraints({
+              advanced: [{ zoom: hwZoom }],
+            });
+          }
+        } catch (_) {}
+      }
+    }
+  }, []);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -43,6 +77,7 @@ export const BarcodeQRScannerModalDesktop: React.FC<BarcodeQRScannerModalProps> 
     if (videoRef.current) videoRef.current.srcObject = null;
     setCameraActive(false);
     setIsScannedSuccess(false);
+    setIsHoldingToScan(false);
     isProcessingRef.current = false;
   }, []);
 
@@ -103,11 +138,15 @@ export const BarcodeQRScannerModalDesktop: React.FC<BarcodeQRScannerModalProps> 
 
   useEffect(() => {
     if (isOpen) {
+      setZoom(1);
+      setIsHoldingToScan(false);
       startCamera('environment');
     } else {
       stopCamera();
       setManualCode('');
       setCameraError(null);
+      setZoom(1);
+      setIsHoldingToScan(false);
     }
   }, [isOpen, startCamera, stopCamera]);
 
@@ -136,7 +175,8 @@ export const BarcodeQRScannerModalDesktop: React.FC<BarcodeQRScannerModalProps> 
 
     const checkFrame = async () => {
       const video = videoRef.current;
-      if (!isProcessingRef.current && video && video.readyState >= video.HAVE_ENOUGH_DATA) {
+      const shouldScan = isHoldingRef.current || continuousScanRef.current;
+      if (shouldScan && !isProcessingRef.current && video && video.readyState >= video.HAVE_ENOUGH_DATA) {
         try {
           const barcodes = await detector.detect(video);
           if (barcodes?.length > 0) {
@@ -254,9 +294,89 @@ export const BarcodeQRScannerModalDesktop: React.FC<BarcodeQRScannerModalProps> 
             objectFit: 'cover',
             display: cameraActive ? 'block' : 'none',
             filter: isScannedSuccess ? 'brightness(1.15)' : 'none',
-            transition: 'filter 0.25s cubic-bezier(0.25, 0.1, 0.25, 1)',
+            transform: `scale(${zoom})`,
+            transformOrigin: 'center center',
+            transition: 'transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1), filter 0.25s cubic-bezier(0.25, 0.1, 0.25, 1)',
           }}
         />
+
+        {/* Floating Zoom Controls Pill */}
+        {cameraActive && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 16,
+              right: 16,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              backgroundColor: 'rgba(15, 23, 42, 0.78)',
+              backdropFilter: 'blur(10px)',
+              padding: '4px 8px',
+              borderRadius: 20,
+              border: '1px solid rgba(255, 255, 255, 0.18)',
+              zIndex: 10,
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.35)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => applyZoom(zoom - 0.5)}
+              disabled={zoom <= 1}
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                border: 'none',
+                color: zoom <= 1 ? '#64748B' : '#FFFFFF',
+                fontSize: 16,
+                fontWeight: 'bold',
+                cursor: zoom <= 1 ? 'default' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title="Zoom out"
+            >
+              −
+            </button>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: '#FFFFFF',
+                padding: '0 6px',
+                minWidth: 32,
+                textAlign: 'center',
+              }}
+            >
+              {zoom.toFixed(1)}x
+            </span>
+            <button
+              type="button"
+              onClick={() => applyZoom(zoom + 0.5)}
+              disabled={zoom >= 4}
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                border: 'none',
+                color: zoom >= 4 ? '#64748B' : '#FFFFFF',
+                fontSize: 16,
+                fontWeight: 'bold',
+                cursor: zoom >= 4 ? 'default' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              title="Zoom in"
+            >
+              +
+            </button>
+          </div>
+        )}
 
         {cameraActive && (
           <div
@@ -277,11 +397,17 @@ export const BarcodeQRScannerModalDesktop: React.FC<BarcodeQRScannerModalProps> 
                 height: fullscreen ? '55%' : '60%',
                 maxWidth: 440,
                 maxHeight: 260,
-                border: isScannedSuccess ? '3px solid #22C55E' : '2px dashed rgba(255, 255, 255, 0.65)',
+                border: isScannedSuccess
+                  ? '3px solid #22C55E'
+                  : (isHoldingToScan || continuousScan)
+                  ? '2px solid #38BDF8'
+                  : '2px dashed rgba(255, 255, 255, 0.5)',
                 borderRadius: 14,
                 boxShadow: isScannedSuccess
                   ? '0 0 0 9999px rgba(0, 0, 0, 0.45), 0 0 24px rgba(34, 197, 94, 0.6)'
-                  : '0 0 0 9999px rgba(0, 0, 0, 0.55)',
+                  : (isHoldingToScan || continuousScan)
+                  ? '0 0 0 9999px rgba(0, 0, 0, 0.5), 0 0 20px rgba(56, 189, 248, 0.4)'
+                  : '0 0 0 9999px rgba(0, 0, 0, 0.6)',
                 transition: 'all 0.2s ease',
                 display: 'flex',
                 alignItems: 'center',
@@ -305,18 +431,34 @@ export const BarcodeQRScannerModalDesktop: React.FC<BarcodeQRScannerModalProps> 
                 >
                   ✓ Scanned! Loading...
                 </div>
-              ) : (
+              ) : (isHoldingToScan || continuousScan) ? (
                 <div
                   style={{
                     position: 'absolute',
                     left: '5%',
                     right: '5%',
                     height: 2,
-                    backgroundColor: '#22C55E',
-                    boxShadow: '0 0 10px #22C55E',
-                    animation: 'desktop-scanner-laser 1.6s ease-in-out infinite',
+                    backgroundColor: '#38BDF8',
+                    boxShadow: '0 0 10px #38BDF8',
+                    animation: 'desktop-scanner-laser 1.4s ease-in-out infinite',
                   }}
                 />
+              ) : (
+                <div
+                  style={{
+                    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+                    backdropFilter: 'blur(6px)',
+                    padding: '6px 14px',
+                    borderRadius: 20,
+                    color: 'rgba(255, 255, 255, 0.75)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    textAlign: 'center',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                  }}
+                >
+                  👆 Hold button below to scan
+                </div>
               )}
             </div>
             <style>{`
@@ -361,36 +503,96 @@ export const BarcodeQRScannerModalDesktop: React.FC<BarcodeQRScannerModalProps> 
           boxSizing: 'border-box',
         }}
       >
-        {/* Continuous Active Scan Indicator */}
+        {/* Press-and-Hold to Scan Interactive Button with Continuous Mode Toggle */}
         {cameraActive && (
-          <div
-            style={{
-              width: '100%',
-              height: 46,
-              borderRadius: 12,
-              backgroundColor: isScannedSuccess ? '#16A34A' : '#1E293B',
-              color: '#FFFFFF',
-              fontSize: 14,
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              border: isScannedSuccess ? '1px solid #22C55E' : '1px solid #334155',
-              boxShadow: isScannedSuccess ? '0 0 16px rgba(34, 197, 94, 0.4)' : 'none',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            <span
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button
+              type="button"
+              onPointerDown={() => setIsHoldingToScan(true)}
+              onPointerUp={() => setIsHoldingToScan(false)}
+              onPointerLeave={() => setIsHoldingToScan(false)}
+              onPointerCancel={() => setIsHoldingToScan(false)}
+              onTouchStart={() => setIsHoldingToScan(true)}
+              onTouchEnd={() => setIsHoldingToScan(false)}
+              onTouchCancel={() => setIsHoldingToScan(false)}
               style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                backgroundColor: isScannedSuccess ? '#FFFFFF' : '#22C55E',
-                boxShadow: isScannedSuccess ? '0 0 8px #FFFFFF' : '0 0 8px #22C55E',
+                flex: 1,
+                height: 52,
+                borderRadius: 14,
+                backgroundColor: isScannedSuccess
+                  ? '#16A34A'
+                  : (isHoldingToScan || continuousScan)
+                  ? '#0284C7'
+                  : '#1E293B',
+                color: '#FFFFFF',
+                fontSize: 15,
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+                border: (isHoldingToScan || continuousScan)
+                  ? '2px solid #38BDF8'
+                  : '1px solid #334155',
+                boxShadow: (isHoldingToScan || continuousScan)
+                  ? '0 0 20px rgba(56, 189, 248, 0.45)'
+                  : '0 2px 6px rgba(0,0,0,0.2)',
+                cursor: 'pointer',
+                transform: isHoldingToScan ? 'scale(0.98)' : 'scale(1)',
+                transition: 'all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
               }}
-            />
-            <span>{isScannedSuccess ? '✓ Scanned! Loading Item...' : 'Point camera at Barcode / QR Code'}</span>
+            >
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  backgroundColor: isScannedSuccess
+                    ? '#FFFFFF'
+                    : (isHoldingToScan || continuousScan)
+                    ? '#38BDF8'
+                    : '#94A3B8',
+                  boxShadow: (isHoldingToScan || continuousScan)
+                    ? '0 0 10px #38BDF8'
+                    : 'none',
+                }}
+              />
+              <span>
+                {isScannedSuccess
+                  ? '✓ Scanned! Loading...'
+                  : (isHoldingToScan || continuousScan)
+                  ? '🟢 Scanning Active (Release to Pause)'
+                  : '👆 Press & Hold to Scan'}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setContinuousScan(!continuousScan)}
+              title={continuousScan ? 'Switch to Press & Hold mode' : 'Switch to Continuous scan mode'}
+              style={{
+                height: 52,
+                padding: '0 14px',
+                borderRadius: 14,
+                backgroundColor: continuousScan ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.06)',
+                border: continuousScan ? '1px solid #38BDF8' : '1px solid rgba(255, 255, 255, 0.12)',
+                color: continuousScan ? '#38BDF8' : '#94A3B8',
+                fontSize: 12,
+                fontWeight: 600,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 2,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span style={{ fontSize: 16 }}>{continuousScan ? '⚡' : '🔒'}</span>
+              <span>{continuousScan ? 'Auto' : 'Hold'}</span>
+            </button>
           </div>
         )}
 
