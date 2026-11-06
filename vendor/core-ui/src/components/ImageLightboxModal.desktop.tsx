@@ -10,9 +10,15 @@ export const ImageLightboxModalDesktop: React.FC<ImageLightboxModalProps> = ({
   onClose,
 }) => {
   const [zoom, setZoom] = useState(1);
+  const [hasError, setHasError] = useState(false);
+
+  const resolvedSrc = src ? resolveMediaUrl(src) : '';
 
   useEffect(() => {
-    if (isOpen) setZoom(1);
+    if (isOpen) {
+      setZoom(1);
+      setHasError(false);
+    }
   }, [isOpen, src]);
 
   useEffect(() => {
@@ -193,25 +199,45 @@ export const ImageLightboxModalDesktop: React.FC<ImageLightboxModalProps> = ({
           boxSizing: 'border-box',
         }}
       >
-        <img
-          src={src}
-          alt={alt}
-          onClick={(e) => {
-            e.stopPropagation();
-            setZoom((z) => (z === 1 ? 2 : 1));
-          }}
-          style={{
-            maxWidth: zoom <= 1 ? '85vw' : undefined,
-            maxHeight: zoom <= 1 ? '85vh' : undefined,
-            objectFit: 'contain',
-            borderRadius: '10px',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
-            transform: `scale(${zoom})`,
-            transformOrigin: 'center center',
-            transition: 'transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1)',
-            cursor: zoom === 1 ? 'zoom-in' : 'zoom-out',
-          }}
-        />
+        {hasError ? (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              padding: '32px',
+              backgroundColor: 'rgba(30, 41, 59, 0.85)',
+              borderRadius: '12px',
+              color: '#ffffff',
+              textAlign: 'center',
+              maxWidth: '500px',
+            }}
+          >
+            <p style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 600 }}>Unable to load image</p>
+            <p style={{ margin: 0, fontSize: '13px', color: '#94a3b8' }}>
+              The image source could not be resolved or network failed.
+            </p>
+          </div>
+        ) : (
+          <img
+            src={resolvedSrc || src}
+            alt={alt}
+            onError={() => setHasError(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setZoom((z) => (z === 1 ? 2 : 1));
+            }}
+            style={{
+              maxWidth: zoom <= 1 ? '85vw' : undefined,
+              maxHeight: zoom <= 1 ? '85vh' : undefined,
+              objectFit: 'contain',
+              borderRadius: '10px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
+              transform: `scale(${zoom})`,
+              transformOrigin: 'center center',
+              transition: 'transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1)',
+              cursor: zoom === 1 ? 'zoom-in' : 'zoom-out',
+            }}
+          />
+        )}
       </div>
     </div>,
     document.body

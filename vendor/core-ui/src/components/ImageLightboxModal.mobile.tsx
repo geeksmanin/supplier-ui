@@ -83,6 +83,7 @@ export const ImageLightboxModalMobile: React.FC<ImageLightboxModalProps> = ({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isInteracting, setIsInteracting] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   const initialDistanceRef = useRef<number | null>(null);
   const initialZoomRef = useRef<number>(1);
@@ -90,10 +91,13 @@ export const ImageLightboxModalMobile: React.FC<ImageLightboxModalProps> = ({
   const panCurrentRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const lastTapRef = useRef<number>(0);
 
+  const resolvedSrc = src ? resolveMediaUrl(src) : '';
+
   useEffect(() => {
     if (isOpen) {
       setZoom(1);
       setPan({ x: 0, y: 0 });
+      setHasError(false);
     }
   }, [isOpen, src]);
 
@@ -220,21 +224,41 @@ export const ImageLightboxModalMobile: React.FC<ImageLightboxModalProps> = ({
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
       >
-        <img
-          src={src}
-          alt={alt}
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            maxWidth: '92vw',
-            maxHeight: '82vh',
-            objectFit: 'contain',
-            borderRadius: '8px',
-            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-            transformOrigin: 'center center',
-            transition: isInteracting ? 'none' : 'transform 0.25s cubic-bezier(0.25, 0.1, 0.25, 1)',
-            pointerEvents: 'auto',
-          }}
-        />
+        {hasError ? (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              padding: '24px',
+              backgroundColor: 'rgba(30, 41, 59, 0.85)',
+              borderRadius: '12px',
+              color: '#ffffff',
+              textAlign: 'center',
+              maxWidth: '85vw',
+            }}
+          >
+            <p style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: 600 }}>Unable to load image</p>
+            <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>
+              The image source could not be resolved or network failed.
+            </p>
+          </div>
+        ) : (
+          <img
+            src={resolvedSrc || src}
+            alt={alt}
+            onError={() => setHasError(true)}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '92vw',
+              maxHeight: '82vh',
+              objectFit: 'contain',
+              borderRadius: '8px',
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+              transformOrigin: 'center center',
+              transition: isInteracting ? 'none' : 'transform 0.25s cubic-bezier(0.25, 0.1, 0.25, 1)',
+              pointerEvents: 'auto',
+            }}
+          />
+        )}
       </div>
     </div>,
     document.body
