@@ -26,6 +26,10 @@ export const BarcodeQRScannerModalDesktop: React.FC<BarcodeQRScannerModalProps> 
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isScannedSuccess, setIsScannedSuccess] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [minZoom, setMinZoom] = useState(1);
+  const [maxZoom, setMaxZoom] = useState(4);
+  const [stepZoom, setStepZoom] = useState(0.1);
+  const [hasHardwareZoom, setHasHardwareZoom] = useState(false);
   const [isHoldingToScan, setIsHoldingToScan] = useState(false);
   const [continuousScan, setContinuousScan] = useState(false);
   const isProcessingRef = useRef(false);
@@ -41,7 +45,7 @@ export const BarcodeQRScannerModalDesktop: React.FC<BarcodeQRScannerModalProps> 
   }, [continuousScan]);
 
   const applyZoom = useCallback(async (newZoom: number) => {
-    const clamped = Math.min(Math.max(newZoom, 1), 4);
+    const clamped = Math.min(Math.max(newZoom, minZoom), maxZoom);
     setZoom(clamped);
     if (streamRef.current) {
       const track = streamRef.current.getVideoTracks()[0];
@@ -49,8 +53,8 @@ export const BarcodeQRScannerModalDesktop: React.FC<BarcodeQRScannerModalProps> 
         try {
           const capabilities = (track.getCapabilities?.() as any) || {};
           if (capabilities.zoom) {
-            const minZ = capabilities.zoom.min || 1;
-            const maxZ = capabilities.zoom.max || 4;
+            const minZ = typeof capabilities.zoom.min === 'number' ? capabilities.zoom.min : minZoom;
+            const maxZ = typeof capabilities.zoom.max === 'number' ? capabilities.zoom.max : maxZoom;
             const hwZoom = Math.min(Math.max(clamped, minZ), maxZ);
             await (track as any).applyConstraints({
               advanced: [{ zoom: hwZoom }],
@@ -59,7 +63,7 @@ export const BarcodeQRScannerModalDesktop: React.FC<BarcodeQRScannerModalProps> 
         } catch (_) {}
       }
     }
-  }, []);
+  }, [minZoom, maxZoom]);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -113,6 +117,21 @@ export const BarcodeQRScannerModalDesktop: React.FC<BarcodeQRScannerModalProps> 
         video: { facingMode: { ideal: facing }, width: { ideal: 1280 }, height: { ideal: 720 } },
       });
       streamRef.current = stream;
+      const track = stream.getVideoTracks()[0];
+      if (track && track.getCapabilities) {
+        try {
+          const caps = (track.getCapabilities() as any) || {};
+          if (caps.zoom) {
+            const minZ = typeof caps.zoom.min === 'number' ? caps.zoom.min : 1;
+            const maxZ = typeof caps.zoom.max === 'number' ? caps.zoom.max : 4;
+            const stepZ = typeof caps.zoom.step === 'number' ? caps.zoom.step : 0.1;
+            setMinZoom(minZ);
+            setMaxZoom(maxZ);
+            setStepZoom(stepZ);
+            setHasHardwareZoom(true);
+          }
+        } catch (_) {}
+      }
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         try {
@@ -300,81 +319,65 @@ export const BarcodeQRScannerModalDesktop: React.FC<BarcodeQRScannerModalProps> 
           }}
         />
 
-        {/* Floating Zoom Controls Pill */}
+        {/* Floating Zoom Controls Slider Pill */}
         {cameraActive && (
           <div
             style={{
               position: 'absolute',
               top: 16,
               right: 16,
+              left: 16,
               display: 'flex',
               alignItems: 'center',
-              gap: 4,
-              backgroundColor: 'rgba(15, 23, 42, 0.78)',
-              backdropFilter: 'blur(10px)',
-              padding: '4px 8px',
-              borderRadius: 20,
+              justifyContent: 'space-between',
+              gap: 10,
+              backgroundColor: 'rgba(15, 23, 42, 0.85)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              padding: '6px 14px',
+              borderRadius: 24,
               border: '1px solid rgba(255, 255, 255, 0.18)',
               zIndex: 10,
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.35)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
             }}
           >
-            <button
-              type="button"
-              onClick={() => applyZoom(zoom - 0.5)}
-              disabled={zoom <= 1}
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: '50%',
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                border: 'none',
-                color: zoom <= 1 ? '#64748B' : '#FFFFFF',
-                fontSize: 16,
-                fontWeight: 'bold',
-                cursor: zoom <= 1 ? 'default' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              title="Zoom out"
-            >
-              −
-            </button>
             <span
               style={{
                 fontSize: 12,
                 fontWeight: 700,
-                color: '#FFFFFF',
-                padding: '0 6px',
-                minWidth: 32,
-                textAlign: 'center',
+                color: '#38BDF8',
+                fontFamily: 'monospace',
+                minWidth: 40,
               }}
             >
               {zoom.toFixed(1)}x
             </span>
-            <button
-              type="button"
-              onClick={() => applyZoom(zoom + 0.5)}
-              disabled={zoom >= 4}
+            <input
+              type="range"
+              min={minZoom}
+              max={maxZoom}
+              step={stepZoom}
+              value={zoom}
+              onChange={(e) => applyZoom(parseFloat(e.target.value))}
               style={{
-                width: 28,
-                height: 28,
-                borderRadius: '50%',
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                border: 'none',
-                color: zoom >= 4 ? '#64748B' : '#FFFFFF',
-                fontSize: 16,
-                fontWeight: 'bold',
-                cursor: zoom >= 4 ? 'default' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                flex: 1,
+                accentColor: '#38BDF8',
+                height: 4,
+                cursor: 'pointer',
               }}
-              title="Zoom in"
+              title="Camera Zoom Slider"
+              aria-label="Camera Zoom"
+            />
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#94A3B8',
+                whiteSpace: 'nowrap',
+              }}
             >
-              +
-            </button>
+              {maxZoom.toFixed(1)}x max
+            </span>
           </div>
         )}
 
