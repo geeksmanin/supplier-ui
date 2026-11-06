@@ -1,7 +1,78 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { resolveMediaUrl } from '../utils/media';
 import { ImageLightboxModalProps } from './ImageLightboxModal.types';
+
+const modalOverlayStyle: React.CSSProperties = {
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: 'rgba(15, 23, 42, 0.96)',
+  backdropFilter: 'blur(8px)',
+  zIndex: 999999,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  userSelect: 'none',
+  touchAction: 'none',
+};
+
+const topBarStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: '0.75rem',
+  left: '0.75rem',
+  right: '0.75rem',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'flex-end',
+  zIndex: 1000000,
+};
+
+const topActionsWrapStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+};
+
+const downloadBtnStyle: React.CSSProperties = {
+  backgroundColor: 'rgba(30, 41, 59, 0.85)',
+  border: 'none',
+  color: '#ffffff',
+  fontWeight: 600,
+  fontSize: '0.85rem',
+  padding: '6px 12px',
+  borderRadius: '20px',
+  cursor: 'pointer',
+};
+
+const closeBtnStyle: React.CSSProperties = {
+  backgroundColor: 'rgba(239, 68, 68, 0.85)',
+  border: 'none',
+  color: '#ffffff',
+  width: '32px',
+  height: '32px',
+  borderRadius: '50%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  fontWeight: 'bold',
+};
+
+const viewportContainerStyle: React.CSSProperties = {
+  width: '100%',
+  height: '100%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  overflow: 'hidden',
+  padding: '1rem',
+  boxSizing: 'border-box',
+  touchAction: 'none',
+};
 
 export const ImageLightboxModalMobile: React.FC<ImageLightboxModalProps> = ({
   isOpen,
@@ -10,9 +81,20 @@ export const ImageLightboxModalMobile: React.FC<ImageLightboxModalProps> = ({
   onClose,
 }) => {
   const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isInteracting, setIsInteracting] = useState(false);
+
+  const initialDistanceRef = useRef<number | null>(null);
+  const initialZoomRef = useRef<number>(1);
+  const panStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const panCurrentRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const lastTapRef = useRef<number>(0);
 
   useEffect(() => {
-    if (isOpen) setZoom(1);
+    if (isOpen) {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+    }
   }, [isOpen, src]);
 
   if (!isOpen || !src || typeof document === 'undefined') return null;
@@ -30,98 +112,101 @@ export const ImageLightboxModalMobile: React.FC<ImageLightboxModalProps> = ({
     document.body.removeChild(a);
   };
 
+  const getDistance = (t1: React.Touch, t2: React.Touch) => {
+    return Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      // Two-finger pinch start
+      setIsInteracting(true);
+      initialDistanceRef.current = getDistance(e.touches[0], e.touches[1]);
+      initialZoomRef.current = zoom;
+    } else if (e.touches.length === 1) {
+      // Single finger drag or double-tap detection
+      const touch = e.touches[0];
+      panStartRef.current = { x: touch.clientX, y: touch.clientY };
+      panCurrentRef.current = { ...pan };
+
+      const now = Date.now();
+      if (now - lastTapRef.current < 300) {
+        // Double-tap toggle between 1x and 2.5x
+        if (zoom > 1) {
+          setZoom(1);
+          setPan({ x: 0, y: 0 });
+        } else {
+          setZoom(2.5);
+        }
+        lastTapRef.current = 0;
+      } else {
+        lastTapRef.current = now;
+      }
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && initialDistanceRef.current !== null) {
+      // Pinch to zoom gesture
+      e.preventDefault();
+      const currentDistance = getDistance(e.touches[0], e.touches[1]);
+      const scaleFactor = currentDistance / initialDistanceRef.current;
+      const newZoom = Math.min(Math.max(initialZoomRef.current * scaleFactor, 1), 4);
+      setZoom(newZoom);
+      if (newZoom <= 1) {
+        setPan({ x: 0, y: 0 });
+      }
+    } else if (e.touches.length === 1 && zoom > 1) {
+      // Pan/drag image when zoomed
+      e.preventDefault();
+      setIsInteracting(true);
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - panStartRef.current.x;
+      const deltaY = touch.clientY - panStartRef.current.y;
+      setPan({
+        x: panCurrentRef.current.x + deltaX,
+        y: panCurrentRef.current.y + deltaY,
+      });
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length === 0) {
+      setIsInteracting(false);
+      initialDistanceRef.current = null;
+      if (zoom <= 1) {
+        setPan({ x: 0, y: 0 });
+      }
+    } else if (e.touches.length === 1) {
+      // Switched from pinch to single finger
+      initialDistanceRef.current = null;
+      const touch = e.touches[0];
+      panStartRef.current = { x: touch.clientX, y: touch.clientY };
+      panCurrentRef.current = { ...pan };
+    }
+  };
+
   return ReactDOM.createPortal(
     <div
       onClick={onClose}
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.96)',
-        backdropFilter: 'blur(8px)',
-        zIndex: 999999,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        userSelect: 'none',
-      }}
+      style={modalOverlayStyle}
     >
-      {/* Mobile Top Bar */}
+      {/* Mobile Top Bar: Download and Close */}
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{
-          position: 'absolute',
-          top: '0.75rem',
-          left: '0.75rem',
-          right: '0.75rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          zIndex: 1000000,
-        }}
+        style={topBarStyle}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'rgba(30, 41, 59, 0.85)', padding: '4px 8px', borderRadius: '20px' }}>
-          <button
-            type="button"
-            onClick={() => setZoom((z) => Math.max(z - 0.25, 0.5))}
-            disabled={zoom <= 0.5}
-            style={{ border: 'none', background: 'none', color: '#ffffff', fontWeight: 700, fontSize: '0.9rem', padding: '2px 6px' }}
-          >
-            −
-          </button>
-          <button
-            type="button"
-            onClick={() => setZoom(1)}
-            style={{ border: 'none', background: 'none', color: '#ffffff', fontWeight: 700, fontSize: '0.7rem', padding: '2px 4px' }}
-          >
-            {Math.round(zoom * 100)}%
-          </button>
-          <button
-            type="button"
-            onClick={() => setZoom((z) => Math.min(z + 0.25, 3))}
-            disabled={zoom >= 3}
-            style={{ border: 'none', background: 'none', color: '#ffffff', fontWeight: 700, fontSize: '0.9rem', padding: '2px 6px' }}
-          >
-            +
-          </button>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={topActionsWrapStyle}>
           <button
             type="button"
             onClick={handleDownload}
-            style={{
-              backgroundColor: 'rgba(30, 41, 59, 0.85)',
-              border: 'none',
-              color: '#ffffff',
-              fontWeight: 600,
-              fontSize: '0.8rem',
-              padding: '6px 10px',
-              borderRadius: '20px',
-              cursor: 'pointer',
-            }}
+            style={downloadBtnStyle}
           >
             ⬇
           </button>
           <button
             type="button"
             onClick={onClose}
-            style={{
-              backgroundColor: 'rgba(239, 68, 68, 0.85)',
-              border: 'none',
-              color: '#ffffff',
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-            }}
+            style={closeBtnStyle}
           >
             ✕
           </button>
@@ -129,32 +214,25 @@ export const ImageLightboxModalMobile: React.FC<ImageLightboxModalProps> = ({
       </div>
 
       <div
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: zoom > 1 ? 'auto' : 'hidden',
-          padding: '1rem',
-          boxSizing: 'border-box',
-        }}
+        style={viewportContainerStyle}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
       >
         <img
           src={src}
           alt={alt}
-          onClick={(e) => {
-            e.stopPropagation();
-            setZoom((z) => (z === 1 ? 1.75 : 1));
-          }}
+          onClick={(e) => e.stopPropagation()}
           style={{
-            maxWidth: zoom <= 1 ? '92vw' : undefined,
-            maxHeight: zoom <= 1 ? '80vh' : undefined,
+            maxWidth: '92vw',
+            maxHeight: '82vh',
             objectFit: 'contain',
             borderRadius: '8px',
-            transform: `scale(${zoom})`,
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: 'center center',
-            transition: 'transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1)',
+            transition: isInteracting ? 'none' : 'transform 0.25s cubic-bezier(0.25, 0.1, 0.25, 1)',
+            pointerEvents: 'auto',
           }}
         />
       </div>
@@ -162,4 +240,5 @@ export const ImageLightboxModalMobile: React.FC<ImageLightboxModalProps> = ({
     document.body
   );
 };
+
 
