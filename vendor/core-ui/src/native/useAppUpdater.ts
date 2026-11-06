@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import { isNativePlatform, getCapacitor, waitForCapacitor } from './usePushNotifications';
+import { isNativePlatform, getCapacitor, waitForCapacitor } from './platform';
 
-export enum Directory {
-  Documents = 'DOCUMENTS',
-  Data = 'DATA',
-  Library = 'LIBRARY',
-  Cache = 'CACHE',
-  External = 'EXTERNAL',
-  ExternalStorage = 'EXTERNAL_STORAGE',
-}
+export const Directory = {
+  Documents: 'DOCUMENTS',
+  Data: 'DATA',
+  Library: 'LIBRARY',
+  Cache: 'CACHE',
+  External: 'EXTERNAL',
+  ExternalStorage: 'EXTERNAL_STORAGE',
+} as const;
+export type Directory = (typeof Directory)[keyof typeof Directory];
 
 export interface AppVersionInfo {
   app_name?: string;
@@ -107,8 +108,8 @@ async function openExternalUrl(url: string): Promise<void> {
  * Returns >0 if v1 > v2, <0 if v1 < v2, and 0 if equal.
  */
 export function compareSemver(v1 = '0.0.0', v2 = '0.0.0'): number {
-  const clean1 = v1.replace(/^[vV]/, '').split('-')[0];
-  const clean2 = v2.replace(/^[vV]/, '').split('-')[0];
+  const clean1 = (v1 || '0.0.0').replace(/^[vV]/, '').split('-')[0].trim();
+  const clean2 = (v2 || '0.0.0').replace(/^[vV]/, '').split('-')[0].trim();
   const parts1 = clean1.split('.').map((p) => parseInt(p, 10) || 0);
   const parts2 = clean2.split('.').map((p) => parseInt(p, 10) || 0);
   const maxLen = Math.max(parts1.length, parts2.length);
@@ -178,6 +179,11 @@ export const useAppUpdater = (options: UseAppUpdaterOptions = {}) => {
 
   // 2. Fetch and compare remote version
   const checkForUpdates = useCallback(async () => {
+    // Only check native updates on native mobile platforms (Capacitor Android / iOS)
+    if (!isNativePlatform()) {
+      return;
+    }
+
     setError(null);
     try {
       // Add cache buster timestamp
@@ -193,48 +199,55 @@ export const useAppUpdater = (options: UseAppUpdaterOptions = {}) => {
 
       setVersionInfo(data);
 
-      // Check session dismissal
+      // Check session and local storage dismissal
       try {
         if (sessionStorage.getItem('dismissed_native_version') === data.version) {
           setDismissed(true);
           return;
         }
+        const dismissedAtStr = localStorage.getItem(`dismissed_native_version_${data.version}`);
+        if (dismissedAtStr && !data.force_update) {
+          const dismissedAt = parseInt(dismissedAtStr, 10);
+          const elapsedMs = Date.now() - dismissedAt;
+          const SNOOZE_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours snooze for non-mandatory updates
+          if (!isNaN(dismissedAt) && elapsedMs < SNOOZE_WINDOW_MS) {
+            setDismissed(true);
+            return;
+          }
+        }
       } catch {}
 
       // Wait for Capacitor bridge on native platforms before checking
-      if (isNativePlatform()) {
-        await waitForCapacitor(1500);
-      }
+      await waitForCapacitor(1500);
 
       // Resolve live native app version directly to avoid initial render race conditions
       let currentVersion = installedVersion;
       let currentBuild = installedBuild;
-      if (isNativePlatform()) {
-        try {
-          const AppPlugin = getAppPlugin();
-          if (AppPlugin && typeof AppPlugin.getInfo === 'function') {
-            const info = await AppPlugin.getInfo();
-            if (info) {
-              if (info.version) {
-                currentVersion = info.version;
-                setInstalledVersion(info.version);
-              }
-              const buildNum = parseInt(info.build, 10);
-              if (!isNaN(buildNum) && buildNum > 0) {
-                currentBuild = buildNum;
-                setInstalledBuild(buildNum);
-              }
+      let verifiedNative = false;
+
+      try {
+        const AppPlugin = getAppPlugin();
+        if (AppPlugin && typeof AppPlugin.getInfo === 'function') {
+          const info = await AppPlugin.getInfo();
+          if (info && info.version) {
+            currentVersion = info.version;
+            setInstalledVersion(info.version);
+            verifiedNative = true;
+            const buildNum = parseInt(info.build, 10);
+            if (!isNaN(buildNum) && buildNum > 0) {
+              currentBuild = buildNum;
+              setInstalledBuild(buildNum);
             }
           }
-        } catch (err) {
-          console.warn('Failed to get native App info during update check:', err);
         }
+      } catch (err) {
+        console.warn('Failed to get native App info during update check:', err);
+      }
 
-        // If native platform info is still at uninitialized fallback, do not trigger false positive update
-        if (currentVersion === fallbackVersion && currentBuild === 1) {
-          console.warn('[useAppUpdater] Could not verify installed app version from Capacitor App plugin; skipping auto-update trigger.');
-          return;
-        }
+      // If native platform info is still at uninitialized fallback, do not trigger false positive update
+      if (!verifiedNative && currentVersion === fallbackVersion) {
+        console.warn('[useAppUpdater] Could not verify installed app version from Capacitor App plugin; skipping auto-update trigger.');
+        return;
       }
 
       // Check if remote version is newer than installed version
@@ -249,6 +262,11 @@ export const useAppUpdater = (options: UseAppUpdaterOptions = {}) => {
           // Explicit safeguard: if remote build is <= installed build and semver is not newer, do not trigger update
           isNewer = false;
         }
+      }
+
+      // Parity safeguard: if versions match semantically and remote build is not higher, do not trigger update
+      if (semverDiff === 0 && (!data.version_code || (currentBuild > 0 && data.version_code <= currentBuild))) {
+        isNewer = false;
       }
 
       if (isNewer) {
@@ -310,6 +328,11 @@ export const useAppUpdater = (options: UseAppUpdaterOptions = {}) => {
 
   // 3. In-App Download and Install Handler
   const downloadAndInstall = useCallback(async () => {
+    // Only perform APK download and native install on native platforms
+    if (!isNativePlatform()) {
+      return;
+    }
+
     const apkUrl = versionInfo?.apk_url || versionInfo?.download_url;
     if (!apkUrl) {
       setError('No APK download URL provided in version info');
@@ -430,7 +453,11 @@ export const useAppUpdater = (options: UseAppUpdaterOptions = {}) => {
     if (!isMandatory) {
       setDismissed(true);
       try {
-        sessionStorage.setItem('dismissed_native_version', versionInfo?.version || '');
+        const ver = versionInfo?.version || '';
+        sessionStorage.setItem('dismissed_native_version', ver);
+        if (ver) {
+          localStorage.setItem(`dismissed_native_version_${ver}`, Date.now().toString());
+        }
       } catch {}
     }
   }, [isMandatory, versionInfo]);
