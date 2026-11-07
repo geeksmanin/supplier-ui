@@ -15,7 +15,7 @@ export { useNativeDevice } from './native/useNativeDevice';
 export type { UseNativeDeviceOptions } from './native/useNativeDevice';
 export { useBarcodeScanner } from './native/useBarcodeScanner';
 export type { BarcodeScanResult } from './native/useBarcodeScanner';
-export { useAppUpdater } from './native/useAppUpdater';
+export { useAppUpdater, compareSemver } from './native/useAppUpdater';
 export type { AppVersionInfo, UseAppUpdaterOptions } from './native/useAppUpdater';
 export { AppUpdateModal } from './native/AppUpdateModal';
 export type { AppUpdateModalProps } from './native/AppUpdateModal';
