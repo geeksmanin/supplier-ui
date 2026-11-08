@@ -15,6 +15,29 @@ export const isBusinessWorkspace = (code?: string): boolean => {
 export const isBusinessTenant = isBusinessWorkspace;
 
 /**
+ * Common system / application subdomains that must NOT be treated as organization tenant codes.
+ */
+export const NON_TENANT_SUBDOMAINS = new Set([
+  'admin',
+  'platform',
+  'www',
+  'business',
+  'samwad',
+  'samvad',
+  'erp',
+  'app',
+  'portal',
+  'api',
+  'erpapi',
+  'staging',
+  'dev',
+  'preview',
+  'mail',
+  'cdn',
+  'static',
+]);
+
+/**
  * Explicitly extracts a tenant/workspace code candidate from a given URL or the active browser location.
  * Checks URL search parameters first (?workspace=xxx, ?tenant=xxx, ?tenant_code=xxx, or hash queries),
  * followed by hostname subdomain extraction.
@@ -66,8 +89,8 @@ export const resolveTenantFromUrl = (targetUrl?: string): string | null => {
     if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1' && !hostname.endsWith('.localhost') && !isIp) {
       if (hostname.includes('geeksman.') || hostname.includes('anyrdp.')) {
         const parts = hostname.split('.');
-        if (parts.length > 2 && parts[0] !== 'admin' && parts[0] !== 'platform' && parts[0] !== 'www') {
-          return parts[0];
+        if (parts.length > 2 && !NON_TENANT_SUBDOMAINS.has(parts[0].toLowerCase())) {
+          return parts[0].toLowerCase();
         }
       }
     }
@@ -216,6 +239,7 @@ export const resolveActiveTenantCode = (
         return 'business';
       }
       localStorage.setItem('tenant_code', urlTenant);
+      localStorage.setItem('last_used_workspace', urlTenant);
       return urlTenant;
     }
   }
@@ -228,7 +252,30 @@ export const resolveActiveTenantCode = (
     }
   } catch (e) {}
 
-  // 4. Default fallback
+  // 4. Saved last_used_workspace (must not be "business")
+  try {
+    const lastUsed = localStorage.getItem('last_used_workspace');
+    if (lastUsed && !isBusinessWorkspace(lastUsed)) {
+      return lastUsed.trim().toLowerCase();
+    }
+  } catch (e) {}
+
+  // 5. Tenant extracted from existing auth JWT token
+  try {
+    const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+    if (token && token.includes('.')) {
+      const payloadBase64 = token.split('.')[1];
+      if (payloadBase64) {
+        const decoded = JSON.parse(decodeURIComponent(escape(atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/')))));
+        const tokenTenant = decoded.tenant_alias || decoded.tenant_code || decoded.tenant || decoded.workspace_code || decoded.workspace;
+        if (tokenTenant && !isBusinessWorkspace(tokenTenant)) {
+          return tokenTenant.trim().toLowerCase();
+        }
+      }
+    }
+  } catch (e) {}
+
+  // 6. Default fallback
   return defaultTenant;
 };
 
