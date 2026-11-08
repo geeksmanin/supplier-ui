@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, matchPath, UNSAFE_RouteContext, UNSAFE_LocationContext } from 'react-router-dom';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { useLogout } from '../../hooks/useAuth';
+import { getCurrentUser } from '../../utils/auth';
 import { LayoutDesktop } from './Layout.desktop';
 import { LayoutMobile } from './Layout.mobile';
 import { UIRegistry, SearchItemConfig, RouteConfig } from '../../registry/registry';
@@ -818,8 +819,9 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
 
 export const Layout: React.FC<CustomLayoutProps> = (props) => {
   const baseUrl = getBaseUrl() || '';
-  const userId = localStorage.getItem('user_email') || 'admin@geeksman.com';
-  const tenantCode = getWorkspaceFromUrl();
+  const user = getCurrentUser();
+  const userId = user.userId || localStorage.getItem('user_id') || localStorage.getItem('user_email') || 'admin@geeksman.com';
+  const tenantCode = getWorkspaceFromUrl() || user.tenantCode || localStorage.getItem('tenant_code') || localStorage.getItem('last_used_workspace') || 'platform';
   const token = localStorage.getItem('token') || '';
 
   return (

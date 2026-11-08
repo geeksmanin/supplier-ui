@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { resolveTenantByCode, TenantMetadata } from '../../api/client';
 import { useAppConfig } from '../../hooks/useAppConfig';
-import { getAppConfig, storeTenantCode, isBusinessTenant } from '../../config';
+import { getAppConfig, storeTenantCode, isBusinessTenant, NON_TENANT_SUBDOMAINS } from '../../config';
 
 export const LAST_USED_WORKSPACE_KEY = 'last_used_workspace';
 export const LAST_USED_WORKSPACE_NAME_KEY = 'last_used_workspace_name';
@@ -52,7 +52,11 @@ export function cleanWorkspaceCode(raw: string): string {
       } else {
         const parts = url.hostname.split('.');
         if (parts.length > 2 && (url.hostname.includes('geeksman.') || url.hostname.includes('anyrdp.'))) {
-          clean = parts[0];
+          if (!NON_TENANT_SUBDOMAINS.has(parts[0].toLowerCase())) {
+            clean = parts[0];
+          } else {
+            clean = '';
+          }
         } else {
           clean = url.hostname;
         }

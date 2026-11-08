@@ -661,8 +661,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         // Ignore parse errors and let the server handle it
       }
 
-      const cleanBaseUrl = (baseUrl || '').replace(/\/$/, '');
-      let streamUrl = `${cleanBaseUrl}/notification/stream?userId=${encodeURIComponent(userId || '')}`;
+      let cleanBaseUrl = (baseUrl || '').replace(/\/$/, '');
+      if (cleanBaseUrl && !cleanBaseUrl.endsWith('/api/v1') && !cleanBaseUrl.includes('/api/')) {
+        cleanBaseUrl = `${cleanBaseUrl}/api/v1`;
+      }
+      let streamUrl = cleanBaseUrl.endsWith('/notification')
+        ? `${cleanBaseUrl}/stream?userId=${encodeURIComponent(userId || '')}`
+        : `${cleanBaseUrl}/notification/stream?userId=${encodeURIComponent(userId || '')}`;
       if (tenantCode) {
         streamUrl += `&tenant_code=${encodeURIComponent(tenantCode)}`;
       }
