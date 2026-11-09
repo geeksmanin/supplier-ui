@@ -1,5 +1,6 @@
 import React from 'react';
 import { AppConfig } from './AppsDashboard';
+import { APM3DIcon } from '../icons3d';
 
 interface AppsDashboardMobileProps {
   navItems: AppConfig[];
@@ -27,13 +28,18 @@ export const AppsDashboardMobile: React.FC<AppsDashboardMobileProps> = ({ navIte
         justifyContent: 'center'
       }}>
         {displayItems.map((item) => {
-          const bgGradient = item.bgGradient || 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)';
-          const isTransparentBg = bgGradient === 'transparent' || bgGradient === 'none';
+          const isTelemetry = (item.id || '').toLowerCase().includes('telemetry') ||
+            (item.id || '').toLowerCase().includes('apm') ||
+            (item.path || '').toLowerCase().includes('telemetry') ||
+            (item.label || '').toLowerCase().includes('apm');
+          const rawBg = isTelemetry ? 'transparent' : (item.bgGradient || 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)');
+          const bgGradient = isTelemetry ? 'transparent' : rawBg;
+          const isTransparentBg = bgGradient === 'transparent' || bgGradient === 'none' || isTelemetry;
           const iconColor = item.iconColor || '#ffffff';
           const label = item.label;
           const sublabel = item.sublabel || '';
 
-          const appIcon = item.icon;
+          const appIcon = item.icon || (isTelemetry ? <APM3DIcon size={64} /> : null);
           const needsBorder = !isTransparentBg && (bgGradient.includes('#ffffff') || bgGradient.includes('#f3f4f6'));
 
           return (
