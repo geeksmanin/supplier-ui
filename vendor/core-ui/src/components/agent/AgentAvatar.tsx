@@ -92,8 +92,54 @@ export const AgentAvatar: React.FC<AgentAvatarProps> = ({
         </svg>
       );
     }
-    // 2. Properly scaled emoji strings
+    // 3. High-definition vector glyph for Subscription / License Manager Agent
+    if (
+      icon === 'subscriptions-manager' ||
+      icon === 'subscription' ||
+      icon === 'subscriptions' ||
+      icon === 'license' ||
+      icon === 'licenses' ||
+      icon === '📜'
+    ) {
+      const s = Math.round(size * 0.56);
+      return (
+        <svg
+          width={s}
+          height={s}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#2563EB"
+          strokeWidth="2.1"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+          <path d="M9 7h6" />
+          <path d="M9 11h6" />
+        </svg>
+      );
+    }
+    // 4. Properly scaled emoji strings
     if (typeof icon === 'string') {
+      // Guard: If the string is a slug/identifier longer than 2 chars that wasn't matched above,
+      // fallback to robot glyph so raw text never overflows the avatar circle.
+      if (icon.length > 2 && !/\p{Extended_Pictographic}/u.test(icon)) {
+        return (
+          <span
+            style={{
+              fontSize: Math.round(size * 0.52),
+              lineHeight: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              userSelect: 'none',
+            }}
+          >
+            🤖
+          </span>
+        );
+      }
       return (
         <span
           style={{

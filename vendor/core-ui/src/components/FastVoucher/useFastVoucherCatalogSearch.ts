@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../../api/client';
 import { VoucherCatalogConfig } from './FastVoucherEntryLayout.types';
 
@@ -56,16 +56,39 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
     });
   }, [searchResults, catalogConfig?.showStock, catalogConfig?.warehouseId]);
 
-  // 3. Debounced Product Catalog & Variant Dual Search
+  // 3. Debounced Product Catalog & Variant Dual Search with AbortController
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (!searchQuery.trim()) {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
       setSearchResults([]);
       setIsSearchOpen(false);
+      setSearchLoading(false);
       return;
     }
 
     let isCancelled = false;
     const fetchProducts = async () => {
+      // Abort previous in-flight request before starting a new search
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       setSearchLoading(true);
       try {
         const variantEndpoint = catalogConfig?.searchEndpoint || '/catalogue/variants';
@@ -76,17 +99,23 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
               ...(catalogConfig?.searchParams || {}),
               limit: 25,
             },
+            signal: controller.signal,
           }),
           apiClient.get('/catalogue/products', {
             params: {
               search: searchQuery,
               limit: 12,
             },
+            signal: controller.signal,
           }),
         ];
 
         // Progressive Instant Search: Catalog resolves without waiting for inventory ledger
         const [variantsRes, productsRes] = await Promise.allSettled(searchPromises);
+
+        if (controller.signal.aborted || isCancelled) {
+          return;
+        }
 
         const rawVariants =
           variantsRes.status === 'fulfilled'
@@ -141,7 +170,7 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
           }
         });
 
-        if (!isCancelled) {
+        if (!isCancelled && !controller.signal.aborted) {
           setSearchResults(merged);
           setIsSearchOpen(merged.length > 0);
           setSelectedResultIndex(0);
@@ -163,17 +192,24 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
             });
           }
         }
-      } catch (err) {
-        console.error('Failed to search products', err);
+      } catch (err: any) {
+        if (!controller.signal.aborted && !isCancelled) {
+          console.error('Failed to search products', err);
+        }
       } finally {
-        if (!isCancelled) setSearchLoading(false);
+        if (!isCancelled && !controller.signal.aborted) {
+          setSearchLoading(false);
+        }
       }
     };
 
-    const timer = setTimeout(fetchProducts, 180);
+    const timer = setTimeout(fetchProducts, 300);
     return () => {
       isCancelled = true;
       clearTimeout(timer);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, [searchQuery, catalogConfig?.searchEndpoint]);
 
