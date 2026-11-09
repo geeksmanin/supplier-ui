@@ -37,3 +37,4 @@ export * from './Branch3DIcon';
 export * from './POS3DIcon';
 export * from './Samwad3DIcon';
 export * from './SamwadMiniIcon';
+export * from './APM3DIcon';

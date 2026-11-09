@@ -34,6 +34,7 @@ import {
   Integrations3DIcon,
   Subscription3DIcon,
   SamwadMiniIcon,
+  APM3DIcon,
 } from '../icons3d';
 
 
@@ -213,6 +214,9 @@ export const LayoutDesktop: React.FC<any> = ({
     }
     if (p.includes('setting') || p.includes('config')) {
       return <Settings3DIcon size={16} />;
+    }
+    if (p.includes('telemetry') || p.includes('apm')) {
+      return <APM3DIcon size={16} />;
     }
     const brandingLogo = localStorage.getItem('tenant_logo_url') || localStorage.getItem('branding_logo') || '/logo.png';
     return (
@@ -678,6 +682,9 @@ export const LayoutDesktop: React.FC<any> = ({
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                   </svg>
                 );
+              }
+              if (lowerId.includes('telemetry') || lowerLabel.includes('telemetry') || lowerId.includes('apm')) {
+                return <APM3DIcon size={22} />;
               }
 
               // Fallback default icon (e.g. RFQs, Quotations, Requisitions use their original screen SVG icons)

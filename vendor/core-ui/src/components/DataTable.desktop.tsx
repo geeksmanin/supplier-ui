@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Loader } from './Loader';
-import { apiClient } from '../api/client';
+import { saveDesktopExportFile } from '../utils/desktopExport';
 import { isDesktopEnvironment } from '../utils/downloader';
 
 interface DebouncedFilterInputProps {
@@ -237,22 +237,7 @@ export const DataTable: React.FC<DataTableProps> = ({
         return;
       }
 
-      apiClient.post('/runtime/save-file', {
-        filename: filename,
-        content: b64,
-        is_base64: true
-      })
-        .then((res) => {
-          if (res.data?.cancelled) {
-            return;
-          }
-          const path = res.data?.data?.path || res.data?.path || '';
-          console.info(`File exported successfully: ${path}`);
-        })
-        .catch((err) => {
-          console.warn('Native save failed, falling back to browser write:', err);
-          XLSX.writeFile(workbook, filename);
-        });
+      await saveDesktopExportFile(workbook, filename, b64);
     } catch (err: any) {
       console.error('Failed to export:', err);
     }
@@ -275,6 +260,24 @@ export const DataTable: React.FC<DataTableProps> = ({
     }
   };
   const [selectQuery, setSelectQuery] = useState('');
+
+  const [internalPage, setInternalPage] = useState<number>(currentPage || 1);
+  const [internalPageSize, setInternalPageSize] = useState<number>(pageSize && pageSize > 0 ? pageSize : 10);
+
+  useEffect(() => {
+    if (currentPage !== undefined) {
+      setInternalPage(currentPage);
+    }
+  }, [currentPage]);
+
+  useEffect(() => {
+    if (pageSize && pageSize > 0) {
+      setInternalPageSize(pageSize);
+    }
+  }, [pageSize]);
+
+  const effectivePage = (currentPage !== undefined && currentPage > 0) ? currentPage : internalPage;
+  const effectivePageSize = (pageSize !== undefined && pageSize > 0) ? pageSize : internalPageSize;
 
   const [localSearchVal, setLocalSearchVal] = useState(searchVal || '');
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
@@ -303,8 +306,12 @@ export const DataTable: React.FC<DataTableProps> = ({
   const commitSearch = (val: string) => {
     if (val === (searchValRef.current || '')) return;
     searchValRef.current = val;
-    setSearchValRef.current(val);
-    setCurrentPageRef.current(1);
+    setSearchValRef.current?.(val);
+    if (setCurrentPageRef.current) {
+      setCurrentPageRef.current(1);
+    } else {
+      setInternalPage(1);
+    }
   };
 
   // Debounce effect to update parent search state after user stops typing
@@ -364,6 +371,13 @@ export const DataTable: React.FC<DataTableProps> = ({
       return k === 'sno' || k === 's_no' || k === 'index' || l === 'sno' || l === 's_no' || l === 'index';
     };
     const hasSNo = columns.some(col => isSNoCol(col));
+    const renderSNo = (_val: any, _row: any, idx: number) => {
+      if (infiniteScroll) return idx + 1;
+      const currentPageNum = Math.max(1, Number(effectivePage) || 1);
+      const pageSizeNum = Math.max(1, Number(effectivePageSize) || 10);
+      return (currentPageNum - 1) * pageSizeNum + idx + 1;
+    };
+
     if (!hasSNo && !hideSerialNumberColumn) {
       result.unshift({
         key: 's_no',
@@ -375,18 +389,17 @@ export const DataTable: React.FC<DataTableProps> = ({
         filterType: 'none' as const,
         filterPlaceholder: '',
         filterOptions: [],
-        render: (_val: any, _row: any, idx: number) => {
-          if (infiniteScroll) return idx + 1;
-          const currentPageNum = Math.max(1, Number(currentPage) || 1);
-          const pageSizeNum = Math.max(1, Number(pageSize) || 10);
-          return (currentPageNum - 1) * pageSizeNum + idx + 1;
-        }
+        render: renderSNo
       });
     }
-    // Center-align serial number columns by default
+    // Center-align serial number columns by default and backfill standard formula if render is missing
     result = result.map(col => {
-      if (isSNoCol(col) && !col.align) {
-        return { ...col, align: 'center' as const };
+      if (isSNoCol(col)) {
+        return {
+          ...col,
+          align: col.align || ('center' as const),
+          render: col.render || renderSNo
+        };
       }
       return col;
     });
@@ -407,7 +420,7 @@ export const DataTable: React.FC<DataTableProps> = ({
       });
     }
     return result;
-  }, [columns, currentPage, pageSize, hideAutoActionColumn, hideSerialNumberColumn]);
+  }, [columns, effectivePage, effectivePageSize, hideAutoActionColumn, hideSerialNumberColumn, infiniteScroll]);
 
   // Detect default Active filters for status columns
   const defaultStatusFilters = React.useMemo(() => {
@@ -470,7 +483,24 @@ export const DataTable: React.FC<DataTableProps> = ({
     // If backend-powered filters are enabled, we do not filter locally
     if (propSetColumnFilters) return data;
 
+    const activeSearch = (searchVal || localSearchVal || '').trim().toLowerCase();
+
     return data.filter(row => {
+      if (activeSearch) {
+        const matchesAnyColumn = columns.some(col => {
+          let rawVal = row[col.key];
+          if (rawVal && typeof rawVal === 'object' && rawVal.name) {
+            rawVal = rawVal.name;
+          }
+          if (typeof rawVal === 'boolean') {
+            rawVal = rawVal ? 'active' : 'inactive';
+          }
+          const rowVal = String(rawVal !== undefined && rawVal !== null ? rawVal : '').toLowerCase();
+          return rowVal.includes(activeSearch);
+        });
+        if (!matchesAnyColumn) return false;
+      }
+
       for (const col of columns) {
         if (!col.filterType || col.filterType === 'none') continue;
         const filterVal = columnFilters[col.key];
@@ -545,15 +575,24 @@ export const DataTable: React.FC<DataTableProps> = ({
   };
 
   const handleSetCurrentPage = (newPage: number) => {
-    if (setCurrentPage) setCurrentPage(newPage);
+    if (setCurrentPage) {
+      setCurrentPage(newPage);
+    } else {
+      setInternalPage(newPage);
+    }
   };
 
   const handleSetPageSize = (newSize: number) => {
-    if (setPageSize) setPageSize(newSize);
-    // NOTE: Do NOT call setCurrentPage(1) here.
-    // URL-synced parents (using useSearchParams) already reset page=1 inside their setPageSize implementation.
-    // Calling setCurrentPage afterwards would issue a second setSearchParams that overwrites the limit change.
-    // useState-based parents (PaymentList, OrganisationList) have useEffect([pageSize]) which fires fetchData — no page reset needed.
+    if (setPageSize) {
+      setPageSize(newSize);
+      // If parent is controlled via setCurrentPage and not on page 1, reset page on next tick to avoid URL state races
+      if (setCurrentPage && (currentPage || 1) !== 1) {
+        setTimeout(() => setCurrentPage(1), 0);
+      }
+    } else {
+      setInternalPageSize(newSize);
+      setInternalPage(1);
+    }
   };
 
   const handleResetAll = () => {
@@ -565,7 +604,11 @@ export const DataTable: React.FC<DataTableProps> = ({
       searchValRef.current = '';
       setSearchVal('');
       setSortConfig(null);
-      if (setCurrentPage) setCurrentPage(1);
+      if (setCurrentPage) {
+        setCurrentPage(1);
+      } else {
+        setInternalPage(1);
+      }
     }
   };
 
@@ -574,16 +617,19 @@ export const DataTable: React.FC<DataTableProps> = ({
   // Detect server-paged by: explicit backend column filters, OR totalItems provided and data is a subset.
   const isServerPaged = propSetColumnFilters !== undefined
     || (totalItems !== undefined && totalItems > data.length)
-    || (totalItems !== undefined && data.length <= pageSize && totalItems > pageSize);
+    || (totalItems !== undefined && data.length <= effectivePageSize && totalItems > effectivePageSize);
 
   const activeTotalItems = totalItems !== undefined ? totalItems : sortedData.length;
-  const safePageSize = (pageSize && pageSize > 0) ? pageSize : 10;
+  const safePageSize = effectivePageSize;
   const totalPages = Math.max(1, Math.ceil(activeTotalItems / safePageSize));
   // Clamp currentPage within valid range without firing side-effects
-  const safePage = Math.max(1, Math.min(currentPage || 1, totalPages));
+  const safePage = Math.max(1, Math.min(effectivePage || 1, totalPages));
 
   const startIdx = (safePage - 1) * safePageSize;
-  const endIdx = Math.min(startIdx + safePageSize, sortedData.length);
+  const startItemNum = activeTotalItems === 0 ? 0 : startIdx + 1;
+  const endItemNum = isServerPaged
+    ? Math.min(startIdx + sortedData.length, activeTotalItems)
+    : Math.min(startIdx + safePageSize, activeTotalItems);
 
   const displayData = React.useMemo(() => {
     if (infiniteScroll) {
@@ -592,8 +638,8 @@ export const DataTable: React.FC<DataTableProps> = ({
     if (isServerPaged) {
       return sortedData; // backend already returned the correct page slice
     }
-    return sortedData.slice(startIdx, endIdx);
-  }, [sortedData, startIdx, endIdx, isServerPaged, infiniteScroll]);
+    return sortedData.slice(startIdx, startIdx + safePageSize);
+  }, [sortedData, startIdx, safePageSize, isServerPaged, infiniteScroll]);
 
 
   // Select-all helpers — defined after displayData so they can reference it
@@ -823,7 +869,7 @@ export const DataTable: React.FC<DataTableProps> = ({
       {/* Items count metadata */}
       {!hideItemCountMetadata && (
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#6b7280', marginBottom: '1rem', fontWeight: 500 }}>
-          <span>Showing {activeTotalItems === 0 ? 0 : startIdx + 1}-{endIdx} of {activeTotalItems} Items</span>
+          <span>Showing {startItemNum}-{endItemNum} of {activeTotalItems} Items</span>
           <span style={{ cursor: 'pointer' }}>Showing {processedColumns.length} of {processedColumns.length} columns ▾</span>
         </div>
       )}
@@ -1593,7 +1639,7 @@ export const DataTable: React.FC<DataTableProps> = ({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <span style={{ fontSize: '0.85rem', color: '#6b7280', fontWeight: 500 }}>
-              Page {safePage} of {totalPages} ({activeTotalItems === 0 ? 0 : startIdx + 1}-{endIdx} of {activeTotalItems} Items)
+              Page {safePage} of {totalPages} ({startItemNum}-{endItemNum} of {activeTotalItems} Items)
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
               <button
