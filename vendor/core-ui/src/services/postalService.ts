@@ -22,8 +22,11 @@ export interface PostalCodeQueryOptions {
   deliveryOnly?: boolean;
 }
 
+const postalMemoryCache = new Map<string, PostalCodeDetails>();
+
 /**
- * Look up postal code details (state, city, districts, areas) from the embedded contacts postal API.
+ * Look up postal code details (state, city, districts, areas) from the embedded contacts postal API
+ * with automatic fallback to public Indian postal directory.
  */
 export async function fetchPostalCodeDetails(
   pincode: string,
@@ -34,6 +37,11 @@ export async function fetchPostalCodeDetails(
     return null;
   }
 
+  const cacheKey = `${cleanPin}:${options?.city || ''}:${options?.search || ''}:${options?.deliveryOnly ? '1' : '0'}`;
+  if (postalMemoryCache.has(cacheKey)) {
+    return postalMemoryCache.get(cacheKey)!;
+  }
+
   const params = new URLSearchParams();
   if (options?.city) params.append('city', options.city);
   if (options?.search) params.append('search', options.search);
@@ -42,14 +50,47 @@ export async function fetchPostalCodeDetails(
   const queryString = params.toString() ? `?${params.toString()}` : '';
   try {
     const res = await apiClient.get(`/contacts/postal-code/${cleanPin}${queryString}`);
-    return res.data?.data || (res.data as any) || null;
+    const details = res.data?.data || (res.data?.state ? res.data : null);
+    if (details && details.state) {
+      postalMemoryCache.set(cacheKey, details);
+      return details;
+    }
   } catch (err: any) {
     // 404 is expected for non-existent PIN codes
     if (err.response?.status !== 404) {
       console.warn(`Postal code lookup failed for ${cleanPin}:`, err);
     }
-    return null;
   }
+
+  // Resilient fallback to official Indian Postal Pincode API
+  try {
+    const fallbackRes = await fetch(`https://api.postalpincode.in/pincode/${cleanPin}`);
+    if (fallbackRes.ok) {
+      const data = await fallbackRes.json();
+      if (Array.isArray(data) && data[0]?.Status === 'Success' && Array.isArray(data[0]?.PostOffice) && data[0].PostOffice.length > 0) {
+        const poList = data[0].PostOffice;
+        const first = poList[0];
+        const state = first?.State || '';
+        const city = first?.District || first?.Block || first?.Circle || '';
+        const districts = Array.from(new Set(poList.map((p: any) => p.District).filter(Boolean))) as string[];
+        const areas = Array.from(new Set(poList.map((p: any) => p.Name).filter(Boolean))) as string[];
+        const result: PostalCodeDetails = {
+          pincode: cleanPin,
+          state,
+          city,
+          districts: districts.length > 0 ? districts : [city],
+          areas,
+          total_areas: areas.length,
+        };
+        postalMemoryCache.set(cacheKey, result);
+        return result;
+      }
+    }
+  } catch (fallbackErr) {
+    console.warn(`Public postal fallback failed for ${cleanPin}:`, fallbackErr);
+  }
+
+  return null;
 }
 
 let cachedStates: string[] | null = null;
