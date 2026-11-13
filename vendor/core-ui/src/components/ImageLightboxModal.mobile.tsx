@@ -103,17 +103,33 @@ export const ImageLightboxModalMobile: React.FC<ImageLightboxModalProps> = ({
 
   if (!isOpen || !src || typeof document === 'undefined') return null;
 
-  const handleDownload = (e: React.MouseEvent) => {
+  const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const downloadUrl = resolveMediaUrl(src, { download: true });
-    const a = document.createElement('a');
-    a.href = downloadUrl;
     const ext = src.split('.').pop()?.split('?')[0] || 'jpg';
-    a.download = (alt ? alt.replace(/\s+/g, '_') : 'image') + '.' + ext;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const filename = (alt ? alt.replace(/\s+/g, '_') : 'image') + '.' + ext;
+
+    try {
+      const resp = await fetch(downloadUrl);
+      if (!resp.ok) throw new Error('Fetch failed');
+      const blob = await resp.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch {
+      // Fallback
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   };
 
   const getDistance = (t1: React.Touch, t2: React.Touch) => {

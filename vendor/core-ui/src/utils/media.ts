@@ -285,14 +285,39 @@ export function toRelativeMediaUrl(urlOrId: string, tenant?: string): string {
   return `/api/v1/media/file/${uploadId}${downloadQuery}`;
 }
 
+import { compressImageFile, ImageCompressionOptions } from './imageCompressor';
+
+export interface UploadMediaOptions {
+  compression?: ImageCompressionOptions | boolean;
+}
+
 /**
  * uploadMediaFile uploads a File to the central Core media service (/media/upload).
+ * Supports automatic client-side WebP image compression via options.compression.
  * Returns the canonical upload_id so database records store pure IDs without hardcoded prefixes.
  */
-export async function uploadMediaFile(file: File, folder: string = 'samwad'): Promise<string> {
+export async function uploadMediaFile(
+  file: File,
+  folder: string = 'samwad',
+  options?: UploadMediaOptions
+): Promise<string> {
+  let fileToUpload = file;
+
+  if (options?.compression && file.type.startsWith('image/') && file.type !== 'image/svg+xml') {
+    try {
+      const compOpts: ImageCompressionOptions =
+        typeof options.compression === 'object'
+          ? options.compression
+          : { maxSizeKB: 100, format: 'image/webp' };
+      fileToUpload = await compressImageFile(file, compOpts);
+    } catch (compErr) {
+      console.warn('[uploadMediaFile] Image compression failed, falling back to original:', compErr);
+    }
+  }
+
   try {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', fileToUpload);
     formData.append('bucket', folder);
 
     const res = await apiClient.post('/media/upload', formData, {
@@ -305,9 +330,9 @@ export async function uploadMediaFile(file: File, folder: string = 'samwad'): Pr
       // Write-through caching before returning: guarantees 0ms immediate render!
       try {
         const { saveBlobToMediaCache } = await import('./mediaCache');
-        await saveBlobToMediaCache(String(rawUrl), file);
+        await saveBlobToMediaCache(String(rawUrl), fileToUpload);
         if (rel && rel !== String(rawUrl)) {
-          await saveBlobToMediaCache(rel, file);
+          await saveBlobToMediaCache(rel, fileToUpload);
         }
       } catch (cacheErr) {
         console.warn('[mediaCache] Write-through cache save failed:', cacheErr);
@@ -322,6 +347,6 @@ export async function uploadMediaFile(file: File, folder: string = 'samwad'): Pr
   return new Promise<string>((resolve) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(fileToUpload);
   });
 }
