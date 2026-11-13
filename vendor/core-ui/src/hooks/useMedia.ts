@@ -77,11 +77,7 @@ export function useMedia(options: UseMediaOptions = {}): UseMediaReturn {
   }, []);
 
   const getPreview = useCallback((file: File): Promise<string> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.readAsDataURL(file);
-    });
+    return Promise.resolve(URL.createObjectURL(file));
   }, []);
 
   const reset = useCallback(() => {

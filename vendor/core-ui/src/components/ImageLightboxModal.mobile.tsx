@@ -9,6 +9,8 @@ const modalOverlayStyle: React.CSSProperties = {
   left: 0,
   right: 0,
   bottom: 0,
+  width: '100vw',
+  height: '100dvh',
   backgroundColor: 'rgba(15, 23, 42, 0.96)',
   backdropFilter: 'blur(8px)',
   zIndex: 999999,
@@ -18,13 +20,14 @@ const modalOverlayStyle: React.CSSProperties = {
   justifyContent: 'center',
   userSelect: 'none',
   touchAction: 'none',
+  WebkitOverflowScrolling: 'touch',
 };
 
 const topBarStyle: React.CSSProperties = {
   position: 'absolute',
-  top: '0.75rem',
-  left: '0.75rem',
-  right: '0.75rem',
+  top: 'max(0.75rem, env(safe-area-inset-top, 0.75rem))',
+  left: 'max(0.75rem, env(safe-area-inset-left, 0.75rem))',
+  right: 'max(0.75rem, env(safe-area-inset-right, 0.75rem))',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'flex-end',
