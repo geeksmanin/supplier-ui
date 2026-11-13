@@ -293,7 +293,8 @@ export interface UploadMediaOptions {
 
 /**
  * uploadMediaFile uploads a File to the central Core media service (/media/upload).
- * Supports automatic client-side WebP image compression via options.compression.
+ * By default, images are automatically compressed into WebP (<100 KB) client-side before upload.
+ * To disable compression, pass { compression: false }.
  * Returns the canonical upload_id so database records store pure IDs without hardcoded prefixes.
  */
 export async function uploadMediaFile(
@@ -303,10 +304,11 @@ export async function uploadMediaFile(
 ): Promise<string> {
   let fileToUpload = file;
 
-  if (options?.compression && file.type.startsWith('image/') && file.type !== 'image/svg+xml') {
+  const shouldCompress = options?.compression !== false && file.type.startsWith('image/') && file.type !== 'image/svg+xml';
+  if (shouldCompress) {
     try {
       const compOpts: ImageCompressionOptions =
-        typeof options.compression === 'object'
+        typeof options?.compression === 'object'
           ? options.compression
           : { maxSizeKB: 100, format: 'image/webp' };
       fileToUpload = await compressImageFile(file, compOpts);
