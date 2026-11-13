@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { apiClient } from '../api/client';
 import { Button } from './Button';
 import { resolveMediaUrl } from '../utils/media';
+import { compressImageFile, ImageCompressionOptions } from '../utils/imageCompressor';
 
 interface ImageUploadProps {
   folder: string;
@@ -10,6 +11,7 @@ interface ImageUploadProps {
   onChange: (urls: string[]) => void;
   multiple?: boolean;
   maxFiles?: number;
+  compression?: ImageCompressionOptions | boolean;
 }
 
 export const ImageUpload: React.FC<ImageUploadProps> = ({
@@ -19,6 +21,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   onChange,
   multiple = false,
   maxFiles = 5,
+  compression,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -30,8 +33,22 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   const getMediaUrl = (path: string) => resolveMediaUrl(path);
 
   const uploadFile = async (file: File) => {
+    let fileToUpload = file;
+    const shouldCompress = compression !== false && file.type.startsWith('image/') && file.type !== 'image/svg+xml';
+    if (shouldCompress) {
+      try {
+        const compOpts: ImageCompressionOptions =
+          typeof compression === 'object'
+            ? compression
+            : { maxSizeKB: 100, format: 'image/webp' };
+        fileToUpload = await compressImageFile(file, compOpts);
+      } catch (compErr) {
+        console.warn('[ImageUpload] Image compression failed, falling back to original:', compErr);
+      }
+    }
+
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', fileToUpload);
     formData.append('bucket', folder);
 
     const res = await apiClient.post('/media/upload', formData, {
