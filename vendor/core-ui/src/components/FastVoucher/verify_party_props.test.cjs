@@ -37,3 +37,4 @@ assert.ok(
 );
 
 console.log('✅ Fast Voucher Party Props Injection verification passed!');
+

@@ -7,7 +7,6 @@ import { useVoucherKeyboard } from './useVoucherKeyboard';
 import { useVoucherParking, ParkedBill } from './useVoucherParking';
 import { useFormDraft } from '../../hooks/useFormDraft';
 import { normalizeSearchToken } from '../SearchableEntitySelect';
-import { useVariantMatrixModal } from './useVariantMatrixModal';
 import { useFastVoucherPartySearch } from './useFastVoucherPartySearch';
 import { useFastVoucherCatalogSearch } from './useFastVoucherCatalogSearch';
 
@@ -146,27 +145,43 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     liveStockMap,
   } = useFastVoucherCatalogSearch({ catalogConfig });
 
-  // 5. Variant Matrix Multi-Select Hook for Parent Products
-  const {
-    openVariantMatrix,
-    renderVariantMatrixModal,
-  } = useVariantMatrixModal({
-    onAddVariants: (newItems) => {
-      if (onAddItems) {
-        onAddItems(newItems);
-      } else {
-        newItems.forEach((it) => onAddItem(it));
-      }
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 50);
-    },
-    onClose: () => {
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 50);
-    },
-  });
+  // 5. Decoupled Variant Matrix / Product Selection Slot
+  const [internalMatrixProduct, setInternalMatrixProduct] = useState<any | null>(null);
+  const [isInternalMatrixOpen, setIsInternalMatrixOpen] = useState(false);
+
+  const openVariantMatrix = useCallback((product: any) => {
+    const handler = props.onSelectProductWithVariants || catalogConfig?.onSelectProductWithVariants;
+    if (handler) {
+      handler(product);
+      return;
+    }
+    setInternalMatrixProduct(product);
+    setIsInternalMatrixOpen(true);
+  }, [props.onSelectProductWithVariants, catalogConfig?.onSelectProductWithVariants]);
+
+  const closeVariantMatrix = useCallback(() => {
+    setIsInternalMatrixOpen(false);
+    setInternalMatrixProduct(null);
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 50);
+  }, []);
+
+  const renderVariantMatrixModal = useCallback(() => {
+    const renderFn = props.renderVariantMatrix || catalogConfig?.renderVariantMatrix;
+    if (!renderFn || !isInternalMatrixOpen || !internalMatrixProduct) return null;
+
+    return renderFn({
+      isOpen: isInternalMatrixOpen,
+      product: internalMatrixProduct,
+      onClose: closeVariantMatrix,
+      onAddVariants: (newItems) => {
+        if (onAddItems) onAddItems(newItems);
+        else newItems.forEach((it) => onAddItem(it));
+        closeVariantMatrix();
+      },
+    });
+  }, [props.renderVariantMatrix, catalogConfig?.renderVariantMatrix, isInternalMatrixOpen, internalMatrixProduct, closeVariantMatrix, onAddItems, onAddItem]);
 
   // 6. Global Keyboard Orchestrator
   useVoucherKeyboard({

@@ -14,7 +14,6 @@ const expectedExports = [
   'FastVoucherHeaderRibbon',
   'FastVoucherTableSection',
   'FastVoucherCatalogSearchDropdown',
-  'MobileVariantPickerSheet',
   'useFastVoucherOrchestrator',
   'useFastVoucherPartySearch',
   'useFastVoucherCatalogSearch',
@@ -30,3 +29,4 @@ expectedExports.forEach((exp) => {
 });
 
 console.log('✅ Fast Voucher Modular Exports verification passed!');
+
