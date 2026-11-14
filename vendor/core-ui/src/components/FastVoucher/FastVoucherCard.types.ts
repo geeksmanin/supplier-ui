@@ -12,6 +12,8 @@ export interface FastVoucherCardProps extends FastVoucherEntryLayoutProps {
   accentColor?: string;
   icon?: React.ReactNode;
   maxWidth?: number | string;
+  fullWidth?: boolean;
+  fullHeight?: boolean;
   compact?: boolean;
   className?: string;
   style?: React.CSSProperties;

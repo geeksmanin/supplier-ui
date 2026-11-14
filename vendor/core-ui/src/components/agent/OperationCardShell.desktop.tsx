@@ -8,6 +8,8 @@ export const OperationCardShellDesktop: React.FC<OperationCardShellProps> = ({
   icon,
   statusBadge,
   accentColor = '#008069',
+  maxWidth,
+  fullWidth = false,
   onClose,
   onCancel,
   onSubmit,
@@ -29,6 +31,12 @@ export const OperationCardShellDesktop: React.FC<OperationCardShellProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose, onCancel]);
 
+  const resolvedMaxWidth = fullWidth
+    ? '100%'
+    : (maxWidth !== undefined
+      ? (typeof maxWidth === 'number' ? `${maxWidth}px` : maxWidth)
+      : 580);
+
   return (
     <div
       className={`operation-card-shell-desktop ${className}`}
@@ -36,7 +44,7 @@ export const OperationCardShellDesktop: React.FC<OperationCardShellProps> = ({
       aria-label={title}
       style={{
         width: '100%',
-        maxWidth: 580,
+        maxWidth: resolvedMaxWidth,
         boxSizing: 'border-box',
         backgroundColor: '#FFFFFF',
         borderRadius: 14,
@@ -46,7 +54,7 @@ export const OperationCardShellDesktop: React.FC<OperationCardShellProps> = ({
         flexDirection: 'column',
         flexShrink: 0,
         overflow: 'visible',
-        margin: '8px 0',
+        margin: fullWidth ? 0 : '8px 0',
         animation: 'transactionBubbleEntrance 0.3s cubic-bezier(0.25, 0.1, 0.25, 1) both',
         ...style,
       }}

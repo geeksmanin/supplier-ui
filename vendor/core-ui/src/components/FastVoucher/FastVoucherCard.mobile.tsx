@@ -50,6 +50,9 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
     onOpenStockDrilldown,
     accentColor = '#0F766E',
     icon,
+    maxWidth,
+    fullWidth = false,
+    fullHeight = false,
     className = '',
     style = {},
     modeOptions,
@@ -385,6 +388,8 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
         {/* Search Bar */}
         <div style={{ position: 'relative' }}>
           <div
+            className="fast-voucher-search-box bounding-box"
+            data-bounding-box="true"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -398,6 +403,8 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
             <input
               ref={searchInputRef}
               type="text"
+              className="fast-voucher-search-input bare-input"
+              data-bare-input="true"
               placeholder={catalogConfig?.placeholder || 'Add item by name, SKU...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -410,6 +417,7 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
                 width: '100%',
                 border: 'none',
                 outline: 'none',
+                boxShadow: 'none',
                 backgroundColor: 'transparent',
                 fontSize: 13,
                 fontWeight: 600,

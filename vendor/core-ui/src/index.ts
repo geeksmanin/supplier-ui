@@ -251,5 +251,30 @@ export type { UseCurrentUserPhotoResult, UserPhotoCandidate } from './hooks/useC
 export { fetchLocationsList } from './services/locationService';
 export type { CoreLocationItem, FetchLocationsOptions } from './services/locationService';
 
+// Register Fast Voucher as an operational card for conversational and chat views
+import React from 'react';
+import { registerOperationalCard } from './agents/registry';
+import { FastVoucherCard } from './components/FastVoucher';
+
+const FastVoucherOperationalCard: React.FC<any> = (props) => {
+  const data = props.data || props.card?.data || {};
+  return (
+    <FastVoucherCard
+      voucherType={data.voucherType || data.voucher_type || 'sales_voucher'}
+      documentTitle={data.documentTitle || data.document_title || data.title || 'Fast Voucher'}
+      fullWidth={true}
+      maxWidth="100%"
+      {...data}
+      {...props}
+    />
+  );
+};
+
+if (typeof registerOperationalCard === 'function') {
+  registerOperationalCard('fast_voucher', FastVoucherOperationalCard as any);
+  registerOperationalCard('fast_voucher_card', FastVoucherOperationalCard as any);
+  registerOperationalCard('operational_fast_voucher', FastVoucherOperationalCard as any);
+}
+
 
 
