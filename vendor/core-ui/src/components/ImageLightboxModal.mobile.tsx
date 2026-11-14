@@ -9,6 +9,8 @@ const modalOverlayStyle: React.CSSProperties = {
   left: 0,
   right: 0,
   bottom: 0,
+  width: '100vw',
+  height: '100dvh',
   backgroundColor: 'rgba(15, 23, 42, 0.96)',
   backdropFilter: 'blur(8px)',
   zIndex: 999999,
@@ -18,13 +20,14 @@ const modalOverlayStyle: React.CSSProperties = {
   justifyContent: 'center',
   userSelect: 'none',
   touchAction: 'none',
+  WebkitOverflowScrolling: 'touch',
 };
 
 const topBarStyle: React.CSSProperties = {
   position: 'absolute',
-  top: '0.75rem',
-  left: '0.75rem',
-  right: '0.75rem',
+  top: 'max(0.75rem, env(safe-area-inset-top, 0.75rem))',
+  left: 'max(0.75rem, env(safe-area-inset-left, 0.75rem))',
+  right: 'max(0.75rem, env(safe-area-inset-right, 0.75rem))',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'flex-end',
@@ -79,7 +82,19 @@ export const ImageLightboxModalMobile: React.FC<ImageLightboxModalProps> = ({
   src,
   alt = '',
   onClose,
+  images,
+  initialIndex,
+  onIndexChange,
 }) => {
+  const imageList = images && images.length > 0 ? images : [src];
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    if (typeof initialIndex === 'number' && initialIndex >= 0 && initialIndex < imageList.length) {
+      return initialIndex;
+    }
+    const idx = imageList.indexOf(src);
+    return idx >= 0 ? idx : 0;
+  });
+
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isInteracting, setIsInteracting] = useState(false);
@@ -90,24 +105,42 @@ export const ImageLightboxModalMobile: React.FC<ImageLightboxModalProps> = ({
   const panStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const panCurrentRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const lastTapRef = useRef<number>(0);
+  const swipeStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
 
-  const resolvedSrc = src ? resolveMediaUrl(src) : '';
+  const activeSrc = imageList[currentIndex] || src || '';
+  const resolvedSrc = activeSrc ? resolveMediaUrl(activeSrc) : '';
 
   useEffect(() => {
     if (isOpen) {
       setZoom(1);
       setPan({ x: 0, y: 0 });
       setHasError(false);
+      if (typeof initialIndex === 'number' && initialIndex >= 0 && initialIndex < imageList.length) {
+        setCurrentIndex(initialIndex);
+      } else {
+        const idx = imageList.indexOf(src);
+        if (idx >= 0) setCurrentIndex(idx);
+      }
     }
-  }, [isOpen, src]);
+  }, [isOpen, src, initialIndex]);
 
-  if (!isOpen || !src || typeof document === 'undefined') return null;
+  const handleSelectIndex = (idx: number) => {
+    if (idx >= 0 && idx < imageList.length) {
+      setCurrentIndex(idx);
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+      setHasError(false);
+      if (onIndexChange) onIndexChange(idx);
+    }
+  };
+
+  if (!isOpen || !activeSrc || typeof document === 'undefined') return null;
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const downloadUrl = resolveMediaUrl(src, { download: true });
-    const ext = src.split('.').pop()?.split('?')[0] || 'jpg';
-    const filename = (alt ? alt.replace(/\s+/g, '_') : 'image') + '.' + ext;
+    const downloadUrl = resolveMediaUrl(activeSrc, { download: true });
+    const ext = activeSrc.split('.').pop()?.split('?')[0] || 'jpg';
+    const filename = (alt ? alt.replace(/\s+/g, '_') : 'image') + '_' + (currentIndex + 1) + '.' + ext;
 
     try {
       const resp = await fetch(downloadUrl);
@@ -147,6 +180,9 @@ export const ImageLightboxModalMobile: React.FC<ImageLightboxModalProps> = ({
       const touch = e.touches[0];
       panStartRef.current = { x: touch.clientX, y: touch.clientY };
       panCurrentRef.current = { ...pan };
+      if (zoom <= 1) {
+        swipeStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+      }
 
       const now = Date.now();
       if (now - lastTapRef.current < 300) {
@@ -195,7 +231,21 @@ export const ImageLightboxModalMobile: React.FC<ImageLightboxModalProps> = ({
       initialDistanceRef.current = null;
       if (zoom <= 1) {
         setPan({ x: 0, y: 0 });
+        if (swipeStartRef.current && imageList.length > 1) {
+          const deltaX = (e.changedTouches[0]?.clientX || 0) - swipeStartRef.current.x;
+          const deltaTime = Date.now() - swipeStartRef.current.time;
+          if (Math.abs(deltaX) > 40 && deltaTime < 400) {
+            if (deltaX < 0) {
+              // Swiped left ➔ Next image
+              handleSelectIndex((currentIndex + 1) % imageList.length);
+            } else {
+              // Swiped right ➔ Previous image
+              handleSelectIndex((currentIndex - 1 + imageList.length) % imageList.length);
+            }
+          }
+        }
       }
+      swipeStartRef.current = null;
     } else if (e.touches.length === 1) {
       // Switched from pinch to single finger
       initialDistanceRef.current = null;
@@ -276,6 +326,69 @@ export const ImageLightboxModalMobile: React.FC<ImageLightboxModalProps> = ({
           />
         )}
       </div>
+
+      {/* Bottom Thumbnail Strip for Multi-photo on Mobile */}
+      {imageList.length > 1 && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute',
+            bottom: 'max(1rem, env(safe-area-inset-bottom, 1rem))',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            backgroundColor: 'rgba(15, 23, 42, 0.88)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            padding: '6px 12px',
+            borderRadius: '16px',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+            maxWidth: '92vw',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            zIndex: 1000000,
+          }}
+        >
+          {imageList.map((imgUrl, idx) => {
+            const isSelected = idx === currentIndex;
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleSelectIndex(idx)}
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '8px',
+                  border: isSelected ? '2px solid #38BDF8' : '1px solid rgba(255, 255, 255, 0.2)',
+                  overflow: 'hidden',
+                  padding: 0,
+                  backgroundColor: '#0F172A',
+                  cursor: 'pointer',
+                  opacity: isSelected ? 1 : 0.6,
+                  transform: isSelected ? 'scale(1.08)' : 'scale(1)',
+                  transition: 'all 0.15s ease',
+                  flexShrink: 0,
+                }}
+              >
+                <img
+                  src={resolveMediaUrl(imgUrl)}
+                  alt={`Thumbnail ${idx + 1}`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
+                />
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>,
     document.body
   );
