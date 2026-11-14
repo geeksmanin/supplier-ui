@@ -9,8 +9,13 @@ import { useFastVoucherOrchestrator } from './useFastVoucherOrchestrator';
 import { FastVoucherHeaderRibbon } from './FastVoucherHeaderRibbon';
 import { FastVoucherCatalogSearchDropdown } from './FastVoucherCatalogSearchDropdown';
 import { FastVoucherTableSection } from './FastVoucherTableSection';
+import { FastVoucherCard } from './FastVoucherCard';
 
 export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (props) => {
+  if (props.layoutMode === 'card') {
+    return <FastVoucherCard {...props} />;
+  }
+
   const {
     documentTitle,
     voucherNumber,
