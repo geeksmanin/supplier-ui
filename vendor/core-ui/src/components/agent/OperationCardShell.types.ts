@@ -6,6 +6,8 @@ export interface OperationCardShellProps {
   icon?: React.ReactNode;
   statusBadge?: React.ReactNode;
   accentColor?: string;
+  maxWidth?: number | string;
+  fullWidth?: boolean;
   onClose?: () => void;
   onCancel?: () => void;
   onSubmit?: () => void | Promise<void>;

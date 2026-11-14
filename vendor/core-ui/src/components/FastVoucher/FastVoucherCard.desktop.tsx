@@ -50,7 +50,9 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
     onOpenStockDrilldown,
     accentColor = '#0F766E',
     icon,
-    maxWidth = 720,
+    maxWidth,
+    fullWidth = false,
+    fullHeight = false,
     className = '',
     style = {},
     modeOptions,
@@ -126,6 +128,12 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
 
   const handleDismiss = onClose || onCancel;
 
+  const resolvedMaxWidth = fullWidth
+    ? '100%'
+    : (maxWidth !== undefined
+      ? (typeof maxWidth === 'number' ? `${maxWidth}px` : maxWidth)
+      : '100%');
+
   return (
     <div
       className={`fast-voucher-card-desktop ${className}`}
@@ -133,7 +141,9 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
       aria-label={documentTitle}
       style={{
         width: '100%',
-        maxWidth,
+        maxWidth: resolvedMaxWidth,
+        height: fullHeight ? '100%' : undefined,
+        flex: fullHeight ? 1 : undefined,
         boxSizing: 'border-box',
         backgroundColor: '#FFFFFF',
         borderRadius: 14,
@@ -143,7 +153,7 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
         flexDirection: 'column',
         flexShrink: 0,
         overflow: 'visible',
-        margin: '8px 0',
+        margin: fullWidth ? 0 : '8px 0',
         fontFamily: 'Inter, system-ui, sans-serif',
         animation: 'transactionBubbleEntrance 0.25s cubic-bezier(0.25, 0.1, 0.25, 1) both',
         ...style,
@@ -455,6 +465,8 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
         {/* Central Product Search Bar */}
         <div style={{ position: 'relative' }}>
           <div
+            className="fast-voucher-search-box bounding-box"
+            data-bounding-box="true"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -477,6 +489,8 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
             <input
               ref={searchInputRef}
               type="text"
+              className="fast-voucher-search-input bare-input"
+              data-bare-input="true"
               placeholder={catalogConfig?.placeholder || '⚡ Type Product Name, SKU, Barcode (Press F4)...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -506,6 +520,7 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
                 width: '100%',
                 border: 'none',
                 outline: 'none',
+                boxShadow: 'none',
                 backgroundColor: 'transparent',
                 fontSize: 13,
                 fontWeight: 600,
@@ -570,7 +585,8 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
             overflow: 'hidden',
             backgroundColor: '#FFFFFF',
             minHeight: 110,
-            maxHeight: 280,
+            maxHeight: fullHeight ? 'none' : 420,
+            flex: fullHeight ? 1 : undefined,
             overflowY: 'auto',
           }}
         >
