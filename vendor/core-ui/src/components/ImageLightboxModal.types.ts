@@ -2,9 +2,6 @@ export interface ImageLightboxModalProps {
   isOpen: boolean;
   src: string;
   alt?: string;
-  images?: string[];
-  initialIndex?: number;
-  onIndexChange?: (index: number) => void;
   onClose: () => void;
   /** Optional array of image sources for multi-photo gallery scrolling */
   images?: string[];
@@ -13,4 +10,3 @@ export interface ImageLightboxModalProps {
   /** Optional change handler when active image changes */
   onIndexChange?: (index: number) => void;
 }
-
