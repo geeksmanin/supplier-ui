@@ -779,3 +779,4 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
     </div>
   );
 };
+

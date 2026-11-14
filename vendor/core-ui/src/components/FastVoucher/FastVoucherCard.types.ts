@@ -19,3 +19,4 @@ export interface FastVoucherCardProps extends FastVoucherEntryLayoutProps {
   activeMode?: string;
   onModeChange?: (mode: string) => void;
 }
+

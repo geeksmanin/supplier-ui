@@ -19,3 +19,4 @@ export const FastVoucherCard: React.FC<FastVoucherCardProps> = (props) => {
 };
 
 export default FastVoucherCard;
+

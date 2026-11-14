@@ -613,3 +613,4 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
     </div>
   );
 };
+
