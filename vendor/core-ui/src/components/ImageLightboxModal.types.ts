@@ -10,4 +10,3 @@ export interface ImageLightboxModalProps {
   /** Optional change handler when active image changes */
   onIndexChange?: (index: number) => void;
 }
-
