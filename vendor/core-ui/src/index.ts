@@ -258,16 +258,14 @@ import { FastVoucherCard } from './components/FastVoucher';
 
 const FastVoucherOperationalCard: React.FC<any> = (props) => {
   const data = props.data || props.card?.data || {};
-  return (
-    <FastVoucherCard
-      voucherType={data.voucherType || data.voucher_type || 'sales_voucher'}
-      documentTitle={data.documentTitle || data.document_title || data.title || 'Fast Voucher'}
-      fullWidth={true}
-      maxWidth="100%"
-      {...data}
-      {...props}
-    />
-  );
+  return React.createElement(FastVoucherCard, {
+    voucherType: data.voucherType || data.voucher_type || 'sales_voucher',
+    documentTitle: data.documentTitle || data.document_title || data.title || 'Fast Voucher',
+    fullWidth: true,
+    maxWidth: '100%',
+    ...data,
+    ...props,
+  });
 };
 
 if (typeof registerOperationalCard === 'function') {
