@@ -81,6 +81,8 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
     setPartySearchQuery,
     partyLoading,
     partyOptions,
+    resolvedPartyLabel,
+    resolvedPartyPlaceholder,
     searchQuery,
     setSearchQuery,
     searchResults,
@@ -335,7 +337,7 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
           {/* Party Input */}
           <div style={{ flex: 1, position: 'relative' }}>
             <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
-              {partyConfig.label} *
+              {resolvedPartyLabel} *
             </label>
             {renderPartySelect ? (
               renderPartySelect({ selectedParty, onPartySelect })
@@ -344,7 +346,7 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
                 <input
                   ref={partyInputRef}
                   type="text"
-                  placeholder={partyConfig.placeholder || `Search ${partyConfig.label}...`}
+                  placeholder={resolvedPartyPlaceholder}
                   value={selectedParty ? selectedParty.label : partySearchQuery}
                   onChange={(e) => {
                     if (selectedParty && onPartySelect) {

@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { ProductVariantMatrixModal } from './ProductVariantMatrixModal';
+import { MobileVariantPickerSheet } from './MobileVariantPickerSheet';
 import { VoucherLineItem } from './FastVoucherEntryLayout.types';
 import { apiClient } from '../../api/client';
 
@@ -97,6 +98,18 @@ export function useVariantMatrixModal({
 
   const renderVariantMatrixModal = useCallback(() => {
     if (!isOpen || !activeProduct) return null;
+
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    if (isMobile) {
+      return (
+        <MobileVariantPickerSheet
+          isOpen={isOpen}
+          product={activeProduct}
+          onClose={closeVariantMatrix}
+          onAddVariants={handleAddVariants}
+        />
+      );
+    }
 
     return (
       <ProductVariantMatrixModal

@@ -26,7 +26,7 @@ export interface VoucherPartyOption {
 }
 
 export interface VoucherPartyConfig {
-  label: string;
+  label?: string;
   placeholder?: string;
   searchEndpoint?: string;
   searchParams?: Record<string, any>;
@@ -117,7 +117,8 @@ export interface FastVoucherEntryLayoutProps {
   companyStateCode?: string;
 
   // Configurations
-  partyConfig: VoucherPartyConfig;
+  partyRole?: 'supplier' | 'customer' | 'both';
+  partyConfig?: VoucherPartyConfig;
   catalogConfig?: VoucherCatalogConfig;
   batchMode?: VoucherBatchMode;
   pricingConfig?: VoucherPricingConfig;
