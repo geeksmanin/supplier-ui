@@ -8,18 +8,46 @@ export const ImageLightboxModalDesktop: React.FC<ImageLightboxModalProps> = ({
   src,
   alt = '',
   onClose,
+  images,
+  initialIndex,
+  onIndexChange,
 }) => {
+  const imageList = images && images.length > 0 ? images : [src];
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    if (typeof initialIndex === 'number' && initialIndex >= 0 && initialIndex < imageList.length) {
+      return initialIndex;
+    }
+    const idx = imageList.indexOf(src);
+    return idx >= 0 ? idx : 0;
+  });
+
   const [zoom, setZoom] = useState(1);
   const [hasError, setHasError] = useState(false);
 
-  const resolvedSrc = src ? resolveMediaUrl(src) : '';
+  const activeSrc = imageList[currentIndex] || src || '';
+  const resolvedSrc = activeSrc ? resolveMediaUrl(activeSrc) : '';
 
   useEffect(() => {
     if (isOpen) {
       setZoom(1);
       setHasError(false);
+      if (typeof initialIndex === 'number' && initialIndex >= 0 && initialIndex < imageList.length) {
+        setCurrentIndex(initialIndex);
+      } else {
+        const idx = imageList.indexOf(src);
+        if (idx >= 0) setCurrentIndex(idx);
+      }
     }
-  }, [isOpen, src]);
+  }, [isOpen, src, initialIndex]);
+
+  const handleSelectIndex = (idx: number) => {
+    if (idx >= 0 && idx < imageList.length) {
+      setCurrentIndex(idx);
+      setZoom(1);
+      setHasError(false);
+      if (onIndexChange) onIndexChange(idx);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -28,18 +56,24 @@ export const ImageLightboxModalDesktop: React.FC<ImageLightboxModalProps> = ({
       if (e.key === '+' || e.key === '=') setZoom((z) => Math.min(z + 0.25, 4));
       if (e.key === '-' || e.key === '_') setZoom((z) => Math.max(z - 0.25, 0.5));
       if (e.key === '0') setZoom(1);
+      if (e.key === 'ArrowRight' && imageList.length > 1) {
+        handleSelectIndex((currentIndex + 1) % imageList.length);
+      }
+      if (e.key === 'ArrowLeft' && imageList.length > 1) {
+        handleSelectIndex((currentIndex - 1 + imageList.length) % imageList.length);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, currentIndex, imageList]);
 
-  if (!isOpen || !src || typeof document === 'undefined') return null;
+  if (!isOpen || !activeSrc || typeof document === 'undefined') return null;
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const downloadUrl = resolveMediaUrl(src, { download: true });
-    const ext = src.split('.').pop()?.split('?')[0] || 'jpg';
-    const filename = (alt ? alt.replace(/\s+/g, '_') : 'image') + '.' + ext;
+    const downloadUrl = resolveMediaUrl(activeSrc, { download: true });
+    const ext = activeSrc.split('.').pop()?.split('?')[0] || 'jpg';
+    const filename = (alt ? alt.replace(/\s+/g, '_') : 'image') + '_' + (currentIndex + 1) + '.' + ext;
 
     try {
       const resp = await fetch(downloadUrl);
@@ -255,6 +289,133 @@ export const ImageLightboxModalDesktop: React.FC<ImageLightboxModalProps> = ({
           />
         )}
       </div>
+      {/* Previous Arrow for Multi-photo */}
+      {imageList.length > 1 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleSelectIndex((currentIndex - 1 + imageList.length) % imageList.length);
+          }}
+          title="Previous Image (Left Arrow)"
+          style={{
+            position: 'absolute',
+            left: '1.5rem',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            backgroundColor: 'rgba(30, 41, 59, 0.85)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: '#FFFFFF',
+            width: '44px',
+            height: '44px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 1000000,
+            fontSize: '1.4rem',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+            transition: 'background-color 0.15s ease',
+          }}
+        >
+          ‹
+        </button>
+      )}
+
+      {/* Next Arrow for Multi-photo */}
+      {imageList.length > 1 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleSelectIndex((currentIndex + 1) % imageList.length);
+          }}
+          title="Next Image (Right Arrow)"
+          style={{
+            position: 'absolute',
+            right: '1.5rem',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            backgroundColor: 'rgba(30, 41, 59, 0.85)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: '#FFFFFF',
+            width: '44px',
+            height: '44px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 1000000,
+            fontSize: '1.4rem',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+            transition: 'background-color 0.15s ease',
+          }}
+        >
+          ›
+        </button>
+      )}
+
+      {/* Bottom Thumbnail Strip for Multi-photo */}
+      {imageList.length > 1 && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute',
+            bottom: '1.25rem',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            backgroundColor: 'rgba(15, 23, 42, 0.85)',
+            backdropFilter: 'blur(12px)',
+            padding: '6px 12px',
+            borderRadius: '16px',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+            maxWidth: '90vw',
+            overflowX: 'auto',
+            zIndex: 1000000,
+          }}
+        >
+          {imageList.map((imgUrl, idx) => {
+            const isSelected = idx === currentIndex;
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleSelectIndex(idx)}
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '8px',
+                  border: isSelected ? '2px solid #38BDF8' : '1px solid rgba(255, 255, 255, 0.2)',
+                  overflow: 'hidden',
+                  padding: 0,
+                  backgroundColor: '#0F172A',
+                  cursor: 'pointer',
+                  opacity: isSelected ? 1 : 0.6,
+                  transform: isSelected ? 'scale(1.08)' : 'scale(1)',
+                  transition: 'all 0.15s ease',
+                  flexShrink: 0,
+                }}
+              >
+                <img
+                  src={resolveMediaUrl(imgUrl)}
+                  alt={`Thumbnail ${idx + 1}`}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
+                />
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>,
     document.body
   );

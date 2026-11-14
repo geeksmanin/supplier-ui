@@ -6,5 +6,11 @@ export interface ImageLightboxModalProps {
   initialIndex?: number;
   onIndexChange?: (index: number) => void;
   onClose: () => void;
+  /** Optional array of image sources for multi-photo gallery scrolling */
+  images?: string[];
+  /** Optional initial index in the images array */
+  initialIndex?: number;
+  /** Optional change handler when active image changes */
+  onIndexChange?: (index: number) => void;
 }
 

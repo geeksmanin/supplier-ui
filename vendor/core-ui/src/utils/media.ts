@@ -341,14 +341,9 @@ export async function uploadMediaFile(
       }
       return rel;
     }
+    throw new Error('Media upload completed but server returned no URL identifier');
   } catch (err) {
-    console.warn('Core media upload error, using local file URL fallback:', err);
+    console.error('Core media upload failed:', err);
+    throw new Error(`Media upload failed: ${err instanceof Error ? err.message : String(err)}`);
   }
-
-  // Fallback: Read file as Data URL
-  return new Promise<string>((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.readAsDataURL(fileToUpload);
-  });
 }
