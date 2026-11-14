@@ -104,6 +104,7 @@ export interface VoucherSummary {
 }
 
 export interface FastVoucherEntryLayoutProps {
+  layoutMode?: 'full' | 'card';
   voucherType: string;
   documentTitle: string;
   voucherNumber?: string;

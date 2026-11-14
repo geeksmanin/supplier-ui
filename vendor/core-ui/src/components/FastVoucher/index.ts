@@ -1,5 +1,7 @@
 export * from './FastVoucherEntryLayout.types';
 export * from './FastVoucherEntryLayout';
+export * from './FastVoucherCard.types';
+export * from './FastVoucherCard';
 export * from './useVoucherKeyboard';
 export * from './VoucherQuickRowStepper';
 export * from './VoucherLiveInvoicePreview';
