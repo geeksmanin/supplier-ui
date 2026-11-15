@@ -26,7 +26,7 @@ export interface VoucherPartyOption {
 }
 
 export interface VoucherPartyConfig {
-  label: string;
+  label?: string;
   placeholder?: string;
   searchEndpoint?: string;
   searchParams?: Record<string, any>;
@@ -55,6 +55,13 @@ export interface VoucherCatalogConfig {
   showStockDrilldown?: boolean;
   warehouseId?: string;
   placeholder?: string;
+  renderVariantMatrix?: (props: {
+    isOpen: boolean;
+    product: any;
+    onClose: () => void;
+    onAddVariants: (items: VoucherLineItem[]) => void;
+  }) => React.ReactNode;
+  onSelectProductWithVariants?: (product: any) => void;
 }
 
 export interface VoucherPricingConfig {
@@ -117,7 +124,8 @@ export interface FastVoucherEntryLayoutProps {
   companyStateCode?: string;
 
   // Configurations
-  partyConfig: VoucherPartyConfig;
+  partyRole?: 'supplier' | 'customer' | 'both';
+  partyConfig?: VoucherPartyConfig;
   catalogConfig?: VoucherCatalogConfig;
   batchMode?: VoucherBatchMode;
   pricingConfig?: VoucherPricingConfig;
@@ -174,6 +182,15 @@ export interface FastVoucherEntryLayoutProps {
 
   // Stock Drilldown Integration
   onOpenStockDrilldown?: (item: VoucherLineItem) => void;
+
+  // Variant Matrix & Product Slot Overrides (Domain-Agnostic standard)
+  renderVariantMatrix?: (props: {
+    isOpen: boolean;
+    product: any;
+    onClose: () => void;
+    onAddVariants: (items: VoucherLineItem[]) => void;
+  }) => React.ReactNode;
+  onSelectProductWithVariants?: (product: any) => void;
 
   // Slot Override for Right Pane (defaults to built-in live preview)
   renderRightPane?: () => React.ReactNode;
