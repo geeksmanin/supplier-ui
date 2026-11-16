@@ -302,16 +302,10 @@ export async function getCachedMediaUrl(
       const resolved = resolveMediaUrl(rawUrl, options);
       if (!resolved) return '';
 
-      // Prepare request headers (include token if authenticated)
+      // Prepare request headers (include authentic tenant code for routing, but omit Authorization
+      // so Cloudflare edge and browser HTTP disk caches do not bypass CDN caching)
       const headers: Record<string, string> = {};
       if (typeof window !== 'undefined') {
-        const token =
-          localStorage.getItem('token') ||
-          localStorage.getItem('staff_token') ||
-          localStorage.getItem('erp_user_token');
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
         // Include authentic tenant code so the media endpoint resolves correctly
         const tenantCode = (options?.tenant && options.tenant !== 'business')
           ? options.tenant
