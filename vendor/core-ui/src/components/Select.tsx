@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { getAppConfig } from '../config';
-import { getWorkspaceFromUrl, apiClient } from '../api/client';
+import { fetchSelectOptions } from '../api/selectService';
 
 export interface SelectOption {
   value: string;
@@ -363,41 +363,11 @@ export const Select: React.FC<SelectProps> = ({
       setFetchError(null);
 
       try {
-        const searchKey = asyncConfig.searchParam ?? 'search';
-        const baseParams: Record<string, string | number> = {
-          ...(asyncConfig.params ?? {}),
-          [searchKey]: term,
-        };
-        const qs = new URLSearchParams(
-          Object.entries(baseParams).map(([k, v]) => [k, String(v)])
-        ).toString();
-
-        let data: unknown;
-        if (asyncConfig.url.startsWith('http')) {
-          const qs = new URLSearchParams(
-            Object.entries(baseParams).map(([k, v]) => [k, String(v)])
-          ).toString();
-          const resp = await fetch(`${asyncConfig.url}?${qs}`, {
-            signal: ctrl.signal,
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Tenant-Code': getWorkspaceFromUrl(),
-              ...(localStorage.getItem('token')
-                ? { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                : {}),
-            },
-          });
-          if (!resp.ok) throw new Error(`Server error: ${resp.status}`);
-          data = await resp.json();
-        } else {
-          const res = await apiClient.get(asyncConfig.url, {
-            params: baseParams,
-            signal: ctrl.signal,
-          });
-          data = res.data;
-        }
-
-        const transformed = asyncConfig.transform(data) || [];
+        const transformed = await fetchSelectOptions({
+          asyncConfig,
+          searchTerm: term,
+          signal: ctrl.signal,
+        });
         setAsyncOptions(transformed);
         setAsyncCache((prev) => {
           const next = { ...prev };
@@ -583,7 +553,7 @@ export const Select: React.FC<SelectProps> = ({
     transition: 'all 0.15s ease',
     boxShadow: isOpen || isFocused ? '0 0 0 3px rgba(79, 70, 229, 0.25)' : 'none',
     minHeight: customHeight || '38px',
-    maxHeight: customHeight || (multi ? '120px' : '38px'),
+    maxHeight: multi ? '120px' : (customHeight || '38px'),
     overflowY: multi ? 'auto' : 'hidden',
     overflowX: 'hidden',
     whiteSpace: multi ? 'normal' : 'nowrap',
