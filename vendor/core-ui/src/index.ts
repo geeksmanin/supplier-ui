@@ -1,5 +1,7 @@
 export { apiClient, getWorkspaceFromUrl, resolveTenantCodeFromServer, resolveTenantByCode, clearActiveWorkspace, createApiClient, getDefaultBackendUrl, getBaseUrl, requestSamwadThreads, requestActiveThreadIDs, requestThreadMessages, postThreadMessage } from './api/client';
 export type { TenantMetadata, SamwadThreadsParams } from './api/client';
+export { fetchSelectOptions } from './api/selectService';
+export type { FetchSelectOptionsParams } from './api/selectService';
 export { useMediaQuery, useIsMobile } from './hooks/useMediaQuery';
 export { useRefreshOnVisible } from './hooks/useRefreshOnVisible';
 export { useClipboardImageUpload } from './hooks/useClipboardImageUpload';
