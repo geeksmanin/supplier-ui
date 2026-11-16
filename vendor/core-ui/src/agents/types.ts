@@ -48,6 +48,9 @@ export interface AgentTabProps {
   agent?: AgentConfig;
   context?: AgentContext;
   onNavigateToTab?: (tabId: string) => void;
+  onBack?: () => void;
+  onToggleSidebar?: () => void;
+  isSidebarCollapsed?: boolean;
 }
 
 export type AgentType = 'assistant' | 'triage' | 'workspace';
@@ -84,6 +87,12 @@ export interface AgentConfig {
   isVerified: boolean; // Renders official VerifiedBlueTick badge
   isPinned: boolean; // Pinned in verified agent rows
   searchPlaceholder?: string;
+  /**
+   * Layout customization flags
+   */
+  hideHeader?: boolean;
+  hideParticipants?: boolean;
+  hideSettings?: boolean;
   /**
    * Target applications where this agent is surfaced:
    * - 'samwad': Samwad operations messenger & assistant hub
