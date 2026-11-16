@@ -513,8 +513,7 @@ export const Tickets: React.FC = () => {
     const tenantCode = getWorkspaceFromUrl();
     let baseURL = apiClient.defaults.baseURL || '';
     if (!baseURL.startsWith('http://') && !baseURL.startsWith('https://')) {
-      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const fallbackOrigin = isLocal ? 'http://localhost:8082' : window.location.origin;
+      const fallbackOrigin = window.location.origin;
       if (baseURL.startsWith('/')) {
         baseURL = `${fallbackOrigin}${baseURL}`;
       } else {

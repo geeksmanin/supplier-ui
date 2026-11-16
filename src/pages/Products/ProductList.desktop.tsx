@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Button } from '@geeksman/core-ui';
+import { Button, resolveMediaUrl as coreResolveMediaUrl } from '@geeksman/core-ui';
 import { Search, Plus, Tag, Layers } from 'lucide-react';
 
 interface Packing {
@@ -47,23 +47,7 @@ export function ProductListDesktop({ products, searchVal, setSearchVal, loading 
 
   const resolveMediaUrl = (url?: string) => {
     if (!url) return '/assets/pharmaceutical-placeholder-premium.png';
-    const base = apiClientDefaultsBaseURL();
-    const idx = url.indexOf('/api/v1/media/');
-    if (idx !== -1 && base) {
-      return `${base}${url.substring(idx).replace('/api/v1', '')}`;
-    }
-    return url;
-  };
-
-  const apiClientDefaultsBaseURL = () => {
-    try {
-      // Safely grab the baseUrl from local or global settings
-      return window.location.origin.includes('3000') || window.location.origin.includes('3002') 
-        ? 'http://localhost:8082' 
-        : '';
-    } catch {
-      return '';
-    }
+    return coreResolveMediaUrl(url);
   };
 
   return (
