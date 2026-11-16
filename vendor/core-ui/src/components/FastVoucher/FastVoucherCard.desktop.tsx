@@ -778,9 +778,26 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
             <div style={{ color: '#64748B' }}>
               Subtotal: <strong style={{ color: '#334155' }}>₹{Number(computedSummary.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
             </div>
-            {computedSummary.tax_total > 0 && (
-              <div style={{ color: '#64748B' }}>
-                Tax: <strong style={{ color: '#334155' }}>₹{Number(computedSummary.tax_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
+            {computedSummary.tax_total > 0 ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5 }}>
+                {computedSummary.isInterState ? (
+                  <span style={{ color: '#0369A1', backgroundColor: '#E0F2FE', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
+                    IGST: ₹{Number(computedSummary.tax_breakup?.igst ?? computedSummary.tax_total).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                ) : (
+                  <span style={{ color: '#0F766E', backgroundColor: '#CCFBF1', padding: '2px 8px', borderRadius: 6, fontWeight: 700, display: 'inline-flex', gap: 4 }}>
+                    <span>CGST: ₹{Number(computedSummary.tax_breakup?.cgst ?? (computedSummary.tax_total / 2)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span>•</span>
+                    <span>SGST: ₹{Number(computedSummary.tax_breakup?.sgst ?? (computedSummary.tax_total / 2)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </span>
+                )}
+                <span style={{ color: '#64748B', fontWeight: 600 }}>
+                  (GST: ₹{Number(computedSummary.tax_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                </span>
+              </div>
+            ) : (
+              <div style={{ color: '#94A3B8' }}>
+                GST: ₹0.00
               </div>
             )}
             <div style={{ fontSize: 13, color: '#0F172A' }}>

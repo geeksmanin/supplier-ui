@@ -623,18 +623,36 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
+            flexDirection: 'column',
+            gap: 4,
             padding: '8px 10px',
             backgroundColor: '#F1F5F9',
             borderRadius: 8,
             fontSize: 12,
           }}
         >
-          <span style={{ color: '#64748B', fontWeight: 600 }}>{items.length} Items</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
-            Total: <strong style={{ color: accentColor }}>₹{Number(computedSummary.grand_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ color: '#64748B', fontWeight: 600 }}>{items.length} Items • Sub: ₹{Number(computedSummary.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+              Total: <strong style={{ color: accentColor }}>₹{Number(computedSummary.grand_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
+            </span>
+          </div>
+          {computedSummary.tax_total > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, borderTop: '1px dashed #CBD5E1', paddingTop: 3 }}>
+              {computedSummary.isInterState ? (
+                <span style={{ color: '#0369A1', fontWeight: 700 }}>
+                  IGST: ₹{Number(computedSummary.tax_breakup?.igst ?? computedSummary.tax_total).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
+              ) : (
+                <span style={{ color: '#0F766E', fontWeight: 700 }}>
+                  CGST: ₹{Number(computedSummary.tax_breakup?.cgst ?? (computedSummary.tax_total / 2)).toLocaleString(undefined, { minimumFractionDigits: 2 })} • SGST: ₹{Number(computedSummary.tax_breakup?.sgst ?? (computedSummary.tax_total / 2)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
+              )}
+              <span style={{ color: '#64748B' }}>
+                GST: +₹{Number(computedSummary.tax_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Action Button */}

@@ -62,6 +62,7 @@ export interface VoucherCatalogConfig {
     onAddVariants: (items: VoucherLineItem[]) => void;
   }) => React.ReactNode;
   onSelectProductWithVariants?: (product: any) => void;
+  resolveTaxRate?: (product: any) => Promise<number | null | undefined> | number | null | undefined;
 }
 
 export interface VoucherPricingConfig {
@@ -76,6 +77,7 @@ export interface VoucherLineItem {
   variant_id: string;
   product_id?: string;
   sku_code: string;
+  hsn_code?: string;
   product_name: string;
   image_url?: string;
   quantity: number;
@@ -108,6 +110,7 @@ export interface VoucherSummary {
   tax_total: number;
   round_off: number;
   grand_total: number;
+  isInterState?: boolean;
 }
 
 export interface FastVoucherEntryLayoutProps {

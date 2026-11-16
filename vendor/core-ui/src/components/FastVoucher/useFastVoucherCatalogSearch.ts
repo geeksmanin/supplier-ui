@@ -58,7 +58,8 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
   const loadInitialProducts = useCallback(async () => {
     try {
       const variantEndpoint = catalogConfig?.searchEndpoint || '/catalogue/variants';
-      const [variantsRes, productsRes] = await Promise.allSettled([
+      const productEndpoint = (catalogConfig as any)?.productEndpoint;
+      const initialPromises: Promise<any>[] = [
         apiClient.get(variantEndpoint, {
           params: {
             limit: 25,
@@ -66,13 +67,18 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
             ...(catalogConfig?.searchParams || {}),
           },
         }),
-        apiClient.get('/catalogue/products', {
-          params: {
-            limit: 12,
-            is_active: true,
-          },
-        }),
-      ]);
+      ];
+      if (productEndpoint) {
+        initialPromises.push(
+          apiClient.get(productEndpoint, {
+            params: {
+              limit: 12,
+              is_active: true,
+            },
+          })
+        );
+      }
+      const [variantsRes, productsRes] = await Promise.allSettled(initialPromises);
 
       const rawVariants =
         variantsRes.status === 'fulfilled'
@@ -191,6 +197,7 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
       setSearchLoading(true);
       try {
         const variantEndpoint = catalogConfig?.searchEndpoint || '/catalogue/variants';
+        const productEndpoint = (catalogConfig as any)?.productEndpoint;
         const searchPromises: Promise<any>[] = [
           apiClient.get(variantEndpoint, {
             params: {
@@ -200,14 +207,18 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
             },
             signal: controller.signal,
           }),
-          apiClient.get('/catalogue/products', {
-            params: {
-              search: searchQuery,
-              limit: 12,
-            },
-            signal: controller.signal,
-          }),
         ];
+        if (productEndpoint) {
+          searchPromises.push(
+            apiClient.get(productEndpoint, {
+              params: {
+                search: searchQuery,
+                limit: 12,
+              },
+              signal: controller.signal,
+            })
+          );
+        }
 
         // Progressive Instant Search: Catalog resolves without waiting for inventory ledger
         const [variantsRes, productsRes] = await Promise.allSettled(searchPromises);

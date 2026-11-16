@@ -25,12 +25,15 @@ interface VoucherQuickRowStepperInputsProps {
   setUnitPrice: (price: number) => void;
   discountPercent: number;
   setDiscountPercent: (disc: number) => void;
+  taxPercent: number;
+  setTaxPercent: (tax: number) => void;
   qtyInputRef: React.RefObject<HTMLInputElement>;
   packagingSelectRef: React.RefObject<HTMLSelectElement>;
   batchInputRef: React.RefObject<HTMLInputElement | HTMLSelectElement>;
   expiryInputRef: React.RefObject<HTMLInputElement>;
   rateInputRef: React.RefObject<HTMLInputElement>;
   discountInputRef: React.RefObject<HTMLInputElement>;
+  taxInputRef: React.RefObject<HTMLInputElement>;
   handleCommit: () => void;
 }
 
@@ -52,19 +55,22 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
   setUnitPrice,
   discountPercent,
   setDiscountPercent,
+  taxPercent,
+  setTaxPercent,
   qtyInputRef,
   packagingSelectRef,
   batchInputRef,
   expiryInputRef,
   rateInputRef,
   discountInputRef,
+  taxInputRef,
   handleCommit,
 }) => {
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: `repeat(${batchMode !== 'none' ? (batchMode === 'create' ? 6 : 5) : 4}, minmax(0, 1fr))`,
+        gridTemplateColumns: `repeat(${batchMode !== 'none' ? (batchMode === 'create' ? 7 : 6) : 5}, minmax(0, 1fr))`,
         gap: '0.75rem',
         alignItems: 'end',
       }}
@@ -295,6 +301,57 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
           onChange={(e) => {
             const raw = e.target.value;
             setDiscountPercent(raw === '' ? 0 : Number(raw));
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (taxInputRef.current) {
+                taxInputRef.current.focus();
+              } else {
+                handleCommit();
+              }
+            }
+          }}
+          style={{
+            width: '100%',
+            padding: '7px 10px',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            borderRadius: '6px',
+            border: '1px solid #cbd5e1',
+          }}
+        />
+      </div>
+
+      {/* 6. GST % */}
+      <div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+          <Percent size={11} /> GST %
+        </label>
+        <input
+          ref={taxInputRef}
+          type="number"
+          min="0"
+          max="100"
+          step="any"
+          placeholder="0"
+          value={taxPercent === 0 ? '' : taxPercent}
+          onFocus={(e) => {
+            if (Number(e.target.value) === 0) {
+              e.target.value = '';
+            }
+            e.target.select();
+          }}
+          onClick={(e) => {
+            const target = e.target as HTMLInputElement;
+            if (Number(target.value) === 0) {
+              target.value = '';
+            }
+            target.select();
+          }}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setTaxPercent(raw === '' ? 0 : Number(raw));
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
