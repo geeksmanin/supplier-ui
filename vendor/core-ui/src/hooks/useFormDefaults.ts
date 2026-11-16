@@ -4,6 +4,7 @@ import { getStoredFormDefaults, saveStoredFormDefaults } from '../utils/defaults
 
 export interface UseFormDefaultsOptions {
   enabled?: boolean;
+  branchCode?: string;
 }
 
 export interface UseFormDefaultsReturn {
@@ -19,6 +20,8 @@ export function useFormDefaults(
   options?: UseFormDefaultsOptions
 ): UseFormDefaultsReturn {
   const enabled = options?.enabled ?? true;
+  const branchCode = options?.branchCode;
+  const storageKey = branchCode ? `${formKey}:${branchCode}` : formKey;
   const [defaults, setDefaults] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [loaded, setLoaded] = useState<boolean>(false);
@@ -33,9 +36,10 @@ export function useFormDefaults(
 
   const fetchFromServer = useCallback(async (): Promise<Record<string, any>> => {
     try {
-      const res = await apiClient.get(`/form-configurations/${formKey}`);
+      const branchQuery = branchCode ? `?branch_code=${encodeURIComponent(branchCode)}` : '';
+      const res = await apiClient.get(`/form-configurations/${formKey}${branchQuery}`);
       const serverConfig = res.data?.data?.config || {};
-      await saveStoredFormDefaults(formKey, serverConfig);
+      await saveStoredFormDefaults(storageKey, serverConfig);
       if (mountedRef.current) {
         setDefaults(serverConfig);
         setLoaded(true);
@@ -45,7 +49,7 @@ export function useFormDefaults(
       console.warn(`[useFormDefaults] Failed to fetch form configurations for ${formKey}:`, err);
       return {};
     }
-  }, [formKey]);
+  }, [formKey, branchCode, storageKey]);
 
   const refreshDefaults = useCallback(
     async (forceServer = false): Promise<Record<string, any>> => {
@@ -58,7 +62,7 @@ export function useFormDefaults(
       }
 
       // Check IndexedDB local cache first
-      const cached = await getStoredFormDefaults(formKey);
+      const cached = await getStoredFormDefaults(storageKey);
       if (cached && cached.data && Object.keys(cached.data).length > 0) {
         if (mountedRef.current) {
           setDefaults(cached.data);
@@ -74,7 +78,7 @@ export function useFormDefaults(
       if (mountedRef.current) setLoading(false);
       return serverData;
     },
-    [enabled, formKey, fetchFromServer]
+    [enabled, formKey, storageKey, fetchFromServer]
   );
 
   // Initial load
