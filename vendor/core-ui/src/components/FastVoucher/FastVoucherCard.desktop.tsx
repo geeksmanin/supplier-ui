@@ -20,8 +20,12 @@ import { DraftBanner } from '../../hooks/useFormDraft';
 
 export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) => {
   const {
+    voucherType,
     documentTitle,
     voucherNumber,
+    onVoucherNumberChange,
+    voucherNumberLabel,
+    voucherNumberPlaceholder,
     voucherDate,
     onVoucherDateChange,
     status = 'DRAFT',
@@ -457,6 +461,32 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
               </div>
             )}
           </div>
+
+          {/* Optional Bill / Invoice Number Input (e.g. for Purchase Invoices / Vendor Bills) */}
+          {onVoucherNumberChange && (
+            <div style={{ width: 170 }}>
+              <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
+                {voucherNumberLabel || (voucherType === 'purchase_invoice' || voucherType === 'invoice' ? 'Bill / Invoice #' : 'Document #')} *
+              </label>
+              <input
+                type="text"
+                value={voucherNumber || ''}
+                onChange={(e) => onVoucherNumberChange(e.target.value)}
+                placeholder={voucherNumberPlaceholder || 'e.g. INV-98214'}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '7px 10px',
+                  borderRadius: 8,
+                  border: '1px solid #CBD5E1',
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  color: '#1E293B',
+                  outline: 'none',
+                }}
+              />
+            </div>
+          )}
 
           {/* Voucher Date */}
           <div style={{ width: 140 }}>

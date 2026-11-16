@@ -20,8 +20,12 @@ import { DraftBanner } from '../../hooks/useFormDraft';
 
 export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => {
   const {
+    voucherType,
     documentTitle,
     voucherNumber,
+    onVoucherNumberChange,
+    voucherNumberLabel,
+    voucherNumberPlaceholder,
     voucherDate,
     onVoucherDateChange,
     status = 'DRAFT',
@@ -382,27 +386,54 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
           )}
         </div>
 
-        {/* Date Row */}
-        <div>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 3 }}>
-            Voucher Date
-          </label>
-          <input
-            type="date"
-            value={voucherDate}
-            onChange={(e) => onVoucherDateChange?.(e.target.value)}
-            style={{
-              width: '100%',
-              boxSizing: 'border-box',
-              padding: '7px 10px',
-              borderRadius: 8,
-              border: '1px solid #CBD5E1',
-              fontSize: 13,
-              fontWeight: 600,
-              color: '#1E293B',
-              outline: 'none',
-            }}
-          />
+        {/* Date & Optional Bill Number Row */}
+        <div style={{ display: 'grid', gridTemplateColumns: onVoucherNumberChange ? '1fr 1fr' : '1fr', gap: 10 }}>
+          {onVoucherNumberChange && (
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 3 }}>
+                {voucherNumberLabel || (voucherType === 'purchase_invoice' || voucherType === 'invoice' ? 'Bill / Invoice #' : 'Document #')} *
+              </label>
+              <input
+                type="text"
+                value={voucherNumber || ''}
+                onChange={(e) => onVoucherNumberChange(e.target.value)}
+                placeholder={voucherNumberPlaceholder || 'e.g. INV-98214'}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '7px 10px',
+                  borderRadius: 8,
+                  border: '1px solid #CBD5E1',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#1E293B',
+                  outline: 'none',
+                }}
+              />
+            </div>
+          )}
+
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 3 }}>
+              Voucher Date
+            </label>
+            <input
+              type="date"
+              value={voucherDate}
+              onChange={(e) => onVoucherDateChange?.(e.target.value)}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '7px 10px',
+                borderRadius: 8,
+                border: '1px solid #CBD5E1',
+                fontSize: 13,
+                fontWeight: 600,
+                color: '#1E293B',
+                outline: 'none',
+              }}
+            />
+          </div>
         </div>
 
         {/* Search Bar */}

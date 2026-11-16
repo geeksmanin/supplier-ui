@@ -115,6 +115,9 @@ export interface FastVoucherEntryLayoutProps {
   voucherType: string;
   documentTitle: string;
   voucherNumber?: string;
+  onVoucherNumberChange?: (number: string) => void;
+  voucherNumberLabel?: string;
+  voucherNumberPlaceholder?: string;
   voucherDate: string;
   onVoucherDateChange?: (date: string) => void;
   status?: string;
