@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import { 
   X, 
   Search, 
@@ -88,6 +88,7 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
     searchResults,
     isSearchOpen,
     setIsSearchOpen,
+    openSearch,
     selectedResultIndex,
     setSelectedResultIndex,
     liveStockMap,
@@ -96,6 +97,23 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
     handleCommitStepperItem,
     memoizedStepperBatches,
   } = useFastVoucherOrchestrator(props);
+
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Close catalog search dropdown on click outside
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+    if (isSearchOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isSearchOpen, setIsSearchOpen]);
 
   // Compute live tax totals if external summary is not provided
   const computedSummary = useMemo(() => {
@@ -465,7 +483,7 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
         </div>
 
         {/* Central Product Search Bar */}
-        <div style={{ position: 'relative' }}>
+        <div ref={searchContainerRef} style={{ position: 'relative' }}>
           <div
             className="fast-voucher-search-box bounding-box"
             data-bounding-box="true"
@@ -498,7 +516,12 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => {
                 setIsSearchFocused(true);
-                if (searchResults.length > 0) setIsSearchOpen(true);
+                openSearch?.();
+                setIsSearchOpen(true);
+              }}
+              onClick={() => {
+                openSearch?.();
+                setIsSearchOpen(true);
               }}
               onBlur={() => setIsSearchFocused(false)}
               onKeyDown={(e) => {
