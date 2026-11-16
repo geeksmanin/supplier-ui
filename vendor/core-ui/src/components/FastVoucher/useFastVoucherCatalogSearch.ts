@@ -58,7 +58,7 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
   const loadInitialProducts = useCallback(async () => {
     try {
       const variantEndpoint = catalogConfig?.searchEndpoint || '/catalogue/variants';
-      const productEndpoint = (catalogConfig as any)?.productEndpoint;
+      const productEndpoint = catalogConfig?.productEndpoint || (variantEndpoint.includes('/variants') ? variantEndpoint.replace('/variants', '/products') : undefined);
       const initialPromises: Promise<any>[] = [
         apiClient.get(variantEndpoint, {
           params: {
@@ -81,19 +81,19 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
       const [variantsRes, productsRes] = await Promise.allSettled(initialPromises);
 
       const rawVariants =
-        variantsRes.status === 'fulfilled'
-          ? Array.isArray(variantsRes.value.data?.data)
+        variantsRes && variantsRes.status === 'fulfilled'
+          ? Array.isArray(variantsRes.value?.data?.data)
             ? variantsRes.value.data.data
-            : Array.isArray(variantsRes.value.data)
+            : Array.isArray(variantsRes.value?.data)
             ? variantsRes.value.data
             : []
           : [];
 
       const rawProducts =
-        productsRes.status === 'fulfilled'
-          ? Array.isArray(productsRes.value.data?.data)
+        productsRes && productsRes.status === 'fulfilled'
+          ? Array.isArray(productsRes.value?.data?.data)
             ? productsRes.value.data.data
-            : Array.isArray(productsRes.value.data)
+            : Array.isArray(productsRes.value?.data)
             ? productsRes.value.data
             : []
           : [];
@@ -197,7 +197,7 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
       setSearchLoading(true);
       try {
         const variantEndpoint = catalogConfig?.searchEndpoint || '/catalogue/variants';
-        const productEndpoint = (catalogConfig as any)?.productEndpoint;
+        const productEndpoint = catalogConfig?.productEndpoint || (variantEndpoint.includes('/variants') ? variantEndpoint.replace('/variants', '/products') : undefined);
         const searchPromises: Promise<any>[] = [
           apiClient.get(variantEndpoint, {
             params: {
@@ -228,19 +228,19 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
         }
 
         const rawVariants =
-          variantsRes.status === 'fulfilled'
-            ? Array.isArray(variantsRes.value.data?.data)
+          variantsRes && variantsRes.status === 'fulfilled'
+            ? Array.isArray(variantsRes.value?.data?.data)
               ? variantsRes.value.data.data
-              : Array.isArray(variantsRes.value.data)
+              : Array.isArray(variantsRes.value?.data)
               ? variantsRes.value.data
               : []
             : [];
 
         const rawProducts =
-          productsRes.status === 'fulfilled'
-            ? Array.isArray(productsRes.value.data?.data)
+          productsRes && productsRes.status === 'fulfilled'
+            ? Array.isArray(productsRes.value?.data?.data)
               ? productsRes.value.data.data
-              : Array.isArray(productsRes.value.data)
+              : Array.isArray(productsRes.value?.data)
               ? productsRes.value.data
               : []
             : [];

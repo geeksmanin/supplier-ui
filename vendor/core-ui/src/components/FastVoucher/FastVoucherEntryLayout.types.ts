@@ -49,6 +49,7 @@ export interface VoucherPartyConfig {
 
 export interface VoucherCatalogConfig {
   searchEndpoint?: string;
+  productEndpoint?: string;
   searchParams?: Record<string, any>;
   showStock?: boolean;
   validateStock?: boolean;
