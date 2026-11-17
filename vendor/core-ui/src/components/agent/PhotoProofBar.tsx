@@ -5,8 +5,10 @@ import { CameraCaptureModal } from '../CameraCaptureModal/CameraCaptureModal';
 
 export interface PhotoProofBarProps {
   photos: string[];
+  photoRemarks?: Record<string, string>;
   onPhotoUpload: (e: React.ChangeEvent<HTMLInputElement> | File) => void;
   onRemovePhoto: (index: number) => void;
+  onPhotoRemarkChange?: (index: number, remark: string) => void;
   onZoomPhoto?: (url: string) => void;
   onCameraClick?: () => void;
   isMandatory?: boolean;
@@ -64,8 +66,10 @@ const removeBtnStyle: React.CSSProperties = {
 
 export const PhotoProofBar: React.FC<PhotoProofBarProps> = ({
   photos,
+  photoRemarks,
   onPhotoUpload,
   onRemovePhoto,
+  onPhotoRemarkChange,
   onZoomPhoto,
   onCameraClick,
   isMandatory = false,
@@ -151,28 +155,54 @@ export const PhotoProofBar: React.FC<PhotoProofBarProps> = ({
       </div>
 
       {photos.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-          {photos.map((url, idx) => (
-            <div key={`${url}-${idx}`} style={thumbWrapStyle}>
-              <img
-                src={resolveMediaUrl(url)}
-                alt={`Photo proof ${idx + 1}`}
-                style={thumbImgStyle}
-                onClick={() => onZoomPhoto?.(url)}
-              />
-              {!disabled && (
-                <button
-                  type="button"
-                  onClick={() => onRemovePhoto(idx)}
-                  style={removeBtnStyle}
-                  title="Remove photo"
-                  aria-label="Remove photo"
-                >
-                  <X size={10} />
-                </button>
-              )}
-            </div>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, overflowX: 'auto', paddingBottom: 6 }}>
+          {photos.map((url, idx) => {
+            const remark = photoRemarks?.[url] || '';
+            return (
+              <div key={`${url}-${idx}`} style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', width: 72, flexShrink: 0 }}>
+                <div style={thumbWrapStyle}>
+                  <img
+                    src={resolveMediaUrl(url)}
+                    alt={`Photo proof ${idx + 1}`}
+                    style={thumbImgStyle}
+                    onClick={() => onZoomPhoto?.(url)}
+                  />
+                  {!disabled && (
+                    <button
+                      type="button"
+                      onClick={() => onRemovePhoto(idx)}
+                      style={removeBtnStyle}
+                      title="Remove photo"
+                      aria-label="Remove photo"
+                    >
+                      <X size={10} />
+                    </button>
+                  )}
+                </div>
+                {onPhotoRemarkChange && (
+                  <input
+                    type="text"
+                    value={remark}
+                    placeholder="Caption"
+                    disabled={disabled}
+                    onChange={(e) => onPhotoRemarkChange(idx, e.target.value)}
+                    style={{
+                      width: '100%',
+                      fontSize: 10,
+                      padding: '2px 4px',
+                      borderRadius: 4,
+                      border: '1px solid #CBD5E1',
+                      outline: 'none',
+                      textAlign: 'center',
+                      backgroundColor: '#FFFFFF',
+                      color: '#0F172A',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
