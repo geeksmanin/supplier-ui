@@ -1,20 +1,30 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, RefreshCw, AlertCircle } from 'lucide-react';
+import { X, RefreshCw, AlertCircle, Image as ImageIcon } from 'lucide-react';
 import { CameraCaptureModalProps } from './CameraCaptureModal.types';
+import { ImageEditorModalMobile } from '../ImageEditor/ImageEditorModal.mobile';
 
 export const CameraCaptureModalMobile: React.FC<CameraCaptureModalProps> = ({
   isOpen,
   onClose,
   onCapture,
   preferredFacingMode = 'environment',
+  initialSource = 'camera',
+  enableEditor = true,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
+
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>(preferredFacingMode);
   const [cameraActive, setCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState<boolean>(false);
+
+  // Internal lifecycle phase: 'capture' (viewfinder) or 'editor' (in-situ editing)
+  const [phase, setPhase] = useState<'capture' | 'editor'>('capture');
+  const [capturedFile, setCapturedFile] = useState<File | null>(null);
+  const [capturedPreviewUrl, setCapturedPreviewUrl] = useState<string | null>(null);
 
   const stopStream = useCallback(() => {
     if (streamRef.current) {
@@ -71,47 +81,48 @@ export const CameraCaptureModalMobile: React.FC<CameraCaptureModalProps> = ({
     }
   }, [facingMode, stopStream]);
 
+  // Handle stream lifecycle and initial source
   useEffect(() => {
     if (isOpen) {
-      startCamera();
+      setPhase('capture');
+      setCapturedFile(null);
+      if (capturedPreviewUrl) {
+        URL.revokeObjectURL(capturedPreviewUrl);
+        setCapturedPreviewUrl(null);
+      }
+
+      if (initialSource === 'gallery') {
+        // Trigger gallery picker directly
+        setTimeout(() => {
+          galleryInputRef.current?.click();
+        }, 50);
+      } else {
+        startCamera();
+      }
     } else {
       stopStream();
+      if (capturedPreviewUrl) {
+        URL.revokeObjectURL(capturedPreviewUrl);
+        setCapturedPreviewUrl(null);
+      }
     }
     return () => {
       stopStream();
     };
-  }, [isOpen, startCamera, stopStream]);
+  }, [isOpen, initialSource, startCamera, stopStream]);
 
-  // Mobile Hardware & Browser Back Navigation Interceptor (AjitPharma #290)
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-  const pushedRef = useRef(false);
-  const capturedRef = useRef(false);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    pushedRef.current = false;
-    capturedRef.current = false;
-    const handlePopState = () => {
-      pushedRef.current = false;
-      onCloseRef.current();
-    };
-    if (typeof window !== 'undefined') {
-      window.history.pushState({ modal: 'camera-capture' }, '');
-      pushedRef.current = true;
-      window.addEventListener('popstate', handlePopState);
+  const handleProcessFile = (file: File) => {
+    stopStream();
+    if (enableEditor === false) {
+      onCapture(file);
+      onClose();
+      return;
     }
-    return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('popstate', handlePopState);
-        // Only trigger history.back() if dismissed WITHOUT capturing, to avoid cascading popstate into ImageEditorModal
-        if (!capturedRef.current && pushedRef.current && window.history.state && window.history.state.modal === 'camera-capture') {
-          pushedRef.current = false;
-          window.history.back();
-        }
-      }
-    };
-  }, [isOpen]);
+    const previewUrl = URL.createObjectURL(file);
+    setCapturedFile(file);
+    setCapturedPreviewUrl(previewUrl);
+    setPhase('editor');
+  };
 
   const handleCapturePhoto = () => {
     if (!videoRef.current || isCapturing) return;
@@ -149,13 +160,7 @@ export const CameraCaptureModalMobile: React.FC<CameraCaptureModalProps> = ({
             lastModified: Date.now(),
           });
 
-          stopStream();
-          capturedRef.current = true;
-          // Smoothly transition history state from camera-capture to image-editor without firing a disruptive popstate
-          if (typeof window !== 'undefined' && pushedRef.current && window.history.state?.modal === 'camera-capture') {
-            window.history.replaceState({ modal: 'image-editor' }, '');
-          }
-          onCapture(file);
+          handleProcessFile(file);
         },
         'image/jpeg',
         0.92
@@ -166,14 +171,62 @@ export const CameraCaptureModalMobile: React.FC<CameraCaptureModalProps> = ({
     }
   };
 
+  const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    handleProcessFile(file);
+  };
+
   const handleFlipCamera = () => {
     setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'));
   };
 
+  const handleCloseEditor = () => {
+    // Retake photo: return to capture phase without closing modal
+    if (capturedPreviewUrl) {
+      URL.revokeObjectURL(capturedPreviewUrl);
+      setCapturedPreviewUrl(null);
+    }
+    setCapturedFile(null);
+    setPhase('capture');
+    startCamera();
+  };
+
   if (!isOpen) return null;
+
+  // If in editor phase, render the integrated mobile image editor directly
+  if (phase === 'editor' && capturedPreviewUrl) {
+    return (
+      <ImageEditorModalMobile
+        isOpen={true}
+        imageUrl={capturedPreviewUrl}
+        initialFile={capturedFile || undefined}
+        fileNamePrefix="capture"
+        onClose={handleCloseEditor}
+        onApply={(result) => {
+          if (capturedPreviewUrl) {
+            URL.revokeObjectURL(capturedPreviewUrl);
+            setCapturedPreviewUrl(null);
+          }
+          onCapture(result.file);
+          onClose();
+        }}
+      />
+    );
+  }
 
   const content = (
     <div style={styles.overlay}>
+      {/* Hidden Gallery Input */}
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleGalleryChange}
+        style={{ display: 'none' }}
+      />
+
       {/* Top Floating Controls */}
       <div style={styles.topBar}>
         <button
@@ -220,11 +273,11 @@ export const CameraCaptureModalMobile: React.FC<CameraCaptureModalProps> = ({
         <button
           type="button"
           style={styles.circleBtn}
-          onClick={handleFlipCamera}
-          title="Flip camera"
-          disabled={!cameraActive}
+          onClick={() => galleryInputRef.current?.click()}
+          title="Choose photo from gallery"
+          aria-label="Gallery"
         >
-          <RefreshCw size={22} />
+          <ImageIcon size={22} />
         </button>
 
         <button
@@ -240,7 +293,16 @@ export const CameraCaptureModalMobile: React.FC<CameraCaptureModalProps> = ({
           <div style={styles.shutterCore} />
         </button>
 
-        <div style={{ width: 48 }} />
+        <button
+          type="button"
+          style={styles.circleBtn}
+          onClick={handleFlipCamera}
+          title="Flip camera"
+          disabled={!cameraActive}
+          aria-label="Flip camera"
+        >
+          <RefreshCw size={22} />
+        </button>
       </div>
     </div>
   );

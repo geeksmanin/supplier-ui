@@ -4,4 +4,6 @@ export interface CameraCaptureModalProps {
   onCapture: (file: File) => void;
   title?: string;
   preferredFacingMode?: 'user' | 'environment';
+  initialSource?: 'camera' | 'gallery';
+  enableEditor?: boolean;
 }
