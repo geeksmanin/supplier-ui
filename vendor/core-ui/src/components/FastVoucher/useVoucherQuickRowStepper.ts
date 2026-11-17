@@ -28,6 +28,7 @@ export function useVoucherQuickRowStepper({
   const [mrp, setMrp] = useState<number>(0);
   const [unitPrice, setUnitPrice] = useState<number>(0);
   const [discountPercent, setDiscountPercent] = useState<number>(0);
+  const [taxPercent, setTaxPercent] = useState<number>(0);
   const [dynamicBatches, setDynamicBatches] = useState<Array<{ batch_code: string; expiry_date?: string; mrp?: number; available_quantity?: number }>>([]);
   const [liveStock, setLiveStock] = useState<number | null>(null);
 
@@ -37,6 +38,7 @@ export function useVoucherQuickRowStepper({
   const expiryInputRef = useRef<HTMLInputElement>(null);
   const rateInputRef = useRef<HTMLInputElement>(null);
   const discountInputRef = useRef<HTMLInputElement>(null);
+  const taxInputRef = useRef<HTMLInputElement>(null);
 
   const lastRequestedBatchVariantRef = useRef<string | null>(null);
   const lastRequestedStockVariantRef = useRef<string | null>(null);
@@ -60,6 +62,7 @@ export function useVoucherQuickRowStepper({
     setMrp(item.mrp || 0);
     setUnitPrice(item.unit_price || 0);
     setDiscountPercent(item.discount_percent || 0);
+    setTaxPercent(item.tax_percent ?? 0);
     setLiveStock(item.metadata?.available_quantity !== undefined ? Number(item.metadata.available_quantity) : null);
 
     const vIdStr = item.variant_id ? String(item.variant_id) : '';
@@ -140,7 +143,7 @@ export function useVoucherQuickRowStepper({
     const rawQty = Math.max(0, Number(qty) || 0);
     const rawRate = Math.max(0, Number(unitPrice) || 0);
     const rawDisc = Math.min(100, Math.max(0, Number(discountPercent) || 0));
-    const taxRate = Number(item?.tax_percent || 0);
+    const taxRate = Math.max(0, Number(taxPercent || 0));
 
     const isInclusive = Boolean(item?.tax_inclusive ?? item?.metadata?.is_price_tax_inclusive);
     const baseAmount = rawQty * rawRate;
@@ -163,7 +166,7 @@ export function useVoucherQuickRowStepper({
       taxAmount: Number(taxAmount.toFixed(2)),
       lineTotal: Number(lineTotal.toFixed(2)),
     };
-  }, [qty, unitPrice, discountPercent, item]);
+  }, [qty, unitPrice, discountPercent, taxPercent, item]);
 
   const handlePackagingChange = (opt: VoucherPackagingOption) => {
     setPackagingName(opt.name);
@@ -197,11 +200,12 @@ export function useVoucherQuickRowStepper({
       expiry_date: expiryDate.trim() || undefined,
       mrp: Number(mrp) || undefined,
       unit_price: Number(unitPrice),
-      tax_percent: Number(item.tax_percent || 0),
+      tax_percent: Number(taxPercent || 0),
       tax_amount: calculations.taxAmount,
       discount_percent: Number(discountPercent),
       discount_amount: calculations.discAmount,
       line_total: calculations.lineTotal,
+      hsn_code: item.hsn_code,
       remarks: item.remarks,
       metadata: item.metadata,
     };
@@ -224,6 +228,8 @@ export function useVoucherQuickRowStepper({
     setUnitPrice,
     discountPercent,
     setDiscountPercent,
+    taxPercent,
+    setTaxPercent,
     liveStock,
     effectiveBatches,
     calculations,
@@ -233,6 +239,7 @@ export function useVoucherQuickRowStepper({
     expiryInputRef,
     rateInputRef,
     discountInputRef,
+    taxInputRef,
     handlePackagingChange,
     handleBatchSelect,
     handleCommit,

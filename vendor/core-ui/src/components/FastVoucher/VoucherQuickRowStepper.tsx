@@ -42,6 +42,8 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
     setUnitPrice,
     discountPercent,
     setDiscountPercent,
+    taxPercent,
+    setTaxPercent,
     liveStock,
     effectiveBatches,
     calculations,
@@ -51,6 +53,7 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
     expiryInputRef,
     rateInputRef,
     discountInputRef,
+    taxInputRef,
     handlePackagingChange,
     handleBatchSelect,
     handleCommit,
@@ -198,6 +201,9 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
         expiryInputRef={expiryInputRef}
         rateInputRef={rateInputRef}
         discountInputRef={discountInputRef}
+        taxPercent={taxPercent}
+        setTaxPercent={setTaxPercent}
+        taxInputRef={taxInputRef}
         handleCommit={handleCommit}
       />
 
@@ -223,7 +229,7 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
           )}
           {calculations.taxAmount > 0 && (
             <div>
-              GST ({item.tax_percent}%): <strong style={{ color: '#059669' }}>+₹{calculations.taxAmount.toFixed(2)}</strong>
+              GST ({taxPercent}%): <strong style={{ color: '#059669' }}>+₹{calculations.taxAmount.toFixed(2)}</strong>
             </div>
           )}
           <div>
