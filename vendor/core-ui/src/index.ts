@@ -58,6 +58,12 @@ export type { DocumentPreviewModalProps } from './components/DocumentPreviewModa
 export { ImageLightboxModal } from './components/ImageLightboxModal';
 export type { ImageLightboxModalProps } from './components/ImageLightboxModal.types';
 export {
+  CameraCaptureModal,
+  CameraCaptureModalDesktop,
+  CameraCaptureModalMobile,
+} from './components/CameraCaptureModal';
+export type { CameraCaptureModalProps } from './components/CameraCaptureModal';
+export {
   ImageEditorModal,
   ImageEditorModalDesktop,
   ImageEditorModalMobile,
