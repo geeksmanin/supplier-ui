@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X,
@@ -11,6 +11,7 @@ import {
   Square,
   Circle,
   Type,
+  Move,
   Undo2,
   Redo2,
   RefreshCw,
@@ -21,11 +22,15 @@ import {
   EditorToolMode,
   AspectRatioOption,
   StrokeWidthPreset,
+  SelectedElement,
+  InlineTextDraft,
 } from './ImageEditorModal.types';
 import {
   useImageEditor,
   COLOR_PALETTE,
   STROKE_WIDTH_MAP,
+  getShapeBounds,
+  getStrokeBounds,
 } from './useImageEditor';
 
 export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
@@ -68,7 +73,12 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
     updateTextItem,
     removeTextItem,
     selectedTextId,
-    setSelectedTextId,
+    selectedElement,
+    setSelectedElement,
+    moveElement,
+    commitElementMove,
+    removeSelectedElement,
+    hitTestElement,
     zoom,
     setZoom,
     panOffset,
@@ -85,28 +95,38 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [isApplying, setIsApplying] = useState(false);
+  const [inlineTextDraft, setInlineTextDraft] = useState<InlineTextDraft | null>(null);
+  const inlineTextCommittedRef = useRef(false);
+  const draggingElRef = useRef<{ el: SelectedElement; lastPx: number; lastPy: number; moved: boolean } | null>(null);
+  const lastTapRef = useRef<{ time: number; x: number; y: number; targetId?: string } | null>(null);
+
+  const commitInlineText = useCallback((draft: InlineTextDraft | null) => {
+    if (!draft || inlineTextCommittedRef.current) return;
+    inlineTextCommittedRef.current = true;
+    const trimmed = draft.text.trim();
+    if (trimmed) {
+      if (draft.id) {
+        updateTextItem(draft.id, { text: trimmed });
+      } else {
+        addTextItem(trimmed, draft.x, draft.y);
+      }
+    } else if (draft.id) {
+      removeTextItem(draft.id);
+    }
+    setInlineTextDraft(null);
+  }, [addTextItem, updateTextItem, removeTextItem]);
 
   const handleSwitchMode = async (nextMode: EditorToolMode) => {
+    if (inlineTextDraft) {
+      commitInlineText(inlineTextDraft);
+    }
     if (mode === 'crop' && nextMode !== 'crop') {
       await commitCrop();
     }
-    setMode(nextMode);
-  };
-  const [textModalState, setTextModalState] = useState<{ isOpen: boolean; text: string; id?: string; x?: number; y?: number } | null>(null);
-
-  const handleSaveTextModal = () => {
-    if (!textModalState) return;
-    const trimmed = textModalState.text.trim();
-    if (trimmed) {
-      if (textModalState.id) {
-        updateTextItem(textModalState.id, { text: trimmed });
-      } else if (textModalState.x !== undefined && textModalState.y !== undefined) {
-        addTextItem(trimmed, textModalState.x, textModalState.y);
-      }
-    } else if (textModalState.id) {
-      removeTextItem(textModalState.id);
+    if (nextMode === 'crop') {
+      setSelectedElement(null);
     }
-    setTextModalState(null);
+    setMode(nextMode);
   };
 
   // Crop Drag state
@@ -171,6 +191,9 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
   // Handle Apply
   const handleApply = async () => {
     if (isApplying) return;
+    if (inlineTextDraft) {
+      commitInlineText(inlineTextDraft);
+    }
     setIsApplying(true);
     try {
       if (mode === 'crop') {
@@ -185,112 +208,117 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
     }
   };
 
-  // Crop Handle Touch
-  const handleCropTouchStart = (handle: string, e: React.TouchEvent) => {
+  const getNormalizedCoords = (clientX: number, clientY: number) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect || !displayW || !displayH) return null;
+    const offsetX = (containerSize.width - displayW * zoom) / 2 + panOffset.x;
+    const offsetY = (containerSize.height - displayH * zoom) / 2 + panOffset.y;
+    return {
+      px: Math.max(0, Math.min(1, (clientX - rect.left - offsetX) / (displayW * zoom))),
+      py: Math.max(0, Math.min(1, (clientY - rect.top - offsetY) / (displayH * zoom))),
+    };
+  };
+
+  // Crop Handle Pointer / Touch
+  const handleCropPointerDown = (handle: string, e: React.PointerEvent) => {
     e.stopPropagation();
-    const touch = e.touches[0];
-    if (!touch) return;
     setDragHandle(handle);
     dragStartRef.current = {
-      clientX: touch.clientX,
-      clientY: touch.clientY,
+      clientX: e.clientX,
+      clientY: e.clientY,
       initialRect: { ...cropRect },
     };
   };
 
-  // Touch Start (Drawing or Multi-touch)
-  const handleCanvasTouchStart = (e: React.TouchEvent) => {
-    // 1. Two-Finger Pinch & Pan
-    if (e.touches.length === 2) {
-      const t1 = e.touches[0];
-      const t2 = e.touches[1];
-      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-      const midX = (t1.clientX + t2.clientX) / 2;
-      const midY = (t1.clientY + t2.clientY) / 2;
+  const startDraggingElement = (el: SelectedElement, e: React.PointerEvent) => {
+    if (mode === 'crop') return;
+    e.stopPropagation();
+    const coords = getNormalizedCoords(e.clientX, e.clientY);
+    if (!coords) return;
 
-      touchStateRef.current = {
-        initialDist: dist,
-        initialZoom: zoom,
-        initialMidX: midX,
-        initialMidY: midY,
-        initialPan: { ...panOffset },
-        isPinching: true,
-      };
-      // Cancel active single finger strokes if two fingers land
-      setCurrentStroke(null);
-      setCurrentShape(null);
+    // Detect double-tap on an existing text element to edit inline
+    if (el.kind === 'text') {
+      const now = Date.now();
+      const prev = lastTapRef.current;
+      if (prev && prev.targetId === el.id && now - prev.time < 350) {
+        lastTapRef.current = null;
+        const found = textItems.find((t) => t.id === el.id);
+        if (found) {
+          inlineTextCommittedRef.current = false;
+          setInlineTextDraft({ id: found.id, x: found.x, y: found.y, text: found.text });
+        }
+        return;
+      }
+      lastTapRef.current = { time: now, x: e.clientX, y: e.clientY, targetId: el.id };
+    }
+
+    setSelectedElement(el);
+    draggingElRef.current = { el, lastPx: coords.px, lastPy: coords.py, moved: false };
+  };
+
+  // Unified Single-Pointer Down (Touch & Mouse)
+  const handleCanvasPointerDown = (e: React.PointerEvent) => {
+    if (touchStateRef.current.isPinching || mode === 'crop' || inlineTextDraft) return;
+    const coords = getNormalizedCoords(e.clientX, e.clientY);
+    if (!coords) return;
+    const { px, py } = coords;
+
+    if (mode === 'select') {
+      const hit = hitTestElement(px, py, 0.045);
+      setSelectedElement(hit);
+      if (hit) {
+        draggingElRef.current = { el: hit, lastPx: px, lastPy: py, moved: false };
+      }
       return;
     }
 
-    // 2. Single-finger Interaction
-    if (e.touches.length === 1 && !touchStateRef.current.isPinching) {
-      if (mode === 'crop') return;
-      if (!displayW || !displayH) return;
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const t = e.touches[0];
-      const offsetX = (containerSize.width - displayW) / 2 + panOffset.x;
-      const offsetY = (containerSize.height - displayH) / 2 + panOffset.y;
-      const px = (t.clientX - rect.left - offsetX) / (displayW * zoom);
-      const py = (t.clientY - rect.top - offsetY) / (displayH * zoom);
-
-      if (mode === 'pencil') {
-        setCurrentStroke({
-          id: `stroke-${Date.now()}`,
-          type: 'pencil',
-          points: [{ x: px, y: py }],
-          color,
-          width: STROKE_WIDTH_MAP[strokePreset],
-        });
-      } else if (mode === 'arrow' || mode === 'rect' || mode === 'circle') {
-        setCurrentShape({
-          id: `shape-${Date.now()}`,
-          type: mode,
-          startX: px,
-          startY: py,
-          endX: px,
-          endY: py,
-          color,
-          width: STROKE_WIDTH_MAP[strokePreset],
-        });
-      } else if (mode === 'text') {
-        setTextModalState({ isOpen: true, text: '', x: px, y: py });
+    if (mode === 'pencil') {
+      setSelectedElement(null);
+      setCurrentStroke({
+        id: `stroke-${Date.now()}`,
+        type: 'pencil',
+        points: [{ x: px, y: py }],
+        color,
+        width: STROKE_WIDTH_MAP[strokePreset],
+      });
+    } else if (mode === 'arrow' || mode === 'rect' || mode === 'circle') {
+      setSelectedElement(null);
+      setCurrentShape({
+        id: `shape-${Date.now()}`,
+        type: mode,
+        startX: px,
+        startY: py,
+        endX: px,
+        endY: py,
+        color,
+        width: STROKE_WIDTH_MAP[strokePreset],
+      });
+    } else if (mode === 'text') {
+      setSelectedElement(null);
+      const now = Date.now();
+      const prev = lastTapRef.current;
+      if (
+        prev &&
+        !prev.targetId &&
+        now - prev.time < 360 &&
+        Math.hypot(e.clientX - prev.x, e.clientY - prev.y) < 42
+      ) {
+        lastTapRef.current = null;
+        inlineTextCommittedRef.current = false;
+        setInlineTextDraft({ x: px, y: py, text: '' });
+      } else {
+        lastTapRef.current = { time: now, x: e.clientX, y: e.clientY };
       }
     }
   };
 
-  // Touch Move
-  const handleCanvasTouchMove = (e: React.TouchEvent) => {
-    // Two-finger Pinch & Pan
-    if (e.touches.length === 2 && touchStateRef.current.isPinching) {
-      const t1 = e.touches[0];
-      const t2 = e.touches[1];
-      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-      const midX = (t1.clientX + t2.clientX) / 2;
-      const midY = (t1.clientY + t2.clientY) / 2;
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (touchStateRef.current.isPinching) return;
 
-      const scaleChange = dist / (touchStateRef.current.initialDist || 1);
-      const newZoom = Math.min(3, Math.max(1, touchStateRef.current.initialZoom * scaleChange));
-      setZoom(newZoom);
-
-      if (newZoom > 1) {
-        const dx = midX - touchStateRef.current.initialMidX;
-        const dy = midY - touchStateRef.current.initialMidY;
-        setPanOffset({
-          x: touchStateRef.current.initialPan.x + dx,
-          y: touchStateRef.current.initialPan.y + dy,
-        });
-      } else {
-        setPanOffset({ x: 0, y: 0 });
-      }
-      return;
-    }
-
-    // Single-finger Crop Drag
-    if (e.touches.length === 1 && dragHandle && displayW > 0 && displayH > 0) {
-      const t = e.touches[0];
-      const dx = (t.clientX - dragStartRef.current.clientX) / displayW;
-      const dy = (t.clientY - dragStartRef.current.clientY) / displayH;
+    // Crop Drag
+    if (dragHandle && displayW > 0 && displayH > 0) {
+      const dx = (e.clientX - dragStartRef.current.clientX) / displayW;
+      const dy = (e.clientY - dragStartRef.current.clientY) / displayH;
       const initial = dragStartRef.current.initialRect;
 
       let nextX = initial.x;
@@ -325,34 +353,39 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
       return;
     }
 
-    // Single-finger Drawing or Shapes
-    if (e.touches.length === 1 && !touchStateRef.current.isPinching) {
-      if (!displayW || !displayH) return;
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const t = e.touches[0];
-      const offsetX = (containerSize.width - displayW) / 2 + panOffset.x;
-      const offsetY = (containerSize.height - displayH) / 2 + panOffset.y;
-      const px = (t.clientX - rect.left - offsetX) / (displayW * zoom);
-      const py = (t.clientY - rect.top - offsetY) / (displayH * zoom);
+    const coords = getNormalizedCoords(e.clientX, e.clientY);
+    if (!coords) return;
+    const { px, py } = coords;
 
-      if (currentStroke) {
-        setCurrentStroke((prev) => (prev ? { ...prev, points: [...prev.points, { x: px, y: py }] } : null));
-      } else if (currentShape) {
-        setCurrentShape((prev) => (prev ? { ...prev, endX: px, endY: py } : null));
+    if (draggingElRef.current) {
+      const dx = px - draggingElRef.current.lastPx;
+      const dy = py - draggingElRef.current.lastPy;
+      if (Math.abs(dx) > 0.0005 || Math.abs(dy) > 0.0005) {
+        moveElement(draggingElRef.current.el, dx, dy);
+        draggingElRef.current.lastPx = px;
+        draggingElRef.current.lastPy = py;
+        draggingElRef.current.moved = true;
       }
+      return;
+    }
+
+    if (currentStroke) {
+      setCurrentStroke((prev) => (prev ? { ...prev, points: [...prev.points, { x: px, y: py }] } : null));
+    } else if (currentShape) {
+      setCurrentShape((prev) => (prev ? { ...prev, endX: px, endY: py } : null));
     }
   };
 
-  // Touch End
-  const handleCanvasTouchEnd = () => {
-    if (touchStateRef.current.isPinching) {
-      touchStateRef.current.isPinching = false;
-      return;
-    }
+  const handlePointerUp = () => {
     if (dragHandle) {
       setDragHandle(null);
       pushHistory({ cropRect });
+    }
+    if (draggingElRef.current) {
+      if (draggingElRef.current.moved) {
+        commitElementMove();
+      }
+      draggingElRef.current = null;
     }
     if (currentStroke) {
       finishStroke(currentStroke);
@@ -361,6 +394,70 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
       finishShape(currentShape);
     }
   };
+
+  // Two-Finger Pinch & Pan Touch Handlers
+  const handleCanvasTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      const midX = (t1.clientX + t2.clientX) / 2;
+      const midY = (t1.clientY + t2.clientY) / 2;
+
+      touchStateRef.current = {
+        initialDist: dist,
+        initialZoom: zoom,
+        initialMidX: midX,
+        initialMidY: midY,
+        initialPan: { ...panOffset },
+        isPinching: true,
+      };
+      setCurrentStroke(null);
+      setCurrentShape(null);
+      draggingElRef.current = null;
+    }
+  };
+
+  const handleCanvasTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && touchStateRef.current.isPinching) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      const midX = (t1.clientX + t2.clientX) / 2;
+      const midY = (t1.clientY + t2.clientY) / 2;
+
+      const scaleChange = dist / (touchStateRef.current.initialDist || 1);
+      const newZoom = Math.min(3, Math.max(1, touchStateRef.current.initialZoom * scaleChange));
+      setZoom(newZoom);
+
+      if (newZoom > 1) {
+        const dx = midX - touchStateRef.current.initialMidX;
+        const dy = midY - touchStateRef.current.initialMidY;
+        setPanOffset({
+          x: touchStateRef.current.initialPan.x + dx,
+          y: touchStateRef.current.initialPan.y + dy,
+        });
+      } else {
+        setPanOffset({ x: 0, y: 0 });
+      }
+    }
+  };
+
+  const handleCanvasTouchEnd = (e: React.TouchEvent) => {
+    if (touchStateRef.current.isPinching && e.touches.length < 2) {
+      touchStateRef.current.isPinching = false;
+    }
+  };
+
+  const selectedBounds = (() => {
+    if (!selectedElement || selectedElement.kind === 'text') return null;
+    if (selectedElement.kind === 'shape') {
+      const sh = shapes.find((s) => s.id === selectedElement.id);
+      return sh ? getShapeBounds(sh) : null;
+    }
+    const st = strokes.find((s) => s.id === selectedElement.id);
+    return st ? getStrokeBounds(st) : null;
+  })();
 
   const content = (
     <div
@@ -377,6 +474,8 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
       }}
       onTouchMove={handleCanvasTouchMove}
       onTouchEnd={handleCanvasTouchEnd}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
     >
       {/* 1. Mobile Emerald Header */}
       <header
@@ -464,9 +563,11 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
           touchAction: 'none',
         }}
         onTouchStart={handleCanvasTouchStart}
+        onPointerDown={handleCanvasPointerDown}
       >
         {imageLoaded && displayW > 0 && displayH > 0 && (
           <div
+            data-editor-canvas="true"
             style={{
               position: 'relative',
               width: `${displayW}px`,
@@ -499,17 +600,24 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
                 pointerEvents: 'none',
               }}
             >
-              {strokes.map((st) => (
-                <polyline
-                  key={st.id}
-                  points={st.points.map((p) => `${p.x * displayW},${p.y * displayH}`).join(' ')}
-                  fill="none"
-                  stroke={st.color}
-                  strokeWidth={st.width}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              ))}
+              {strokes.map((st) => {
+                const b = getStrokeBounds(st);
+                return (
+                  <polyline
+                    key={st.id}
+                    data-editor-element-kind="stroke"
+                    data-element-id={st.id}
+                    data-bounds-x={b.x.toFixed(4)}
+                    data-bounds-y={b.y.toFixed(4)}
+                    points={st.points.map((p) => `${p.x * displayW},${p.y * displayH}`).join(' ')}
+                    fill="none"
+                    stroke={st.color}
+                    strokeWidth={st.width}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                );
+              })}
               {currentStroke && (
                 <polyline
                   points={currentStroke.points.map((p) => `${p.x * displayW},${p.y * displayH}`).join(' ')}
@@ -526,55 +634,127 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
               {currentShape && renderMobileSvgShape(currentShape, displayW, displayH)}
             </svg>
 
-            {/* Text Callouts */}
-            {textItems.map((item) => (
+            {/* Selection Bounding Box for Selected Shape or Stroke */}
+            {selectedElement && selectedElement.kind !== 'text' && selectedBounds && mode === 'select' && (
               <div
-                key={item.id}
                 style={{
                   position: 'absolute',
-                  left: `${item.x * displayW}px`,
-                  top: `${item.y * displayH}px`,
+                  left: `${selectedBounds.x * displayW - 8}px`,
+                  top: `${selectedBounds.y * displayH - 8}px`,
+                  width: `${selectedBounds.width * displayW + 16}px`,
+                  height: `${selectedBounds.height * displayH + 16}px`,
+                  border: '1.5px dashed #00a884',
+                  borderRadius: '6px',
+                  backgroundColor: 'rgba(0, 168, 132, 0.08)',
+                  boxSizing: 'border-box',
+                  touchAction: 'none',
+                }}
+                onPointerDown={(e) => startDraggingElement(selectedElement, e)}
+              >
+                <button
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeSelectedElement();
+                  }}
+                  style={styles.deleteBadgeBtn}
+                  title="Delete element"
+                  type="button"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            )}
+
+            {/* Text Callouts */}
+            {textItems.map((item) => {
+              if (inlineTextDraft?.id === item.id) return null;
+              const isTextInteractive = mode === 'select' || mode === 'text';
+              return (
+                <div
+                  key={item.id}
+                  data-editor-element-kind="text"
+                  data-element-id={item.id}
+                  data-bounds-x={item.x.toFixed(4)}
+                  data-bounds-y={item.y.toFixed(4)}
+                  style={{
+                    position: 'absolute',
+                    left: `${item.x * displayW}px`,
+                    top: `${item.y * displayH}px`,
+                    transform: 'translate(-50%, -50%)',
+                    padding: '5px 12px',
+                    borderRadius: '16px',
+                    backgroundColor: item.hasBadge ? 'rgba(0, 0, 0, 0.75)' : 'transparent',
+                    color: item.color,
+                    fontSize: `${item.fontSize}px`,
+                    fontWeight: 700,
+                    border: selectedTextId === item.id ? '1.5px dashed #00a884' : '1px solid transparent',
+                    whiteSpace: 'nowrap',
+                    touchAction: 'none',
+                    pointerEvents: isTextInteractive ? 'auto' : 'none',
+                  }}
+                  onPointerDown={(e) => isTextInteractive && startDraggingElement({ kind: 'text', id: item.id }, e)}
+                >
+                  {item.text}
+                  {selectedTextId === item.id && (
+                    <button
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeTextItem(item.id);
+                      }}
+                      style={styles.inlineDeleteBtn}
+                      type="button"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Inline Text Typing Input Directly on Canvas */}
+            {inlineTextDraft && (
+              <input
+                type="text"
+                autoFocus
+                data-inline-editor-text="true"
+                data-dark-input="true"
+                placeholder="Type text..."
+                value={inlineTextDraft.text}
+                onChange={(e) => setInlineTextDraft({ ...inlineTextDraft, text: e.target.value })}
+                onPointerDown={(e) => e.stopPropagation()}
+                onBlur={() => commitInlineText(inlineTextDraft)}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    commitInlineText(inlineTextDraft);
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    inlineTextCommittedRef.current = true;
+                    setInlineTextDraft(null);
+                  }
+                }}
+                style={{
+                  position: 'absolute',
+                  left: `${inlineTextDraft.x * displayW}px`,
+                  top: `${inlineTextDraft.y * displayH}px`,
                   transform: 'translate(-50%, -50%)',
+                  minWidth: '120px',
                   padding: '5px 12px',
                   borderRadius: '16px',
-                  backgroundColor: item.hasBadge ? 'rgba(0, 0, 0, 0.75)' : 'transparent',
-                  color: item.color,
-                  fontSize: `${item.fontSize}px`,
+                  backgroundColor: 'rgba(0, 0, 0, 0.84)',
+                  color,
+                  fontSize: `${strokePreset === 'fine' ? 18 : strokePreset === 'medium' ? 24 : 32}px`,
                   fontWeight: 700,
-                  border: selectedTextId === item.id ? '1px dashed #00a884' : 'none',
-                  whiteSpace: 'nowrap',
+                  border: '1.5px solid #00a884',
+                  outline: 'none',
+                  textAlign: 'center',
+                  zIndex: 20,
                 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedTextId(item.id);
-                }}
-              >
-                {item.text}
-                {selectedTextId === item.id && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeTextItem(item.id);
-                    }}
-                    style={{
-                      marginLeft: '8px',
-                      backgroundColor: '#ef4444',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '50%',
-                      width: '20px',
-                      height: '20px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                    type="button"
-                  >
-                    <Trash2 size={11} />
-                  </button>
-                )}
-              </div>
-            ))}
+              />
+            )}
 
             {/* Crop Overlay */}
             {mode === 'crop' && (
@@ -589,7 +769,7 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
                   border: '2px solid #00a884',
                   boxSizing: 'border-box',
                 }}
-                onTouchStart={(e) => handleCropTouchStart('move', e)}
+                onPointerDown={(e) => handleCropPointerDown('move', e)}
               >
                 {/* 8 Touch Handles with Minimum 44px Hit Targets */}
                 {['tl', 'tc', 'tr', 'ml', 'mr', 'bl', 'bc', 'br'].map((handle) => (
@@ -606,7 +786,7 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
                       justifyContent: 'center',
                       touchAction: 'none',
                     }}
-                    onTouchStart={(e) => handleCropTouchStart(handle, e)}
+                    onPointerDown={(e) => handleCropPointerDown(handle, e)}
                   >
                     <div
                       style={{
@@ -750,22 +930,40 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
           )}
         </div>
 
+        {(mode === 'text' || mode === 'select') && (
+          <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.72rem', paddingBottom: '2px' }}>
+            {mode === 'text'
+              ? 'Double-tap anywhere to type • Drag text to move'
+              : 'Tap & drag any text, shape, or drawing to move'}
+          </div>
+        )}
+
         {/* Tool Mode Tabs */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-around',
-            padding: '6px 8px',
+            padding: '6px 4px',
+            overflowX: 'auto',
           }}
         >
+          <button
+            onClick={() => handleSwitchMode('select')}
+            style={mode === 'select' ? styles.activeMobileTab : styles.mobileTab}
+            type="button"
+            aria-label="Move elements"
+          >
+            <Move size={18} />
+            <span style={{ fontSize: '0.7rem' }}>Move</span>
+          </button>
           <button
             onClick={() => handleSwitchMode('crop')}
             style={mode === 'crop' ? styles.activeMobileTab : styles.mobileTab}
             type="button"
           >
             <Crop size={18} />
-            <span style={{ fontSize: '0.72rem' }}>Crop</span>
+            <span style={{ fontSize: '0.7rem' }}>Crop</span>
           </button>
           <button
             onClick={() => handleSwitchMode('pencil')}
@@ -773,7 +971,7 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
             type="button"
           >
             <Pen size={18} />
-            <span style={{ fontSize: '0.72rem' }}>Pencil</span>
+            <span style={{ fontSize: '0.7rem' }}>Pencil</span>
           </button>
           <button
             onClick={() => handleSwitchMode('arrow')}
@@ -781,7 +979,7 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
             type="button"
           >
             <ArrowRight size={18} />
-            <span style={{ fontSize: '0.72rem' }}>Arrow</span>
+            <span style={{ fontSize: '0.7rem' }}>Arrow</span>
           </button>
           <button
             onClick={() => handleSwitchMode('rect')}
@@ -789,7 +987,7 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
             type="button"
           >
             <Square size={18} />
-            <span style={{ fontSize: '0.72rem' }}>Box</span>
+            <span style={{ fontSize: '0.7rem' }}>Box</span>
           </button>
           <button
             onClick={() => handleSwitchMode('circle')}
@@ -797,7 +995,7 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
             type="button"
           >
             <Circle size={18} />
-            <span style={{ fontSize: '0.72rem' }}>Circle</span>
+            <span style={{ fontSize: '0.7rem' }}>Circle</span>
           </button>
           <button
             onClick={() => handleSwitchMode('text')}
@@ -805,102 +1003,10 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
             type="button"
           >
             <Type size={18} />
-            <span style={{ fontSize: '0.72rem' }}>Text</span>
+            <span style={{ fontSize: '0.7rem' }}>Text</span>
           </button>
         </div>
       </footer>
-
-      {/* Custom Mobile Apple HIG Dialog for Adding/Editing Callout Text */}
-      {textModalState && textModalState.isOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            backdropFilter: 'blur(10px)',
-            zIndex: 10005,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-            boxSizing: 'border-box',
-          }}
-          onClick={() => setTextModalState(null)}
-        >
-          <div
-            style={{
-              backgroundColor: '#1f2c34',
-              padding: '20px',
-              borderRadius: '16px',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
-              width: '100%',
-              maxWidth: '320px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '14px',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h4 style={{ margin: 0, color: '#ffffff', fontSize: '1rem', fontWeight: 600 }}>
-              {textModalState.id ? 'Edit Callout Text' : 'Add Callout Text'}
-            </h4>
-            <input
-              type="text"
-              autoFocus
-              placeholder="Type callout text..."
-              value={textModalState.text}
-              onChange={(e) => setTextModalState({ ...textModalState, text: e.target.value })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSaveTextModal();
-                if (e.key === 'Escape') setTextModalState(null);
-              }}
-              style={{
-                backgroundColor: '#2a3942',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                borderRadius: '10px',
-                padding: '10px 14px',
-                color: '#ffffff',
-                fontSize: '0.95rem',
-                outline: 'none',
-              }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button
-                onClick={() => setTextModalState(null)}
-                style={{
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  color: '#8696a0',
-                  padding: '8px 14px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '0.88rem',
-                }}
-                type="button"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveTextModal}
-                style={{
-                  backgroundColor: '#00a884',
-                  border: 'none',
-                  borderRadius: '8px',
-                  color: '#ffffff',
-                  padding: '8px 18px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontSize: '0.88rem',
-                }}
-                type="button"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 
@@ -915,6 +1021,13 @@ function renderMobileSvgShape(sh: any, w: number, h: number) {
   const sy = sh.startY * h;
   const ex = sh.endX * w;
   const ey = sh.endY * h;
+  const b = getShapeBounds(sh);
+  const dataAttrs = {
+    'data-editor-element-kind': 'shape',
+    'data-element-id': sh.id,
+    'data-bounds-x': b.x.toFixed(4),
+    'data-bounds-y': b.y.toFixed(4),
+  };
 
   if (sh.type === 'arrow') {
     const angle = Math.atan2(ey - sy, ex - sx);
@@ -922,7 +1035,7 @@ function renderMobileSvgShape(sh: any, w: number, h: number) {
     const p1 = `${ex - headLen * Math.cos(angle - Math.PI / 6)},${ey - headLen * Math.sin(angle - Math.PI / 6)}`;
     const p2 = `${ex - headLen * Math.cos(angle + Math.PI / 6)},${ey - headLen * Math.sin(angle + Math.PI / 6)}`;
     return (
-      <g key={sh.id}>
+      <g key={sh.id} {...dataAttrs}>
         <line x1={sx} y1={sy} x2={ex} y2={ey} stroke={sh.color} strokeWidth={sh.width} strokeLinecap="round" />
         <polygon points={`${ex},${ey} ${p1} ${p2}`} fill={sh.color} />
       </g>
@@ -933,6 +1046,7 @@ function renderMobileSvgShape(sh: any, w: number, h: number) {
     return (
       <rect
         key={sh.id}
+        {...dataAttrs}
         x={Math.min(sx, ex)}
         y={Math.min(sy, ey)}
         width={Math.abs(ex - sx)}
@@ -951,7 +1065,17 @@ function renderMobileSvgShape(sh: any, w: number, h: number) {
     const cx = Math.min(sx, ex) + rx;
     const cy = Math.min(sy, ey) + ry;
     return (
-      <ellipse key={sh.id} cx={cx} cy={cy} rx={rx} ry={ry} fill="none" stroke={sh.color} strokeWidth={sh.width} />
+      <ellipse
+        key={sh.id}
+        {...dataAttrs}
+        cx={cx}
+        cy={cy}
+        rx={rx}
+        ry={ry}
+        fill="none"
+        stroke={sh.color}
+        strokeWidth={sh.width}
+      />
     );
   }
 
@@ -992,7 +1116,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'transparent',
     border: 'none',
     color: 'rgba(255, 255, 255, 0.7)',
-    padding: '6px 12px',
+    padding: '6px 8px',
     cursor: 'pointer',
   },
   activeMobileTab: {
@@ -1004,7 +1128,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '12px',
     border: 'none',
     color: '#00a884',
-    padding: '6px 12px',
+    padding: '6px 8px',
     cursor: 'pointer',
   },
   mobileSubBtn: {
@@ -1019,5 +1143,34 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.74rem',
     fontWeight: 500,
     cursor: 'pointer',
+  },
+  deleteBadgeBtn: {
+    position: 'absolute',
+    top: '-12px',
+    right: '-12px',
+    backgroundColor: '#ef4444',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '50%',
+    width: '24px',
+    height: '24px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
+    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.45)',
+  },
+  inlineDeleteBtn: {
+    marginLeft: '8px',
+    backgroundColor: '#ef4444',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '50%',
+    width: '20px',
+    height: '20px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 0,
   },
 };
