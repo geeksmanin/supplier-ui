@@ -258,7 +258,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10000,
+    zIndex: 99999,
     padding: 16,
   },
   modalCard: {

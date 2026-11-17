@@ -256,7 +256,7 @@ const styles: Record<string, React.CSSProperties> = {
     position: 'fixed',
     inset: 0,
     backgroundColor: '#000000',
-    zIndex: 10000,
+    zIndex: 99999,
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',

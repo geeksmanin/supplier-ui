@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Check,
@@ -165,7 +166,6 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
     try {
       const result = await generateExportResult(fileNamePrefix);
       onApply(result);
-      onClose();
     } catch (err) {
       console.error('Failed to generate mobile edited image:', err);
     } finally {
@@ -350,13 +350,13 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
     }
   };
 
-  return (
+  const content = (
     <div
       style={{
         position: 'fixed',
         inset: 0,
         backgroundColor: '#0b141a',
-        zIndex: 10000,
+        zIndex: 99999,
         display: 'flex',
         flexDirection: 'column',
         touchAction: 'none',
@@ -873,6 +873,11 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
       )}
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(content, document.body);
+  }
+  return content;
 };
 
 function renderMobileSvgShape(sh: any, w: number, h: number) {
