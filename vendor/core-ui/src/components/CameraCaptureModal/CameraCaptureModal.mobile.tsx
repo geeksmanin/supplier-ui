@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { X, RefreshCw, AlertCircle } from 'lucide-react';
 import { CameraCaptureModalProps } from './CameraCaptureModal.types';
 
@@ -81,6 +82,26 @@ export const CameraCaptureModalMobile: React.FC<CameraCaptureModalProps> = ({
     };
   }, [isOpen, startCamera, stopStream]);
 
+  // Mobile Hardware & Browser Back Navigation Interceptor (AjitPharma #290)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handlePopState = () => {
+      onClose();
+    };
+    if (typeof window !== 'undefined') {
+      window.history.pushState({ modal: 'camera-capture' }, '');
+      window.addEventListener('popstate', handlePopState);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('popstate', handlePopState);
+        if (window.history.state && window.history.state.modal === 'camera-capture') {
+          window.history.back();
+        }
+      }
+    };
+  }, [isOpen, onClose]);
+
   const handleCapturePhoto = () => {
     if (!videoRef.current || isCapturing) return;
     setIsCapturing(true);
@@ -135,7 +156,7 @@ export const CameraCaptureModalMobile: React.FC<CameraCaptureModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
+  const content = (
     <div style={styles.overlay}>
       {/* Top Floating Controls */}
       <div style={styles.topBar}>
@@ -207,6 +228,11 @@ export const CameraCaptureModalMobile: React.FC<CameraCaptureModalProps> = ({
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(content, document.body);
+  }
+  return content;
 };
 
 const styles: Record<string, React.CSSProperties> = {

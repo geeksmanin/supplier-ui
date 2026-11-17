@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Camera, RefreshCw, AlertCircle } from 'lucide-react';
 import { CameraCaptureModalProps } from './CameraCaptureModal.types';
 
@@ -83,6 +84,20 @@ export const CameraCaptureModalDesktop: React.FC<CameraCaptureModalProps> = ({
     };
   }, [isOpen, startCamera, stopStream]);
 
+  // Desktop keyboard accessibility (Escape to close)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   const handleCapturePhoto = () => {
     if (!videoRef.current || isCapturing) return;
     setIsCapturing(true);
@@ -138,7 +153,7 @@ export const CameraCaptureModalDesktop: React.FC<CameraCaptureModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
+  const content = (
     <div style={styles.overlay}>
       <div style={styles.modalCard}>
         {/* Header */}
@@ -226,6 +241,11 @@ export const CameraCaptureModalDesktop: React.FC<CameraCaptureModalProps> = ({
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(content, document.body);
+  }
+  return content;
 };
 
 const styles: Record<string, React.CSSProperties> = {
