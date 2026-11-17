@@ -3,6 +3,7 @@ import { apiClient } from '../api/client';
 import { Button } from './Button';
 import { resolveMediaUrl } from '../utils/media';
 import { compressImageFile, ImageCompressionOptions } from '../utils/imageCompressor';
+import { ImageEditorModal } from './ImageEditor/ImageEditorModal';
 
 interface ImageUploadProps {
   folder: string;
@@ -12,6 +13,8 @@ interface ImageUploadProps {
   multiple?: boolean;
   maxFiles?: number;
   compression?: ImageCompressionOptions | boolean;
+  enableImageEditor?: boolean;
+  enableDocumentViewer?: boolean;
 }
 
 export const ImageUpload: React.FC<ImageUploadProps> = ({
@@ -22,11 +25,15 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   multiple = false,
   maxFiles = 5,
   compression,
+  enableImageEditor = false,
+  enableDocumentViewer = false,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [editingFile, setEditingFile] = useState<File | null>(null);
+  const [editingBlobUrl, setEditingBlobUrl] = useState<string | null>(null);
 
   const atLimit = value.length >= maxFiles;
 
@@ -62,6 +69,14 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
 
   const handleFiles = async (files: FileList | null) => {
     if (!files?.length) return;
+
+    if (enableImageEditor && files[0]?.type?.startsWith('image/')) {
+      const selected = files[0];
+      setEditingFile(selected);
+      setEditingBlobUrl(URL.createObjectURL(selected));
+      return;
+    }
+
     setUploading(true);
     setError('');
 
@@ -287,6 +302,39 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
             </button>
           </div>
         </div>
+      )}
+      {editingFile && editingBlobUrl && (
+        <ImageEditorModal
+          isOpen={true}
+          imageUrl={editingBlobUrl}
+          onClose={() => {
+            setEditingFile(null);
+            if (editingBlobUrl) URL.revokeObjectURL(editingBlobUrl);
+            setEditingBlobUrl(null);
+          }}
+          onApply={async (result) => {
+            const finalFile = new File([result.blob], editingFile.name || `image_${Date.now()}.jpg`, {
+              type: result.blob.type || 'image/jpeg',
+            });
+            setEditingFile(null);
+            if (editingBlobUrl) URL.revokeObjectURL(editingBlobUrl);
+            setEditingBlobUrl(null);
+            setUploading(true);
+            setError('');
+            try {
+              const url = await uploadFile(finalFile);
+              if (multiple) {
+                onChange([...value, url]);
+              } else {
+                onChange([url]);
+              }
+            } catch (err: any) {
+              setError(err.response?.data?.error || err.message || 'Upload failed');
+            } finally {
+              setUploading(false);
+            }
+          }}
+        />
       )}
     </div>
   );
