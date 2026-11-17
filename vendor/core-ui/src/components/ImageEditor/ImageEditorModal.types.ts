@@ -1,4 +1,16 @@
-export type EditorToolMode = 'crop' | 'pencil' | 'arrow' | 'rect' | 'circle' | 'text';
+export type EditorToolMode = 'select' | 'crop' | 'pencil' | 'arrow' | 'rect' | 'circle' | 'text';
+
+export interface SelectedElement {
+  kind: 'text' | 'shape' | 'stroke';
+  id: string;
+}
+
+export interface InlineTextDraft {
+  id?: string;
+  x: number;
+  y: number;
+  text: string;
+}
 
 export type StrokeWidthPreset = 'fine' | 'medium' | 'bold';
 
