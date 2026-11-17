@@ -85,13 +85,8 @@ export const PhotoProofBar: React.FC<PhotoProofBarProps> = ({
       onCameraClick();
       return;
     }
-    // Check if running on desktop or mobile
-    const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (isMobile) {
-      cameraInputRef.current?.click();
-    } else {
-      setIsInternalCameraOpen(true);
-    }
+    // Launch seamless in-app CameraCaptureModal across all devices (mobile and desktop)
+    setIsInternalCameraOpen(true);
   };
 
   return (

@@ -86,10 +86,12 @@ export const CameraCaptureModalMobile: React.FC<CameraCaptureModalProps> = ({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const pushedRef = useRef(false);
+  const capturedRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen) return;
     pushedRef.current = false;
+    capturedRef.current = false;
     const handlePopState = () => {
       pushedRef.current = false;
       onCloseRef.current();
@@ -102,7 +104,8 @@ export const CameraCaptureModalMobile: React.FC<CameraCaptureModalProps> = ({
     return () => {
       if (typeof window !== 'undefined') {
         window.removeEventListener('popstate', handlePopState);
-        if (pushedRef.current && window.history.state && window.history.state.modal === 'camera-capture') {
+        // Only trigger history.back() if dismissed WITHOUT capturing, to avoid cascading popstate into ImageEditorModal
+        if (!capturedRef.current && pushedRef.current && window.history.state && window.history.state.modal === 'camera-capture') {
           pushedRef.current = false;
           window.history.back();
         }
@@ -147,6 +150,11 @@ export const CameraCaptureModalMobile: React.FC<CameraCaptureModalProps> = ({
           });
 
           stopStream();
+          capturedRef.current = true;
+          // Smoothly transition history state from camera-capture to image-editor without firing a disruptive popstate
+          if (typeof window !== 'undefined' && pushedRef.current && window.history.state?.modal === 'camera-capture') {
+            window.history.replaceState({ modal: 'image-editor' }, '');
+          }
           onCapture(file);
         },
         'image/jpeg',
