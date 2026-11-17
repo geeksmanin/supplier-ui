@@ -57,6 +57,25 @@ export { DocumentPreviewModal } from './components/DocumentPreviewModal';
 export type { DocumentPreviewModalProps } from './components/DocumentPreviewModal';
 export { ImageLightboxModal } from './components/ImageLightboxModal';
 export type { ImageLightboxModalProps } from './components/ImageLightboxModal.types';
+export {
+  ImageEditorModal,
+  ImageEditorModalDesktop,
+  ImageEditorModalMobile,
+  useImageEditor,
+  COLOR_PALETTE,
+  STROKE_WIDTH_MAP,
+} from './components/ImageEditor';
+export type {
+  ImageEditorModalProps,
+  ImageEditorResult,
+  EditorToolMode,
+  CropRect,
+  AspectRatioOption,
+  StrokeWidthPreset,
+  EditorStroke,
+  EditorShape,
+  EditorTextItem,
+} from './components/ImageEditor';
 export { Profile } from './components/Profile';
 export { ProfileMobile } from './components/ProfileMobile';
 export { ImageUpload } from './components/ImageUpload';
