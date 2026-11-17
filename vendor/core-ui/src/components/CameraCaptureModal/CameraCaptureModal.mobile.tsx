@@ -83,24 +83,32 @@ export const CameraCaptureModalMobile: React.FC<CameraCaptureModalProps> = ({
   }, [isOpen, startCamera, stopStream]);
 
   // Mobile Hardware & Browser Back Navigation Interceptor (AjitPharma #290)
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const pushedRef = useRef(false);
+
   useEffect(() => {
     if (!isOpen) return;
+    pushedRef.current = false;
     const handlePopState = () => {
-      onClose();
+      pushedRef.current = false;
+      onCloseRef.current();
     };
     if (typeof window !== 'undefined') {
       window.history.pushState({ modal: 'camera-capture' }, '');
+      pushedRef.current = true;
       window.addEventListener('popstate', handlePopState);
     }
     return () => {
       if (typeof window !== 'undefined') {
         window.removeEventListener('popstate', handlePopState);
-        if (window.history.state && window.history.state.modal === 'camera-capture') {
+        if (pushedRef.current && window.history.state && window.history.state.modal === 'camera-capture') {
+          pushedRef.current = false;
           window.history.back();
         }
       }
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   const handleCapturePhoto = () => {
     if (!videoRef.current || isCapturing) return;
