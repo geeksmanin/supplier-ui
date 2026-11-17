@@ -1,12 +1,14 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Camera, Image as ImageIcon, X } from 'lucide-react';
 import { resolveMediaUrl } from '../../utils/media';
+import { CameraCaptureModal } from '../CameraCaptureModal/CameraCaptureModal';
 
 export interface PhotoProofBarProps {
   photos: string[];
-  onPhotoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onPhotoUpload: (e: React.ChangeEvent<HTMLInputElement> | File) => void;
   onRemovePhoto: (index: number) => void;
   onZoomPhoto?: (url: string) => void;
+  onCameraClick?: () => void;
   isMandatory?: boolean;
   disabled?: boolean;
 }
@@ -65,11 +67,28 @@ export const PhotoProofBar: React.FC<PhotoProofBarProps> = ({
   onPhotoUpload,
   onRemovePhoto,
   onZoomPhoto,
+  onCameraClick,
   isMandatory = false,
   disabled = false,
 }) => {
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
+  const [isInternalCameraOpen, setIsInternalCameraOpen] = useState(false);
+
+  const handleCameraBtnClick = () => {
+    if (disabled) return;
+    if (onCameraClick) {
+      onCameraClick();
+      return;
+    }
+    // Check if running on desktop or mobile
+    const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+      cameraInputRef.current?.click();
+    } else {
+      setIsInternalCameraOpen(true);
+    }
+  };
 
   return (
     <div
@@ -106,7 +125,7 @@ export const PhotoProofBar: React.FC<PhotoProofBarProps> = ({
           <button
             type="button"
             disabled={disabled}
-            onClick={() => cameraInputRef.current?.click()}
+            onClick={handleCameraBtnClick}
             style={actionPillStyle}
             title="Take photo using camera"
           >
@@ -155,6 +174,17 @@ export const PhotoProofBar: React.FC<PhotoProofBarProps> = ({
             </div>
           ))}
         </div>
+      )}
+
+      {isInternalCameraOpen && (
+        <CameraCaptureModal
+          isOpen={isInternalCameraOpen}
+          onClose={() => setIsInternalCameraOpen(false)}
+          onCapture={(file) => {
+            setIsInternalCameraOpen(false);
+            onPhotoUpload(file);
+          }}
+        />
       )}
     </div>
   );
