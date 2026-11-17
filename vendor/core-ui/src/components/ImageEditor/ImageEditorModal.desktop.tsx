@@ -11,6 +11,7 @@ import {
   Square,
   Circle,
   Type,
+  Move,
   Undo2,
   Redo2,
   RefreshCw,
@@ -21,11 +22,15 @@ import {
   EditorToolMode,
   AspectRatioOption,
   StrokeWidthPreset,
+  SelectedElement,
+  InlineTextDraft,
 } from './ImageEditorModal.types';
 import {
   useImageEditor,
   COLOR_PALETTE,
   STROKE_WIDTH_MAP,
+  getShapeBounds,
+  getStrokeBounds,
 } from './useImageEditor';
 
 export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
@@ -40,6 +45,8 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
   const {
     imageLoaded,
     imageSize,
+    currentImageUrl,
+    commitCrop,
     mode,
     setMode,
     color,
@@ -66,7 +73,12 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
     updateTextItem,
     removeTextItem,
     selectedTextId,
-    setSelectedTextId,
+    selectedElement,
+    setSelectedElement,
+    moveElement,
+    commitElementMove,
+    removeSelectedElement,
+    hitTestElement,
     canUndo,
     canRedo,
     undo,
@@ -79,21 +91,37 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [isApplying, setIsApplying] = useState(false);
-  const [textModalState, setTextModalState] = useState<{ isOpen: boolean; text: string; id?: string; x?: number; y?: number } | null>(null);
+  const [inlineTextDraft, setInlineTextDraft] = useState<InlineTextDraft | null>(null);
+  const inlineTextCommittedRef = useRef(false);
+  const draggingElRef = useRef<{ el: SelectedElement; lastPx: number; lastPy: number; moved: boolean } | null>(null);
 
-  const handleSaveTextModal = () => {
-    if (!textModalState) return;
-    const trimmed = textModalState.text.trim();
+  const commitInlineText = useCallback((draft: InlineTextDraft | null) => {
+    if (!draft || inlineTextCommittedRef.current) return;
+    inlineTextCommittedRef.current = true;
+    const trimmed = draft.text.trim();
     if (trimmed) {
-      if (textModalState.id) {
-        updateTextItem(textModalState.id, { text: trimmed });
-      } else if (textModalState.x !== undefined && textModalState.y !== undefined) {
-        addTextItem(trimmed, textModalState.x, textModalState.y);
+      if (draft.id) {
+        updateTextItem(draft.id, { text: trimmed });
+      } else {
+        addTextItem(trimmed, draft.x, draft.y);
       }
-    } else if (textModalState.id) {
-      removeTextItem(textModalState.id);
+    } else if (draft.id) {
+      removeTextItem(draft.id);
     }
-    setTextModalState(null);
+    setInlineTextDraft(null);
+  }, [addTextItem, updateTextItem, removeTextItem]);
+
+  const handleSwitchMode = async (nextMode: EditorToolMode) => {
+    if (inlineTextDraft) {
+      commitInlineText(inlineTextDraft);
+    }
+    if (mode === 'crop' && nextMode !== 'crop') {
+      await commitCrop();
+    }
+    if (nextMode === 'crop') {
+      setSelectedElement(null);
+    }
+    setMode(nextMode);
   };
 
   // Dragging crop handle or crop box
@@ -123,8 +151,14 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
   // Handle Apply
   const handleApply = async () => {
     if (isApplying) return;
+    if (inlineTextDraft) {
+      commitInlineText(inlineTextDraft);
+    }
     setIsApplying(true);
     try {
+      if (mode === 'crop') {
+        await commitCrop();
+      }
       const result = await generateExportResult(fileNamePrefix);
       onApply(result);
       onClose();
@@ -139,7 +173,20 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (inlineTextDraft) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          inlineTextCommittedRef.current = true;
+          setInlineTextDraft(null);
+        }
+        return;
+      }
       if (e.key === 'Escape') onClose();
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedElement) {
+        e.preventDefault();
+        removeSelectedElement();
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         undo();
@@ -151,7 +198,7 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose, undo, redo]);
+  }, [isOpen, onClose, undo, redo, inlineTextDraft, selectedElement, removeSelectedElement]);
 
   if (!isOpen) return null;
 
@@ -221,7 +268,7 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
       return;
     }
 
-    // Pointer move for drawing/shapes
+    // Pointer move for element dragging or drawing/shapes
     if (!displayW || !displayH) return;
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -229,6 +276,18 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
     const offsetY = (containerSize.height - displayH) / 2;
     const px = (e.clientX - rect.left - offsetX) / displayW;
     const py = (e.clientY - rect.top - offsetY) / displayH;
+
+    if (draggingElRef.current) {
+      const dx = px - draggingElRef.current.lastPx;
+      const dy = py - draggingElRef.current.lastPy;
+      if (Math.abs(dx) > 0.0005 || Math.abs(dy) > 0.0005) {
+        moveElement(draggingElRef.current.el, dx, dy);
+        draggingElRef.current.lastPx = px;
+        draggingElRef.current.lastPy = py;
+        draggingElRef.current.moved = true;
+      }
+      return;
+    }
 
     if (currentStroke) {
       setCurrentStroke((prev) => (prev ? { ...prev, points: [...prev.points, { x: px, y: py }] } : null));
@@ -242,6 +301,12 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
       setDragHandle(null);
       pushHistory({ cropRect });
     }
+    if (draggingElRef.current) {
+      if (draggingElRef.current.moved) {
+        commitElementMove();
+      }
+      draggingElRef.current = null;
+    }
     if (currentStroke) {
       finishStroke(currentStroke);
     }
@@ -250,17 +315,44 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
     }
   };
 
-  const handleCanvasPointerDown = (e: React.PointerEvent) => {
-    if (mode === 'crop') return;
-    if (!displayW || !displayH) return;
+  const getNormalizedCoords = (clientX: number, clientY: number) => {
     const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    if (!rect || !displayW || !displayH) return null;
     const offsetX = (containerSize.width - displayW) / 2;
     const offsetY = (containerSize.height - displayH) / 2;
-    const px = (e.clientX - rect.left - offsetX) / displayW;
-    const py = (e.clientY - rect.top - offsetY) / displayH;
+    return {
+      px: Math.max(0, Math.min(1, (clientX - rect.left - offsetX) / displayW)),
+      py: Math.max(0, Math.min(1, (clientY - rect.top - offsetY) / displayH)),
+    };
+  };
+
+  const startDraggingElement = (el: SelectedElement, e: React.PointerEvent) => {
+    if (mode === 'crop') return;
+    e.stopPropagation();
+    const coords = getNormalizedCoords(e.clientX, e.clientY);
+    if (!coords) return;
+    setSelectedElement(el);
+    draggingElRef.current = { el, lastPx: coords.px, lastPy: coords.py, moved: false };
+  };
+
+  const handleCanvasPointerDown = (e: React.PointerEvent) => {
+    if (mode === 'crop') return;
+    if (inlineTextDraft) return;
+    const coords = getNormalizedCoords(e.clientX, e.clientY);
+    if (!coords) return;
+    const { px, py } = coords;
+
+    if (mode === 'select') {
+      const hit = hitTestElement(px, py);
+      setSelectedElement(hit);
+      if (hit) {
+        draggingElRef.current = { el: hit, lastPx: px, lastPy: py, moved: false };
+      }
+      return;
+    }
 
     if (mode === 'pencil') {
+      setSelectedElement(null);
       setCurrentStroke({
         id: `stroke-${Date.now()}`,
         type: 'pencil',
@@ -269,6 +361,7 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
         width: STROKE_WIDTH_MAP[strokePreset],
       });
     } else if (mode === 'arrow' || mode === 'rect' || mode === 'circle') {
+      setSelectedElement(null);
       setCurrentShape({
         id: `shape-${Date.now()}`,
         type: mode,
@@ -280,9 +373,30 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
         width: STROKE_WIDTH_MAP[strokePreset],
       });
     } else if (mode === 'text') {
-      setTextModalState({ isOpen: true, text: '', x: px, y: py });
+      // Single click clears selection; double-click spawns inline typing at exact point
+      setSelectedElement(null);
     }
   };
+
+  const handleCanvasDoubleClick = (e: React.MouseEvent) => {
+    if (mode !== 'text') return;
+    const coords = getNormalizedCoords(e.clientX, e.clientY);
+    if (!coords) return;
+    inlineTextCommittedRef.current = false;
+    setSelectedElement(null);
+    setInlineTextDraft({ x: coords.px, y: coords.py, text: '' });
+  };
+
+  // Compute selection bounding box for selected shape or stroke
+  const selectedBounds = (() => {
+    if (!selectedElement || selectedElement.kind === 'text') return null;
+    if (selectedElement.kind === 'shape') {
+      const sh = shapes.find((s) => s.id === selectedElement.id);
+      return sh ? getShapeBounds(sh) : null;
+    }
+    const st = strokes.find((s) => s.id === selectedElement.id);
+    return st ? getStrokeBounds(st) : null;
+  })();
 
   const content = (
     <div
@@ -364,7 +478,17 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
           }}
         >
           <button
-            onClick={() => setMode('crop')}
+            onClick={() => handleSwitchMode('select')}
+            style={mode === 'select' ? styles.activeToolTab : styles.toolTab}
+            type="button"
+            aria-label="Move elements"
+            title="Select & Move elements"
+          >
+            <Move size={16} />
+            <span>Move</span>
+          </button>
+          <button
+            onClick={() => handleSwitchMode('crop')}
             style={mode === 'crop' ? styles.activeToolTab : styles.toolTab}
             type="button"
           >
@@ -372,7 +496,7 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
             <span>Crop & Rotate</span>
           </button>
           <button
-            onClick={() => setMode('pencil')}
+            onClick={() => handleSwitchMode('pencil')}
             style={mode === 'pencil' ? styles.activeToolTab : styles.toolTab}
             type="button"
           >
@@ -380,7 +504,7 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
             <span>Pencil</span>
           </button>
           <button
-            onClick={() => setMode('arrow')}
+            onClick={() => handleSwitchMode('arrow')}
             style={mode === 'arrow' ? styles.activeToolTab : styles.toolTab}
             type="button"
           >
@@ -388,7 +512,7 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
             <span>Arrow</span>
           </button>
           <button
-            onClick={() => setMode('rect')}
+            onClick={() => handleSwitchMode('rect')}
             style={mode === 'rect' ? styles.activeToolTab : styles.toolTab}
             type="button"
           >
@@ -396,7 +520,7 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
             <span>Box</span>
           </button>
           <button
-            onClick={() => setMode('circle')}
+            onClick={() => handleSwitchMode('circle')}
             style={mode === 'circle' ? styles.activeToolTab : styles.toolTab}
             type="button"
           >
@@ -404,7 +528,7 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
             <span>Circle</span>
           </button>
           <button
-            onClick={() => setMode('text')}
+            onClick={() => handleSwitchMode('text')}
             style={mode === 'text' ? styles.activeToolTab : styles.toolTab}
             type="button"
           >
@@ -495,6 +619,22 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
                   {opt.toUpperCase()}
                 </button>
               ))}
+              <button
+                onClick={async () => {
+                  await commitCrop();
+                  setMode('pencil');
+                }}
+                style={{
+                  ...styles.subBtn,
+                  backgroundColor: '#00a884',
+                  color: '#ffffff',
+                }}
+                type="button"
+                title="Apply Crop & Continue Editing"
+              >
+                <Check size={14} />
+                <span>Apply</span>
+              </button>
             </div>
           </div>
         ) : (
@@ -550,6 +690,13 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
                 </button>
               ))}
             </div>
+            {(mode === 'text' || mode === 'select') && (
+              <span style={{ color: '#94a3b8', fontSize: '0.78rem', fontWeight: 500 }}>
+                {mode === 'text'
+                  ? 'Double-click anywhere on the image to type • Drag any text to move'
+                  : 'Drag any text, shape, or drawing to move • Delete key to remove'}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -564,12 +711,21 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
-          cursor: mode === 'crop' ? 'default' : mode === 'text' ? 'text' : 'crosshair',
+          cursor:
+            mode === 'crop'
+              ? 'default'
+              : mode === 'select'
+              ? 'grab'
+              : mode === 'text'
+              ? 'text'
+              : 'crosshair',
         }}
         onPointerDown={handleCanvasPointerDown}
+        onDoubleClick={handleCanvasDoubleClick}
       >
         {imageLoaded && displayW > 0 && displayH > 0 && (
           <div
+            data-editor-canvas="true"
             style={{
               position: 'relative',
               width: `${displayW}px`,
@@ -579,7 +735,7 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
           >
             {/* Base Image */}
             <img
-              src={imageUrl}
+              src={currentImageUrl || imageUrl}
               alt="Edit canvas"
               style={{
                 width: '100%',
@@ -590,7 +746,7 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
               }}
             />
 
-            {/* Existing Freehand Strokes */}
+            {/* Existing Freehand Strokes & Shapes */}
             <svg
               style={{
                 position: 'absolute',
@@ -600,17 +756,24 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
                 pointerEvents: 'none',
               }}
             >
-              {strokes.map((st) => (
-                <polyline
-                  key={st.id}
-                  points={st.points.map((p) => `${p.x * displayW},${p.y * displayH}`).join(' ')}
-                  fill="none"
-                  stroke={st.color}
-                  strokeWidth={st.width}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              ))}
+              {strokes.map((st) => {
+                const b = getStrokeBounds(st);
+                return (
+                  <polyline
+                    key={st.id}
+                    data-editor-element-kind="stroke"
+                    data-element-id={st.id}
+                    data-bounds-x={b.x.toFixed(4)}
+                    data-bounds-y={b.y.toFixed(4)}
+                    points={st.points.map((p) => `${p.x * displayW},${p.y * displayH}`).join(' ')}
+                    fill="none"
+                    stroke={st.color}
+                    strokeWidth={st.width}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                );
+              })}
               {currentStroke && (
                 <polyline
                   points={currentStroke.points.map((p) => `${p.x * displayW},${p.y * displayH}`).join(' ')}
@@ -627,63 +790,136 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
               {currentShape && renderSvgShape(currentShape, displayW, displayH)}
             </svg>
 
-            {/* Text Callouts Layer */}
-            {textItems.map((item) => (
+            {/* Selection Bounding Box for Selected Shape or Freehand Stroke */}
+            {selectedElement && selectedElement.kind !== 'text' && selectedBounds && mode === 'select' && (
               <div
-                key={item.id}
                 style={{
                   position: 'absolute',
-                  left: `${item.x * displayW}px`,
-                  top: `${item.y * displayH}px`,
-                  transform: 'translate(-50%, -50%)',
-                  padding: '4px 10px',
-                  borderRadius: '14px',
-                  backgroundColor: item.hasBadge ? 'rgba(0, 0, 0, 0.72)' : 'transparent',
-                  color: item.color,
-                  fontSize: `${item.fontSize}px`,
-                  fontWeight: 700,
+                  left: `${selectedBounds.x * displayW - 8}px`,
+                  top: `${selectedBounds.y * displayH - 8}px`,
+                  width: `${selectedBounds.width * displayW + 16}px`,
+                  height: `${selectedBounds.height * displayH + 16}px`,
+                  border: '1.5px dashed #00a884',
+                  borderRadius: '6px',
+                  backgroundColor: 'rgba(0, 168, 132, 0.06)',
                   cursor: 'grab',
-                  border: selectedTextId === item.id ? '1px dashed #00a884' : 'none',
-                  whiteSpace: 'nowrap',
+                  boxSizing: 'border-box',
                 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedTextId(item.id);
-                }}
-                onDoubleClick={(e) => {
-                  e.stopPropagation();
-                  setTextModalState({ isOpen: true, text: item.text, id: item.id });
-                }}
+                onPointerDown={(e) => startDraggingElement(selectedElement, e)}
               >
-                {item.text}
-                {selectedTextId === item.id && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeTextItem(item.id);
-                    }}
-                    style={{
-                      marginLeft: '6px',
-                      backgroundColor: '#ef4444',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '50%',
-                      width: '18px',
-                      height: '18px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      padding: 0,
-                    }}
-                    title="Delete callout"
-                    type="button"
-                  >
-                    <Trash2 size={10} />
-                  </button>
-                )}
+                <button
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeSelectedElement();
+                  }}
+                  style={styles.deleteBadgeBtn}
+                  title="Delete element"
+                  type="button"
+                >
+                  <Trash2 size={11} />
+                </button>
               </div>
-            ))}
+            )}
+
+            {/* Text Callouts Layer */}
+            {textItems.map((item) => {
+              if (inlineTextDraft?.id === item.id) return null;
+              const isTextInteractive = mode === 'select' || mode === 'text';
+              return (
+                <div
+                  key={item.id}
+                  data-editor-element-kind="text"
+                  data-element-id={item.id}
+                  data-bounds-x={item.x.toFixed(4)}
+                  data-bounds-y={item.y.toFixed(4)}
+                  style={{
+                    position: 'absolute',
+                    left: `${item.x * displayW}px`,
+                    top: `${item.y * displayH}px`,
+                    transform: 'translate(-50%, -50%)',
+                    padding: '4px 10px',
+                    borderRadius: '14px',
+                    backgroundColor: item.hasBadge ? 'rgba(0, 0, 0, 0.72)' : 'transparent',
+                    color: item.color,
+                    fontSize: `${item.fontSize}px`,
+                    fontWeight: 700,
+                    cursor: isTextInteractive ? 'grab' : 'default',
+                    border: selectedTextId === item.id ? '1.5px dashed #00a884' : '1px solid transparent',
+                    whiteSpace: 'nowrap',
+                    touchAction: 'none',
+                    pointerEvents: isTextInteractive ? 'auto' : 'none',
+                  }}
+                  onPointerDown={(e) => isTextInteractive && startDraggingElement({ kind: 'text', id: item.id }, e)}
+                  onDoubleClick={(e) => {
+                    if (!isTextInteractive) return;
+                    e.stopPropagation();
+                    inlineTextCommittedRef.current = false;
+                    setInlineTextDraft({ id: item.id, x: item.x, y: item.y, text: item.text });
+                  }}
+                >
+                  {item.text}
+                  {selectedTextId === item.id && (
+                    <button
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeTextItem(item.id);
+                      }}
+                      style={styles.inlineDeleteBtn}
+                      title="Delete callout"
+                      type="button"
+                    >
+                      <Trash2 size={10} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Inline Text Typing Input Directly on Canvas */}
+            {inlineTextDraft && (
+              <input
+                type="text"
+                autoFocus
+                data-inline-editor-text="true"
+                data-dark-input="true"
+                placeholder="Type text..."
+                value={inlineTextDraft.text}
+                onChange={(e) => setInlineTextDraft({ ...inlineTextDraft, text: e.target.value })}
+                onPointerDown={(e) => e.stopPropagation()}
+                onDoubleClick={(e) => e.stopPropagation()}
+                onBlur={() => commitInlineText(inlineTextDraft)}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    commitInlineText(inlineTextDraft);
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    inlineTextCommittedRef.current = true;
+                    setInlineTextDraft(null);
+                  }
+                }}
+                style={{
+                  position: 'absolute',
+                  left: `${inlineTextDraft.x * displayW}px`,
+                  top: `${inlineTextDraft.y * displayH}px`,
+                  transform: 'translate(-50%, -50%)',
+                  minWidth: '120px',
+                  padding: '4px 12px',
+                  borderRadius: '14px',
+                  backgroundColor: 'rgba(0, 0, 0, 0.82)',
+                  color,
+                  fontSize: `${strokePreset === 'fine' ? 18 : strokePreset === 'medium' ? 24 : 32}px`,
+                  fontWeight: 700,
+                  border: '1.5px solid #00a884',
+                  outline: 'none',
+                  textAlign: 'center',
+                  zIndex: 20,
+                }}
+              />
+            )}
 
             {/* Crop Overlay (When in Crop Mode) */}
             {mode === 'crop' && (
@@ -733,94 +969,6 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
           </div>
         )}
       </div>
-      {/* Custom Apple HIG Dialog for Adding/Editing Callout Text */}
-      {textModalState && textModalState.isOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.65)',
-            backdropFilter: 'blur(10px)',
-            zIndex: 10005,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          onClick={() => setTextModalState(null)}
-        >
-          <div
-            style={{
-              backgroundColor: '#1f2c34',
-              padding: '24px',
-              borderRadius: '16px',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
-              width: '340px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h4 style={{ margin: 0, color: '#ffffff', fontSize: '1.05rem', fontWeight: 600 }}>
-              {textModalState.id ? 'Edit Callout Text' : 'Add Callout Text'}
-            </h4>
-            <input
-              type="text"
-              autoFocus
-              placeholder="Type your callout here..."
-              value={textModalState.text}
-              onChange={(e) => setTextModalState({ ...textModalState, text: e.target.value })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSaveTextModal();
-                if (e.key === 'Escape') setTextModalState(null);
-              }}
-              style={{
-                backgroundColor: '#2a3942',
-                border: '1px solid rgba(255, 255, 255, 0.18)',
-                borderRadius: '10px',
-                padding: '10px 14px',
-                color: '#ffffff',
-                fontSize: '0.95rem',
-                outline: 'none',
-              }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button
-                onClick={() => setTextModalState(null)}
-                style={{
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  color: '#8696a0',
-                  padding: '8px 14px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '0.88rem',
-                }}
-                type="button"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveTextModal}
-                style={{
-                  backgroundColor: '#00a884',
-                  border: 'none',
-                  borderRadius: '8px',
-                  color: '#ffffff',
-                  padding: '8px 18px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontSize: '0.88rem',
-                }}
-                type="button"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 
@@ -836,6 +984,13 @@ function renderSvgShape(sh: any, w: number, h: number) {
   const sy = sh.startY * h;
   const ex = sh.endX * w;
   const ey = sh.endY * h;
+  const b = getShapeBounds(sh);
+  const dataAttrs = {
+    'data-editor-element-kind': 'shape',
+    'data-element-id': sh.id,
+    'data-bounds-x': b.x.toFixed(4),
+    'data-bounds-y': b.y.toFixed(4),
+  };
 
   if (sh.type === 'arrow') {
     const angle = Math.atan2(ey - sy, ex - sx);
@@ -844,7 +999,7 @@ function renderSvgShape(sh: any, w: number, h: number) {
     const p2 = `${ex - headLen * Math.cos(angle + Math.PI / 6)},${ey - headLen * Math.sin(angle + Math.PI / 6)}`;
 
     return (
-      <g key={sh.id}>
+      <g key={sh.id} {...dataAttrs}>
         <line x1={sx} y1={sy} x2={ex} y2={ey} stroke={sh.color} strokeWidth={sh.width} strokeLinecap="round" />
         <polygon points={`${ex},${ey} ${p1} ${p2}`} fill={sh.color} />
       </g>
@@ -855,6 +1010,7 @@ function renderSvgShape(sh: any, w: number, h: number) {
     return (
       <rect
         key={sh.id}
+        {...dataAttrs}
         x={Math.min(sx, ex)}
         y={Math.min(sy, ey)}
         width={Math.abs(ex - sx)}
@@ -875,6 +1031,7 @@ function renderSvgShape(sh: any, w: number, h: number) {
     return (
       <ellipse
         key={sh.id}
+        {...dataAttrs}
         cx={cx}
         cy={cy}
         rx={rx}
@@ -970,5 +1127,36 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.76rem',
     fontWeight: 500,
     cursor: 'pointer',
+  },
+  deleteBadgeBtn: {
+    position: 'absolute',
+    top: '-10px',
+    right: '-10px',
+    backgroundColor: '#ef4444',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '50%',
+    width: '22px',
+    height: '22px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    padding: 0,
+    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.45)',
+  },
+  inlineDeleteBtn: {
+    marginLeft: '6px',
+    backgroundColor: '#ef4444',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '50%',
+    width: '18px',
+    height: '18px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    padding: 0,
   },
 };

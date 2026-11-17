@@ -7,8 +7,69 @@ import {
   EditorTextItem,
   CropRect,
   AspectRatioOption,
-  ImageEditorResult
+  ImageEditorResult,
+  SelectedElement,
 } from './ImageEditorModal.types';
+
+export interface ElementBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export function getShapeBounds(sh: EditorShape): ElementBounds {
+  const minX = Math.min(sh.startX, sh.endX);
+  const maxX = Math.max(sh.startX, sh.endX);
+  const minY = Math.min(sh.startY, sh.endY);
+  const maxY = Math.max(sh.startY, sh.endY);
+  return {
+    x: minX,
+    y: minY,
+    width: Math.max(0.02, maxX - minX),
+    height: Math.max(0.02, maxY - minY),
+  };
+}
+
+export function getStrokeBounds(st: EditorStroke): ElementBounds {
+  if (!st.points || st.points.length === 0) {
+    return { x: 0, y: 0, width: 0.02, height: 0.02 };
+  }
+  let minX = st.points[0].x;
+  let maxX = st.points[0].x;
+  let minY = st.points[0].y;
+  let maxY = st.points[0].y;
+  for (let i = 1; i < st.points.length; i++) {
+    const p = st.points[i];
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return {
+    x: minX,
+    y: minY,
+    width: Math.max(0.02, maxX - minX),
+    height: Math.max(0.02, maxY - minY),
+  };
+}
+
+function distancePointToSegment(
+  px: number,
+  py: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
+): number {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+  let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
 
 export const COLOR_PALETTE = [
   '#EF4444', // Red
@@ -58,6 +119,19 @@ export function useImageEditor(imageUrl: string, initialFile?: File, initialMode
   const [currentStroke, setCurrentStroke] = useState<EditorStroke | null>(null);
   const [currentShape, setCurrentShape] = useState<EditorShape | null>(null);
   const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
+  const [selectedElement, setSelectedElementState] = useState<SelectedElement | null>(null);
+
+  const strokesRef = useRef<EditorStroke[]>(strokes);
+  strokesRef.current = strokes;
+  const shapesRef = useRef<EditorShape[]>(shapes);
+  shapesRef.current = shapes;
+  const textItemsRef = useRef<EditorTextItem[]>(textItems);
+  textItemsRef.current = textItems;
+
+  const setSelectedElement = useCallback((el: SelectedElement | null) => {
+    setSelectedElementState(el);
+    setSelectedTextId(el && el.kind === 'text' ? el.id : null);
+  }, []);
 
   // Viewport zoom & pan (for detail editing)
   const [zoom, setZoom] = useState<number>(1);
@@ -274,12 +348,14 @@ export function useImageEditor(imageUrl: string, initialFile?: File, initialMode
 
   // Add / Update Text
   const addTextItem = useCallback((text: string, x = 0.5, y = 0.5) => {
+    const clampedX = Math.max(0.03, Math.min(0.97, x));
+    const clampedY = Math.max(0.03, Math.min(0.97, y));
     const newItem: EditorTextItem = {
       id: `text-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       type: 'text',
       text,
-      x,
-      y,
+      x: clampedX,
+      y: clampedY,
       color,
       fontSize: strokePreset === 'fine' ? 18 : strokePreset === 'medium' ? 24 : 32,
       hasBadge: true,
@@ -289,8 +365,8 @@ export function useImageEditor(imageUrl: string, initialFile?: File, initialMode
       pushHistory({ textItems: next });
       return next;
     });
-    setSelectedTextId(newItem.id);
-  }, [color, strokePreset, pushHistory]);
+    setSelectedElement({ kind: 'text', id: newItem.id });
+  }, [color, strokePreset, pushHistory, setSelectedElement]);
 
   const updateTextItem = useCallback((id: string, updates: Partial<EditorTextItem>) => {
     setTextItems((prev) => {
@@ -307,21 +383,24 @@ export function useImageEditor(imageUrl: string, initialFile?: File, initialMode
       return next;
     });
     setSelectedTextId((prev) => (prev === id ? null : prev));
+    setSelectedElementState((prev) => (prev?.kind === 'text' && prev.id === id ? null : prev));
   }, [pushHistory]);
 
   // Finish a freehand stroke
   const finishStroke = useCallback((stroke: EditorStroke) => {
+    setCurrentStroke(null);
     if (stroke.points.length < 2) return;
     setStrokes((prev) => {
       const next = [...prev, stroke];
       pushHistory({ strokes: next });
       return next;
     });
-    setCurrentStroke(null);
-  }, [pushHistory]);
+    setSelectedElement({ kind: 'stroke', id: stroke.id });
+  }, [pushHistory, setSelectedElement]);
 
   // Finish a shape
   const finishShape = useCallback((shape: EditorShape) => {
+    setCurrentShape(null);
     const dx = Math.abs(shape.endX - shape.startX);
     const dy = Math.abs(shape.endY - shape.startY);
     if (dx < 0.01 && dy < 0.01) return;
@@ -330,8 +409,150 @@ export function useImageEditor(imageUrl: string, initialFile?: File, initialMode
       pushHistory({ shapes: next });
       return next;
     });
-    setCurrentShape(null);
+    setSelectedElement({ kind: 'shape', id: shape.id });
+  }, [pushHistory, setSelectedElement]);
+
+  // Move individual elements (live drag without spamming undo stack; commitElementMove pushes history on drag end)
+  const moveTextItem = useCallback((id: string, dx: number, dy: number) => {
+    setTextItems((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              x: Math.max(0.02, Math.min(0.98, item.x + dx)),
+              y: Math.max(0.02, Math.min(0.98, item.y + dy)),
+            }
+          : item
+      )
+    );
+  }, []);
+
+  const moveShape = useCallback((id: string, dx: number, dy: number) => {
+    setShapes((prev) =>
+      prev.map((sh) => {
+        if (sh.id !== id) return sh;
+        const minX = Math.min(sh.startX, sh.endX);
+        const maxX = Math.max(sh.startX, sh.endX);
+        const minY = Math.min(sh.startY, sh.endY);
+        const maxY = Math.max(sh.startY, sh.endY);
+        const clampedDx = Math.max(-minX, Math.min(1 - maxX, dx));
+        const clampedDy = Math.max(-minY, Math.min(1 - maxY, dy));
+        return {
+          ...sh,
+          startX: sh.startX + clampedDx,
+          startY: sh.startY + clampedDy,
+          endX: sh.endX + clampedDx,
+          endY: sh.endY + clampedDy,
+        };
+      })
+    );
+  }, []);
+
+  const moveStroke = useCallback((id: string, dx: number, dy: number) => {
+    setStrokes((prev) =>
+      prev.map((st) => {
+        if (st.id !== id || st.points.length === 0) return st;
+        const b = getStrokeBounds(st);
+        const clampedDx = Math.max(-b.x, Math.min(1 - (b.x + b.width), dx));
+        const clampedDy = Math.max(-b.y, Math.min(1 - (b.y + b.height), dy));
+        return {
+          ...st,
+          points: st.points.map((p) => ({ x: p.x + clampedDx, y: p.y + clampedDy })),
+        };
+      })
+    );
+  }, []);
+
+  const moveElement = useCallback(
+    (el: SelectedElement, dx: number, dy: number) => {
+      if (el.kind === 'text') moveTextItem(el.id, dx, dy);
+      else if (el.kind === 'shape') moveShape(el.id, dx, dy);
+      else if (el.kind === 'stroke') moveStroke(el.id, dx, dy);
+    },
+    [moveTextItem, moveShape, moveStroke]
+  );
+
+  const commitElementMove = useCallback(() => {
+    pushHistory({
+      strokes: strokesRef.current,
+      shapes: shapesRef.current,
+      textItems: textItemsRef.current,
+    });
   }, [pushHistory]);
+
+  const removeShape = useCallback((id: string) => {
+    setShapes((prev) => {
+      const next = prev.filter((sh) => sh.id !== id);
+      pushHistory({ shapes: next });
+      return next;
+    });
+    setSelectedElementState((prev) => (prev?.kind === 'shape' && prev.id === id ? null : prev));
+  }, [pushHistory]);
+
+  const removeStroke = useCallback((id: string) => {
+    setStrokes((prev) => {
+      const next = prev.filter((st) => st.id !== id);
+      pushHistory({ strokes: next });
+      return next;
+    });
+    setSelectedElementState((prev) => (prev?.kind === 'stroke' && prev.id === id ? null : prev));
+  }, [pushHistory]);
+
+  const removeSelectedElement = useCallback(() => {
+    if (!selectedElement) return;
+    if (selectedElement.kind === 'text') removeTextItem(selectedElement.id);
+    else if (selectedElement.kind === 'shape') removeShape(selectedElement.id);
+    else if (selectedElement.kind === 'stroke') removeStroke(selectedElement.id);
+  }, [selectedElement, removeTextItem, removeShape, removeStroke]);
+
+  // Hit-test topmost annotation element at normalized (px, py)
+  const hitTestElement = useCallback((px: number, py: number, tolerance = 0.035): SelectedElement | null => {
+    // 1. Check text items (topmost first)
+    const curTexts = textItemsRef.current;
+    for (let i = curTexts.length - 1; i >= 0; i--) {
+      const item = curTexts[i];
+      const halfW = Math.max(0.06, Math.min(0.28, (item.text.length * 0.012) + 0.04));
+      const halfH = 0.045;
+      if (Math.abs(px - item.x) <= halfW && Math.abs(py - item.y) <= halfH) {
+        return { kind: 'text', id: item.id };
+      }
+    }
+
+    // 2. Check shapes (topmost first)
+    const curShapes = shapesRef.current;
+    for (let i = curShapes.length - 1; i >= 0; i--) {
+      const sh = curShapes[i];
+      if (sh.type === 'arrow') {
+        const dist = distancePointToSegment(px, py, sh.startX, sh.startY, sh.endX, sh.endY);
+        if (dist <= tolerance) return { kind: 'shape', id: sh.id };
+      } else {
+        const b = getShapeBounds(sh);
+        if (
+          px >= b.x - tolerance &&
+          px <= b.x + b.width + tolerance &&
+          py >= b.y - tolerance &&
+          py <= b.y + b.height + tolerance
+        ) {
+          return { kind: 'shape', id: sh.id };
+        }
+      }
+    }
+
+    // 3. Check freehand strokes (topmost first)
+    const curStrokes = strokesRef.current;
+    for (let i = curStrokes.length - 1; i >= 0; i--) {
+      const st = curStrokes[i];
+      for (let j = 0; j < st.points.length - 1; j++) {
+        const p1 = st.points[j];
+        const p2 = st.points[j + 1];
+        if (distancePointToSegment(px, py, p1.x, p1.y, p2.x, p2.y) <= tolerance) {
+          return { kind: 'stroke', id: st.id };
+        }
+      }
+    }
+
+    return null;
+  }, []);
 
   // Export / Flatten to High-Res Canvas
   const generateExportResult = useCallback(async (fileNamePrefix = 'edited_photo'): Promise<ImageEditorResult> => {
@@ -713,6 +934,17 @@ export function useImageEditor(imageUrl: string, initialFile?: File, initialMode
     removeTextItem,
     selectedTextId,
     setSelectedTextId,
+    selectedElement,
+    setSelectedElement,
+    moveTextItem,
+    moveShape,
+    moveStroke,
+    moveElement,
+    commitElementMove,
+    removeShape,
+    removeStroke,
+    removeSelectedElement,
+    hitTestElement,
     zoom,
     setZoom,
     panOffset,
