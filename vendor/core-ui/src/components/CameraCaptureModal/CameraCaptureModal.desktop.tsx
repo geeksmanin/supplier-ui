@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Camera, RefreshCw, AlertCircle } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { X, Camera, RefreshCw, AlertCircle, Image as ImageIcon } from 'lucide-react';
 import { CameraCaptureModalProps } from './CameraCaptureModal.types';
+import { ImageEditorModalDesktop } from '../ImageEditor/ImageEditorModal.desktop';
 
 export const CameraCaptureModalDesktop: React.FC<CameraCaptureModalProps> = ({
   isOpen,
@@ -8,13 +10,22 @@ export const CameraCaptureModalDesktop: React.FC<CameraCaptureModalProps> = ({
   onCapture,
   title = 'Take Photo',
   preferredFacingMode = 'environment',
+  initialSource = 'camera',
+  enableEditor = true,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
+
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>(preferredFacingMode);
   const [cameraActive, setCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState<boolean>(false);
+
+  // In-situ phase: 'capture' (viewfinder) or 'editor' (image editing)
+  const [phase, setPhase] = useState<'capture' | 'editor'>('capture');
+  const [capturedFile, setCapturedFile] = useState<File | null>(null);
+  const [capturedPreviewUrl, setCapturedPreviewUrl] = useState<string | null>(null);
 
   const stopStream = useCallback(() => {
     if (streamRef.current) {
@@ -74,14 +85,58 @@ export const CameraCaptureModalDesktop: React.FC<CameraCaptureModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      startCamera();
+      setPhase('capture');
+      setCapturedFile(null);
+      if (capturedPreviewUrl) {
+        URL.revokeObjectURL(capturedPreviewUrl);
+        setCapturedPreviewUrl(null);
+      }
+
+      if (initialSource === 'gallery') {
+        setTimeout(() => {
+          galleryInputRef.current?.click();
+        }, 50);
+      } else {
+        startCamera();
+      }
     } else {
       stopStream();
+      if (capturedPreviewUrl) {
+        URL.revokeObjectURL(capturedPreviewUrl);
+        setCapturedPreviewUrl(null);
+      }
     }
     return () => {
       stopStream();
     };
-  }, [isOpen, startCamera, stopStream]);
+  }, [isOpen, initialSource, startCamera, stopStream]);
+
+  // Desktop keyboard accessibility (Escape to close)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  const handleProcessFile = (file: File) => {
+    stopStream();
+    if (enableEditor === false) {
+      onCapture(file);
+      onClose();
+      return;
+    }
+    const previewUrl = URL.createObjectURL(file);
+    setCapturedFile(file);
+    setCapturedPreviewUrl(previewUrl);
+    setPhase('editor');
+  };
 
   const handleCapturePhoto = () => {
     if (!videoRef.current || isCapturing) return;
@@ -120,8 +175,7 @@ export const CameraCaptureModalDesktop: React.FC<CameraCaptureModalProps> = ({
             lastModified: Date.now(),
           });
 
-          stopStream();
-          onCapture(file);
+          handleProcessFile(file);
         },
         'image/jpeg',
         0.92
@@ -132,14 +186,60 @@ export const CameraCaptureModalDesktop: React.FC<CameraCaptureModalProps> = ({
     }
   };
 
+  const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    handleProcessFile(file);
+  };
+
   const handleFlipCamera = () => {
     setFacingMode((prev) => (prev === 'environment' ? 'user' : 'environment'));
   };
 
+  const handleCloseEditor = () => {
+    if (capturedPreviewUrl) {
+      URL.revokeObjectURL(capturedPreviewUrl);
+      setCapturedPreviewUrl(null);
+    }
+    setCapturedFile(null);
+    setPhase('capture');
+    startCamera();
+  };
+
   if (!isOpen) return null;
 
-  return (
+  if (phase === 'editor' && capturedPreviewUrl) {
+    return (
+      <ImageEditorModalDesktop
+        isOpen={true}
+        imageUrl={capturedPreviewUrl}
+        initialFile={capturedFile || undefined}
+        fileNamePrefix="capture"
+        onClose={handleCloseEditor}
+        onApply={(result) => {
+          if (capturedPreviewUrl) {
+            URL.revokeObjectURL(capturedPreviewUrl);
+            setCapturedPreviewUrl(null);
+          }
+          onCapture(result.file);
+          onClose();
+        }}
+      />
+    );
+  }
+
+  const content = (
     <div style={styles.overlay}>
+      {/* Hidden Gallery Input */}
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleGalleryChange}
+        style={{ display: 'none' }}
+      />
+
       <div style={styles.modalCard}>
         {/* Header */}
         <div style={styles.header}>
@@ -196,15 +296,26 @@ export const CameraCaptureModalDesktop: React.FC<CameraCaptureModalProps> = ({
 
         {/* Controls Footer */}
         <div style={styles.footer}>
-          <button
-            type="button"
-            style={styles.iconAuxBtn}
-            onClick={handleFlipCamera}
-            title="Flip camera"
-            disabled={!cameraActive}
-          >
-            <RefreshCw size={20} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              style={styles.iconAuxBtn}
+              onClick={() => galleryInputRef.current?.click()}
+              title="Choose photo from gallery"
+              aria-label="Gallery"
+            >
+              <ImageIcon size={20} />
+            </button>
+            <button
+              type="button"
+              style={styles.iconAuxBtn}
+              onClick={handleFlipCamera}
+              title="Flip camera"
+              disabled={!cameraActive}
+            >
+              <RefreshCw size={20} />
+            </button>
+          </div>
 
           {/* Shutter Button */}
           <button
@@ -221,11 +332,16 @@ export const CameraCaptureModalDesktop: React.FC<CameraCaptureModalProps> = ({
             <div style={styles.shutterCore} />
           </button>
 
-          <div style={{ width: 44 }} />
+          <div style={{ width: 88 }} />
         </div>
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(content, document.body);
+  }
+  return content;
 };
 
 const styles: Record<string, React.CSSProperties> = {
@@ -238,7 +354,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10000,
+    zIndex: 99999,
     padding: 16,
   },
   modalCard: {
@@ -298,23 +414,6 @@ const styles: Record<string, React.CSSProperties> = {
     height: '100%',
     objectFit: 'cover',
   },
-  loadingContainer: {
-    position: 'absolute',
-    inset: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0F172A',
-  },
-  spinner: {
-    width: 36,
-    height: 36,
-    border: '3px solid rgba(255, 255, 255, 0.15)',
-    borderTopColor: 'var(--primary, #008069)',
-    borderRadius: '50%',
-    animation: 'spin 0.8s linear infinite',
-  },
   errorContainer: {
     padding: '30px 24px',
     textAlign: 'center',
@@ -325,52 +424,70 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
   },
   errorTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 700,
     marginBottom: 8,
   },
   errorText: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#94A3B8',
-    maxWidth: 400,
+    maxWidth: 360,
     lineHeight: 1.5,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   retryBtn: {
-    padding: '8px 18px',
+    padding: '10px 20px',
     borderRadius: 8,
     border: 'none',
     backgroundColor: 'var(--primary, #008069)',
     color: '#FFFFFF',
     fontWeight: 600,
-    fontSize: 13,
+    fontSize: 14,
     cursor: 'pointer',
+  },
+  loadingContainer: {
+    position: 'absolute',
+    inset: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#000000',
+  },
+  spinner: {
+    width: 36,
+    height: 36,
+    border: '3px solid rgba(255, 255, 255, 0.15)',
+    borderTopColor: 'var(--primary, #008069)',
+    borderRadius: '50%',
+    animation: 'camera-spin 0.8s linear infinite',
   },
   footer: {
     padding: '16px 24px',
+    backgroundColor: '#1E293B',
+    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1E293B',
-    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
   },
   iconAuxBtn: {
     width: 44,
     height: 44,
     borderRadius: '50%',
-    border: 'none',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    border: '1px solid rgba(255, 255, 255, 0.12)',
     color: '#F8FAFC',
-    cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
   },
   shutterRing: {
-    width: 68,
-    height: 68,
+    width: 66,
+    height: 66,
     borderRadius: '50%',
-    border: '4px solid #FFFFFF',
+    border: '3px solid #FFFFFF',
     backgroundColor: 'transparent',
     padding: 3,
     display: 'flex',
@@ -383,6 +500,5 @@ const styles: Record<string, React.CSSProperties> = {
     height: '100%',
     borderRadius: '50%',
     backgroundColor: '#FFFFFF',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
   },
 };

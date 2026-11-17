@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Check,
@@ -283,13 +284,13 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
     }
   };
 
-  return (
+  const content = (
     <div
       style={{
         position: 'fixed',
         inset: 0,
         backgroundColor: 'rgba(11, 20, 26, 0.96)',
-        zIndex: 10000,
+        zIndex: 99999,
         display: 'flex',
         flexDirection: 'column',
         userSelect: 'none',
@@ -822,6 +823,11 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
       )}
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(content, document.body);
+  }
+  return content;
 };
 
 // SVG Shape Helper

@@ -27,6 +27,8 @@ export const STROKE_WIDTH_MAP: Record<StrokeWidthPreset, number> = {
 };
 
 interface EditorHistoryState {
+  imageUrl?: string;
+  imageSize?: { width: number; height: number };
   cropRect: CropRect;
   rotation: number;
   strokes: EditorStroke[];
@@ -35,6 +37,7 @@ interface EditorHistoryState {
 }
 
 export function useImageEditor(imageUrl: string, initialFile?: File, initialMode: EditorToolMode = 'crop') {
+  const [currentImageUrl, setCurrentImageUrl] = useState<string>(imageUrl);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageSize, setImageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [mode, setMode] = useState<EditorToolMode>(initialMode);
@@ -66,11 +69,16 @@ export function useImageEditor(imageUrl: string, initialFile?: File, initialMode
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
-  // Cached Image object
+  // Cached Image object & initial snapshot
   const imageObjRef = useRef<HTMLImageElement | null>(null);
+  const initialImageUrlRef = useRef<string>(imageUrl);
+  const initialImageObjRef = useRef<HTMLImageElement | null>(null);
+  const initialImageSizeRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 });
 
   const pushHistory = useCallback((newState: Partial<EditorHistoryState>) => {
-    const current = {
+    const current: EditorHistoryState = {
+      imageUrl: newState.imageUrl ?? currentImageUrl,
+      imageSize: newState.imageSize ?? imageSize,
       cropRect: newState.cropRect ?? cropRect,
       rotation: newState.rotation ?? rotation,
       strokes: newState.strokes ?? strokes,
@@ -85,7 +93,7 @@ export function useImageEditor(imageUrl: string, initialFile?: File, initialMode
     historyIdxRef.current = updated.length - 1;
     setCanUndo(historyIdxRef.current > 0);
     setCanRedo(false);
-  }, [cropRect, rotation, strokes, shapes, textItems]);
+  }, [currentImageUrl, imageSize, cropRect, rotation, strokes, shapes, textItems]);
 
   // Load Image and initialize default states
   useEffect(() => {
@@ -94,9 +102,13 @@ export function useImageEditor(imageUrl: string, initialFile?: File, initialMode
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       imageObjRef.current = img;
+      initialImageObjRef.current = img;
+      initialImageUrlRef.current = imageUrl;
       const naturalW = img.naturalWidth || img.width;
       const naturalH = img.naturalHeight || img.height;
+      initialImageSizeRef.current = { width: naturalW, height: naturalH };
       setImageSize({ width: naturalW, height: naturalH });
+      setCurrentImageUrl(imageUrl);
       setImageLoaded(true);
 
       const initialCrop: CropRect = { x: 0, y: 0, width: 1, height: 1 };
@@ -109,6 +121,8 @@ export function useImageEditor(imageUrl: string, initialFile?: File, initialMode
       setPanOffset({ x: 0, y: 0 });
 
       const initialHistory: EditorHistoryState = {
+        imageUrl,
+        imageSize: { width: naturalW, height: naturalH },
         cropRect: initialCrop,
         rotation: 0,
         strokes: [],
@@ -147,6 +161,16 @@ export function useImageEditor(imageUrl: string, initialFile?: File, initialMode
     historyIdxRef.current -= 1;
     const target = historyRef.current[historyIdxRef.current];
     if (target) {
+      if (target.imageUrl && target.imageUrl !== currentImageUrl) {
+        setCurrentImageUrl(target.imageUrl);
+        if (target.imageSize) setImageSize(target.imageSize);
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          imageObjRef.current = img;
+        };
+        img.src = target.imageUrl;
+      }
       setCropRect(target.cropRect);
       setRotation(target.rotation);
       setStrokes(target.strokes);
@@ -155,7 +179,7 @@ export function useImageEditor(imageUrl: string, initialFile?: File, initialMode
     }
     setCanUndo(historyIdxRef.current > 0);
     setCanRedo(historyIdxRef.current < historyRef.current.length - 1);
-  }, []);
+  }, [currentImageUrl]);
 
   // Redo
   const redo = useCallback(() => {
@@ -163,6 +187,16 @@ export function useImageEditor(imageUrl: string, initialFile?: File, initialMode
     historyIdxRef.current += 1;
     const target = historyRef.current[historyIdxRef.current];
     if (target) {
+      if (target.imageUrl && target.imageUrl !== currentImageUrl) {
+        setCurrentImageUrl(target.imageUrl);
+        if (target.imageSize) setImageSize(target.imageSize);
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          imageObjRef.current = img;
+        };
+        img.src = target.imageUrl;
+      }
       setCropRect(target.cropRect);
       setRotation(target.rotation);
       setStrokes(target.strokes);
@@ -171,11 +205,16 @@ export function useImageEditor(imageUrl: string, initialFile?: File, initialMode
     }
     setCanUndo(true);
     setCanRedo(historyIdxRef.current < historyRef.current.length - 1);
-  }, []);
+  }, [currentImageUrl]);
 
   // Reset to original
   const resetToOriginal = useCallback(() => {
     const raw: CropRect = { x: 0, y: 0, width: 1, height: 1 };
+    if (initialImageUrlRef.current && initialImageObjRef.current) {
+      imageObjRef.current = initialImageObjRef.current;
+      setCurrentImageUrl(initialImageUrlRef.current);
+      setImageSize(initialImageSizeRef.current);
+    }
     setCropRect(raw);
     setRotation(0);
     setStrokes([]);
@@ -183,8 +222,9 @@ export function useImageEditor(imageUrl: string, initialFile?: File, initialMode
     setTextItems([]);
     setZoom(1);
     setPanOffset({ x: 0, y: 0 });
-    setSelectedTextId(null);
     pushHistory({
+      imageUrl: initialImageUrlRef.current,
+      imageSize: initialImageSizeRef.current,
       cropRect: raw,
       rotation: 0,
       strokes: [],
@@ -478,9 +518,171 @@ export function useImageEditor(imageUrl: string, initialFile?: File, initialMode
     });
   }, [cropRect, rotation, strokes, shapes, textItems, initialFile]);
 
+  // Commit crop so sequential effects (pen, arrow, shapes, text) operate directly on the cropped image
+  const commitCrop = useCallback(async (): Promise<boolean> => {
+    if (!imageObjRef.current) return false;
+    const isUnchanged =
+      Math.abs(cropRect.x) < 0.001 &&
+      Math.abs(cropRect.y) < 0.001 &&
+      Math.abs(cropRect.width - 1) < 0.001 &&
+      Math.abs(cropRect.height - 1) < 0.001 &&
+      rotation === 0;
+
+    if (isUnchanged) return false;
+
+    const img = imageObjRef.current;
+    const naturalW = img.naturalWidth || img.width;
+    const naturalH = img.naturalHeight || img.height;
+
+    const isSideways = rotation % 180 !== 0;
+    const orientedW = isSideways ? naturalH : naturalW;
+    const orientedH = isSideways ? naturalW : naturalH;
+
+    const cropPixelX = Math.round(cropRect.x * orientedW);
+    const cropPixelY = Math.round(cropRect.y * orientedH);
+    const cropPixelW = Math.max(1, Math.round(cropRect.width * orientedW));
+    const cropPixelH = Math.max(1, Math.round(cropRect.height * orientedH));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = cropPixelW;
+    canvas.height = cropPixelH;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return false;
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    ctx.save();
+    ctx.translate(-cropPixelX, -cropPixelY);
+    ctx.translate(orientedW / 2, orientedH / 2);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.drawImage(img, -naturalW / 2, -naturalH / 2, naturalW, naturalH);
+    ctx.restore();
+
+    const scaleToExportX = cropPixelW / cropRect.width;
+    const scaleToExportY = cropPixelH / cropRect.height;
+    if (strokes.length > 0) {
+      ctx.save();
+      strokes.forEach((st) => {
+        if (st.points.length < 2) return;
+        ctx.beginPath();
+        ctx.strokeStyle = st.color;
+        ctx.lineWidth = st.width * (cropPixelW / 800);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        const p0 = st.points[0];
+        ctx.moveTo((p0.x - cropRect.x) * scaleToExportX, (p0.y - cropRect.y) * scaleToExportY);
+        for (let i = 1; i < st.points.length; i++) {
+          const pt = st.points[i];
+          ctx.lineTo((pt.x - cropRect.x) * scaleToExportX, (pt.y - cropRect.y) * scaleToExportY);
+        }
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+
+    if (shapes.length > 0) {
+      shapes.forEach((sh) => {
+        const sx = (sh.startX - cropRect.x) * scaleToExportX;
+        const sy = (sh.startY - cropRect.y) * scaleToExportY;
+        const ex = (sh.endX - cropRect.x) * scaleToExportX;
+        const ey = (sh.endY - cropRect.y) * scaleToExportY;
+        const shapeLineWidth = sh.width * (cropPixelW / 800);
+        ctx.strokeStyle = sh.color;
+        ctx.fillStyle = sh.color;
+        ctx.lineWidth = shapeLineWidth;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        if (sh.type === 'arrow') {
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(ex, ey);
+          ctx.stroke();
+          const angle = Math.atan2(ey - sy, ex - sx);
+          const headLen = Math.max(14, shapeLineWidth * 3.5);
+          ctx.beginPath();
+          ctx.moveTo(ex, ey);
+          ctx.lineTo(ex - headLen * Math.cos(angle - Math.PI / 6), ey - headLen * Math.sin(angle - Math.PI / 6));
+          ctx.lineTo(ex - headLen * Math.cos(angle + Math.PI / 6), ey - headLen * Math.sin(angle + Math.PI / 6));
+          ctx.closePath();
+          ctx.fill();
+        } else if (sh.type === 'rect') {
+          ctx.beginPath();
+          ctx.strokeRect(Math.min(sx, ex), Math.min(sy, ey), Math.abs(ex - sx), Math.abs(ey - sy));
+        } else if (sh.type === 'circle') {
+          const rx = Math.abs(ex - sx) / 2;
+          const ry = Math.abs(ey - sy) / 2;
+          const cx = Math.min(sx, ex) + rx;
+          const cy = Math.min(sy, ey) + ry;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, rx, ry, 0, 0, 2 * Math.PI);
+          ctx.stroke();
+        }
+      });
+    }
+
+    if (textItems.length > 0) {
+      textItems.forEach((item) => {
+        if (!item.text.trim()) return;
+        const tx = (item.x - cropRect.x) * scaleToExportX;
+        const ty = (item.y - cropRect.y) * scaleToExportY;
+        const fontSize = Math.max(14, Math.round(item.fontSize * (cropPixelW / 800)));
+        ctx.font = `bold ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.textBaseline = 'middle';
+        const metrics = ctx.measureText(item.text);
+        const paddingX = fontSize * 0.45;
+        const paddingY = fontSize * 0.25;
+        const bgW = metrics.width + paddingX * 2;
+        const bgH = fontSize * 1.35;
+        if (item.hasBadge) {
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+          ctx.beginPath();
+          ctx.roundRect(tx - bgW / 2, ty - bgH / 2, bgW, bgH, bgH * 0.3);
+          ctx.fill();
+        }
+        ctx.fillStyle = item.color;
+        ctx.fillText(item.text, tx - metrics.width / 2, ty);
+      });
+    }
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.95));
+    if (!blob) return false;
+
+    const newUrl = URL.createObjectURL(blob);
+    const newImg = new Image();
+    newImg.crossOrigin = 'anonymous';
+    await new Promise<void>((resolve) => {
+      newImg.onload = () => resolve();
+      newImg.src = newUrl;
+    });
+
+    imageObjRef.current = newImg;
+    setCurrentImageUrl(newUrl);
+    setImageSize({ width: cropPixelW, height: cropPixelH });
+    setCropRect({ x: 0, y: 0, width: 1, height: 1 });
+    setRotation(0);
+    setStrokes([]);
+    setShapes([]);
+    setTextItems([]);
+
+    pushHistory({
+      imageUrl: newUrl,
+      imageSize: { width: cropPixelW, height: cropPixelH },
+      cropRect: { x: 0, y: 0, width: 1, height: 1 },
+      rotation: 0,
+      strokes: [],
+      shapes: [],
+      textItems: [],
+    });
+
+    return true;
+  }, [cropRect, rotation, strokes, shapes, textItems, pushHistory]);
+
   return {
     imageLoaded,
     imageSize,
+    currentImageUrl,
+    commitCrop,
     mode,
     setMode,
     color,

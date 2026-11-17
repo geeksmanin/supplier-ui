@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Check,
@@ -39,6 +40,8 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
   const {
     imageLoaded,
     imageSize,
+    currentImageUrl,
+    commitCrop,
     mode,
     setMode,
     color,
@@ -82,6 +85,13 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [isApplying, setIsApplying] = useState(false);
+
+  const handleSwitchMode = async (nextMode: EditorToolMode) => {
+    if (mode === 'crop' && nextMode !== 'crop') {
+      await commitCrop();
+    }
+    setMode(nextMode);
+  };
   const [textModalState, setTextModalState] = useState<{ isOpen: boolean; text: string; id?: string; x?: number; y?: number } | null>(null);
 
   const handleSaveTextModal = () => {
@@ -163,9 +173,11 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
     if (isApplying) return;
     setIsApplying(true);
     try {
+      if (mode === 'crop') {
+        await commitCrop();
+      }
       const result = await generateExportResult(fileNamePrefix);
       onApply(result);
-      onClose();
     } catch (err) {
       console.error('Failed to generate mobile edited image:', err);
     } finally {
@@ -350,13 +362,13 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
     }
   };
 
-  return (
+  const content = (
     <div
       style={{
         position: 'fixed',
         inset: 0,
         backgroundColor: '#0b141a',
-        zIndex: 10000,
+        zIndex: 99999,
         display: 'flex',
         flexDirection: 'column',
         touchAction: 'none',
@@ -466,7 +478,7 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
           >
             {/* Image */}
             <img
-              src={imageUrl}
+              src={currentImageUrl || imageUrl}
               alt="Edit canvas"
               style={{
                 width: '100%',
@@ -668,6 +680,24 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
                   {opt.toUpperCase()}
                 </button>
               ))}
+              <button
+                onClick={async () => {
+                  await commitCrop();
+                  setMode('pencil');
+                }}
+                style={{
+                  ...styles.mobileSubBtn,
+                  backgroundColor: '#00a884',
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  gap: 4,
+                }}
+                type="button"
+                title="Apply crop and switch to drawing/annotations"
+              >
+                <Check size={14} />
+                <span>Apply Crop</span>
+              </button>
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', justifyContent: 'space-between' }}>
@@ -730,7 +760,7 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
           }}
         >
           <button
-            onClick={() => setMode('crop')}
+            onClick={() => handleSwitchMode('crop')}
             style={mode === 'crop' ? styles.activeMobileTab : styles.mobileTab}
             type="button"
           >
@@ -738,7 +768,7 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
             <span style={{ fontSize: '0.72rem' }}>Crop</span>
           </button>
           <button
-            onClick={() => setMode('pencil')}
+            onClick={() => handleSwitchMode('pencil')}
             style={mode === 'pencil' ? styles.activeMobileTab : styles.mobileTab}
             type="button"
           >
@@ -746,7 +776,7 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
             <span style={{ fontSize: '0.72rem' }}>Pencil</span>
           </button>
           <button
-            onClick={() => setMode('arrow')}
+            onClick={() => handleSwitchMode('arrow')}
             style={mode === 'arrow' ? styles.activeMobileTab : styles.mobileTab}
             type="button"
           >
@@ -754,7 +784,7 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
             <span style={{ fontSize: '0.72rem' }}>Arrow</span>
           </button>
           <button
-            onClick={() => setMode('rect')}
+            onClick={() => handleSwitchMode('rect')}
             style={mode === 'rect' ? styles.activeMobileTab : styles.mobileTab}
             type="button"
           >
@@ -762,7 +792,7 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
             <span style={{ fontSize: '0.72rem' }}>Box</span>
           </button>
           <button
-            onClick={() => setMode('circle')}
+            onClick={() => handleSwitchMode('circle')}
             style={mode === 'circle' ? styles.activeMobileTab : styles.mobileTab}
             type="button"
           >
@@ -770,7 +800,7 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
             <span style={{ fontSize: '0.72rem' }}>Circle</span>
           </button>
           <button
-            onClick={() => setMode('text')}
+            onClick={() => handleSwitchMode('text')}
             style={mode === 'text' ? styles.activeMobileTab : styles.mobileTab}
             type="button"
           >
@@ -873,6 +903,11 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
       )}
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(content, document.body);
+  }
+  return content;
 };
 
 function renderMobileSvgShape(sh: any, w: number, h: number) {
