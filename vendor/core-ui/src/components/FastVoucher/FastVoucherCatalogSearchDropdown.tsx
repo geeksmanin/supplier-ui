@@ -23,8 +23,8 @@ export const FastVoucherCatalogSearchDropdown: React.FC<FastVoucherCatalogSearch
       style={{
         position: 'absolute',
         top: '100%',
-        left: '1.25rem',
-        right: '1.25rem',
+        left: 0,
+        right: 0,
         marginTop: '4px',
         backgroundColor: '#ffffff',
         border: '1px solid #cbd5e1',

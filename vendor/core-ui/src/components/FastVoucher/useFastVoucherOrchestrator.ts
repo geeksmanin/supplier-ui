@@ -140,6 +140,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     searchResults,
     isSearchOpen,
     setIsSearchOpen,
+    openSearch,
     selectedResultIndex,
     setSelectedResultIndex,
     liveStockMap,
@@ -249,7 +250,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
   }, [partyConfig?.options, partySearchQuery, asyncPartyOptions]);
 
   // 8. Handle Product Selection from Search Bar
-  const handleSelectProduct = (rawProduct: any) => {
+  const handleSelectProduct = async (rawProduct: any) => {
     if (rawProduct._itemType === 'product') {
       const variants = Array.isArray(rawProduct.variants) ? rawProduct.variants : [];
       if (variants.length === 1) {
@@ -267,7 +268,19 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     const price = Number(
       rawProduct.sale_price ?? rawProduct.salePrice ?? rawProduct.price ?? rawProduct.selling_price ?? rawProduct.unit_cost ?? rawProduct.mrp ?? 0
     );
-    const taxRate = Number(rawProduct.tax_percent ?? rawProduct.tax_rate ?? rawProduct.gst_rate ?? 0);
+    const hsnCode = String(rawProduct.hsn || rawProduct.hsn_code || rawProduct.product?.hsn || rawProduct.product?.hsn_code || '');
+    let taxRate = Number(rawProduct.tax_percent ?? rawProduct.tax_rate ?? rawProduct.gst_rate ?? 0);
+
+    if (taxRate === 0 && catalogConfig?.resolveTaxRate) {
+      try {
+        const resolved = await catalogConfig.resolveTaxRate(rawProduct);
+        if (typeof resolved === 'number' && !isNaN(resolved)) {
+          taxRate = resolved;
+        }
+      } catch (err) {
+        console.warn('Failed to resolve product tax rate:', err);
+      }
+    }
 
     const packagings = rawProduct.packagings || [
       { name: rawProduct.packaging_name || 'Unit', size: Number(rawProduct.packaging_size || 1), is_default: true },
@@ -296,6 +309,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
       variant_id: rawProduct.id || rawProduct.variant_id,
       product_id: rawProduct.product_id || rawProduct.product?.id,
       sku_code: sku,
+      hsn_code: hsnCode || undefined,
       product_name: pName,
       image_url: rawProduct.image_url || rawProduct.product?.image_url,
       quantity: 1,
@@ -386,6 +400,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     searchResults,
     isSearchOpen,
     setIsSearchOpen,
+    openSearch,
     selectedResultIndex,
     setSelectedResultIndex,
     liveStockMap,

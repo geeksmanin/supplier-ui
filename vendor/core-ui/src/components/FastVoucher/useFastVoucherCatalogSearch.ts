@@ -1,6 +1,45 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { apiClient } from '../../api/client';
 import { VoucherCatalogConfig } from './FastVoucherEntryLayout.types';
+
+function mergeCatalogItems(rawVariants: any[], rawProducts: any[]): any[] {
+  const merged: any[] = [];
+  const seenVariantIds = new Set<string>();
+
+  // 1. Add Variants first with _itemType: 'variant' (exact SKU/barcode matches)
+  rawVariants.forEach((v: any) => {
+    const vId = String(v.id || v.variant_id || '');
+    if (vId) seenVariantIds.add(vId);
+    merged.push({
+      ...v,
+      _itemType: 'variant',
+    });
+  });
+
+  // 2. Add Parent Products with _itemType: 'product' ONLY if they have MULTIPLE variants (> 1).
+  rawProducts.forEach((p: any) => {
+    const variants = Array.isArray(p.variants) ? p.variants : [];
+    if (variants.length > 1) {
+      merged.push({
+        ...p,
+        _itemType: 'product',
+      });
+    } else if (variants.length === 1) {
+      const singleV = variants[0];
+      const singleVId = String(singleV.id || singleV.variant_id || '');
+      if (singleVId && !seenVariantIds.has(singleVId)) {
+        seenVariantIds.add(singleVId);
+        merged.push({
+          ...singleV,
+          product: p,
+          _itemType: 'variant',
+        });
+      }
+    }
+  });
+
+  return merged;
+}
 
 interface UseFastVoucherCatalogSearchProps {
   catalogConfig?: VoucherCatalogConfig;
@@ -9,10 +48,77 @@ interface UseFastVoucherCatalogSearchProps {
 export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCatalogSearchProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [defaultResults, setDefaultResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedResultIndex, setSelectedResultIndex] = useState<number>(0);
   const [liveStockMap, setLiveStockMap] = useState<Record<string, number>>({});
+
+  // Initial catalogue load on component mount so click/focus immediately displays items
+  const loadInitialProducts = useCallback(async () => {
+    try {
+      const variantEndpoint = catalogConfig?.searchEndpoint || '/catalogue/variants';
+      const productEndpoint = catalogConfig?.productEndpoint || (variantEndpoint.includes('/variants') ? variantEndpoint.replace('/variants', '/products') : undefined);
+      const initialPromises: Promise<any>[] = [
+        apiClient.get(variantEndpoint, {
+          params: {
+            limit: 25,
+            is_active: true,
+            ...(catalogConfig?.searchParams || {}),
+          },
+        }),
+      ];
+      if (productEndpoint) {
+        initialPromises.push(
+          apiClient.get(productEndpoint, {
+            params: {
+              limit: 12,
+              is_active: true,
+            },
+          })
+        );
+      }
+      const [variantsRes, productsRes] = await Promise.allSettled(initialPromises);
+
+      const rawVariants =
+        variantsRes && variantsRes.status === 'fulfilled'
+          ? Array.isArray(variantsRes.value?.data?.data)
+            ? variantsRes.value.data.data
+            : Array.isArray(variantsRes.value?.data)
+            ? variantsRes.value.data
+            : []
+          : [];
+
+      const rawProducts =
+        productsRes && productsRes.status === 'fulfilled'
+          ? Array.isArray(productsRes.value?.data?.data)
+            ? productsRes.value.data.data
+            : Array.isArray(productsRes.value?.data)
+            ? productsRes.value.data
+            : []
+          : [];
+
+      const merged = mergeCatalogItems(rawVariants, rawProducts);
+      setDefaultResults(merged);
+      setSearchResults((prev) => (prev.length === 0 ? merged : prev));
+    } catch {
+      // Ignore background prefetch errors
+    }
+  }, [catalogConfig?.searchEndpoint, catalogConfig?.searchParams]);
+
+  useEffect(() => {
+    loadInitialProducts();
+  }, [loadInitialProducts]);
+
+  // Open search dropdown and ensure items are loaded
+  const openSearch = useCallback(() => {
+    if (defaultResults.length === 0) {
+      loadInitialProducts();
+    } else if (!searchQuery.trim()) {
+      setSearchResults(defaultResults);
+    }
+    setIsSearchOpen(true);
+  }, [defaultResults, searchQuery, loadInitialProducts]);
 
   // 1. Dynamic Live Stock Ingestion via Domain Event Bus (Decoupled & Non-blocking)
   useEffect(() => {
@@ -74,8 +180,7 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
-      setSearchResults([]);
-      setIsSearchOpen(false);
+      setSearchResults(defaultResults);
       setSearchLoading(false);
       return;
     }
@@ -92,6 +197,7 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
       setSearchLoading(true);
       try {
         const variantEndpoint = catalogConfig?.searchEndpoint || '/catalogue/variants';
+        const productEndpoint = catalogConfig?.productEndpoint || (variantEndpoint.includes('/variants') ? variantEndpoint.replace('/variants', '/products') : undefined);
         const searchPromises: Promise<any>[] = [
           apiClient.get(variantEndpoint, {
             params: {
@@ -101,14 +207,18 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
             },
             signal: controller.signal,
           }),
-          apiClient.get('/catalogue/products', {
-            params: {
-              search: searchQuery,
-              limit: 12,
-            },
-            signal: controller.signal,
-          }),
         ];
+        if (productEndpoint) {
+          searchPromises.push(
+            apiClient.get(productEndpoint, {
+              params: {
+                search: searchQuery,
+                limit: 12,
+              },
+              signal: controller.signal,
+            })
+          );
+        }
 
         // Progressive Instant Search: Catalog resolves without waiting for inventory ledger
         const [variantsRes, productsRes] = await Promise.allSettled(searchPromises);
@@ -118,57 +228,24 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
         }
 
         const rawVariants =
-          variantsRes.status === 'fulfilled'
-            ? Array.isArray(variantsRes.value.data?.data)
+          variantsRes && variantsRes.status === 'fulfilled'
+            ? Array.isArray(variantsRes.value?.data?.data)
               ? variantsRes.value.data.data
-              : Array.isArray(variantsRes.value.data)
+              : Array.isArray(variantsRes.value?.data)
               ? variantsRes.value.data
               : []
             : [];
 
         const rawProducts =
-          productsRes.status === 'fulfilled'
-            ? Array.isArray(productsRes.value.data?.data)
+          productsRes && productsRes.status === 'fulfilled'
+            ? Array.isArray(productsRes.value?.data?.data)
               ? productsRes.value.data.data
-              : Array.isArray(productsRes.value.data)
+              : Array.isArray(productsRes.value?.data)
               ? productsRes.value.data
               : []
             : [];
 
-        const merged: any[] = [];
-        const seenVariantIds = new Set<string>();
-
-        // 1. Add Variants first with _itemType: 'variant' (exact SKU/barcode matches)
-        rawVariants.forEach((v: any) => {
-          const vId = String(v.id || v.variant_id || '');
-          if (vId) seenVariantIds.add(vId);
-          merged.push({
-            ...v,
-            _itemType: 'variant',
-          });
-        });
-
-        // 2. Add Parent Products with _itemType: 'product' ONLY if they have MULTIPLE variants (> 1).
-        rawProducts.forEach((p: any) => {
-          const variants = Array.isArray(p.variants) ? p.variants : [];
-          if (variants.length > 1) {
-            merged.push({
-              ...p,
-              _itemType: 'product',
-            });
-          } else if (variants.length === 1) {
-            const singleV = variants[0];
-            const singleVId = String(singleV.id || singleV.variant_id || '');
-            if (singleVId && !seenVariantIds.has(singleVId)) {
-              seenVariantIds.add(singleVId);
-              merged.push({
-                ...singleV,
-                product: p,
-                _itemType: 'variant',
-              });
-            }
-          }
-        });
+        const merged = mergeCatalogItems(rawVariants, rawProducts);
 
         if (!isCancelled && !controller.signal.aborted) {
           setSearchResults(merged);
@@ -211,7 +288,7 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
         abortControllerRef.current.abort();
       }
     };
-  }, [searchQuery, catalogConfig?.searchEndpoint]);
+  }, [searchQuery, defaultResults, catalogConfig?.searchEndpoint]);
 
   return {
     searchQuery,
@@ -221,6 +298,7 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
     searchLoading,
     isSearchOpen,
     setIsSearchOpen,
+    openSearch,
     selectedResultIndex,
     setSelectedResultIndex,
     liveStockMap,

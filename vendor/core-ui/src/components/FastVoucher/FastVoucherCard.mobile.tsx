@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import { 
   X, 
   Search, 
@@ -20,8 +20,12 @@ import { DraftBanner } from '../../hooks/useFormDraft';
 
 export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => {
   const {
+    voucherType,
     documentTitle,
     voucherNumber,
+    onVoucherNumberChange,
+    voucherNumberLabel,
+    voucherNumberPlaceholder,
     voucherDate,
     onVoucherDateChange,
     status = 'DRAFT',
@@ -85,6 +89,7 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
     searchResults,
     isSearchOpen,
     setIsSearchOpen,
+    openSearch,
     selectedResultIndex,
     setSelectedResultIndex,
     liveStockMap,
@@ -93,6 +98,23 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
     handleCommitStepperItem,
     memoizedStepperBatches,
   } = useFastVoucherOrchestrator(props);
+
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Close catalog search dropdown on click outside
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+    if (isSearchOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isSearchOpen, setIsSearchOpen]);
 
   const computedSummary = useMemo(() => {
     if (externalSummary) return externalSummary;
@@ -364,31 +386,58 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
           )}
         </div>
 
-        {/* Date Row */}
-        <div>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 3 }}>
-            Voucher Date
-          </label>
-          <input
-            type="date"
-            value={voucherDate}
-            onChange={(e) => onVoucherDateChange?.(e.target.value)}
-            style={{
-              width: '100%',
-              boxSizing: 'border-box',
-              padding: '7px 10px',
-              borderRadius: 8,
-              border: '1px solid #CBD5E1',
-              fontSize: 13,
-              fontWeight: 600,
-              color: '#1E293B',
-              outline: 'none',
-            }}
-          />
+        {/* Date & Optional Bill Number Row */}
+        <div style={{ display: 'grid', gridTemplateColumns: onVoucherNumberChange ? '1fr 1fr' : '1fr', gap: 10 }}>
+          {onVoucherNumberChange && (
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 3 }}>
+                {voucherNumberLabel || (voucherType === 'purchase_invoice' || voucherType === 'invoice' ? 'Bill / Invoice #' : 'Document #')} *
+              </label>
+              <input
+                type="text"
+                value={voucherNumber || ''}
+                onChange={(e) => onVoucherNumberChange(e.target.value)}
+                placeholder={voucherNumberPlaceholder || 'e.g. INV-98214'}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '7px 10px',
+                  borderRadius: 8,
+                  border: '1px solid #CBD5E1',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: '#1E293B',
+                  outline: 'none',
+                }}
+              />
+            </div>
+          )}
+
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 3 }}>
+              Voucher Date
+            </label>
+            <input
+              type="date"
+              value={voucherDate}
+              onChange={(e) => onVoucherDateChange?.(e.target.value)}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '7px 10px',
+                borderRadius: 8,
+                border: '1px solid #CBD5E1',
+                fontSize: 13,
+                fontWeight: 600,
+                color: '#1E293B',
+                outline: 'none',
+              }}
+            />
+          </div>
         </div>
 
         {/* Search Bar */}
-        <div style={{ position: 'relative' }}>
+        <div ref={searchContainerRef} style={{ position: 'relative' }}>
           <div
             className="fast-voucher-search-box bounding-box"
             data-bounding-box="true"
@@ -412,7 +461,12 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => {
                 setIsSearchFocused(true);
-                if (searchResults.length > 0) setIsSearchOpen(true);
+                openSearch?.();
+                setIsSearchOpen(true);
+              }}
+              onClick={() => {
+                openSearch?.();
+                setIsSearchOpen(true);
               }}
               onBlur={() => setIsSearchFocused(false)}
               style={{
@@ -569,18 +623,36 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
+            flexDirection: 'column',
+            gap: 4,
             padding: '8px 10px',
             backgroundColor: '#F1F5F9',
             borderRadius: 8,
             fontSize: 12,
           }}
         >
-          <span style={{ color: '#64748B', fontWeight: 600 }}>{items.length} Items</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
-            Total: <strong style={{ color: accentColor }}>₹{Number(computedSummary.grand_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ color: '#64748B', fontWeight: 600 }}>{items.length} Items • Sub: ₹{Number(computedSummary.subtotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+              Total: <strong style={{ color: accentColor }}>₹{Number(computedSummary.grand_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
+            </span>
+          </div>
+          {computedSummary.tax_total > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, borderTop: '1px dashed #CBD5E1', paddingTop: 3 }}>
+              {computedSummary.isInterState ? (
+                <span style={{ color: '#0369A1', fontWeight: 700 }}>
+                  IGST: ₹{Number(computedSummary.tax_breakup?.igst ?? computedSummary.tax_total).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
+              ) : (
+                <span style={{ color: '#0F766E', fontWeight: 700 }}>
+                  CGST: ₹{Number(computedSummary.tax_breakup?.cgst ?? (computedSummary.tax_total / 2)).toLocaleString(undefined, { minimumFractionDigits: 2 })} • SGST: ₹{Number(computedSummary.tax_breakup?.sgst ?? (computedSummary.tax_total / 2)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
+              )}
+              <span style={{ color: '#64748B' }}>
+                GST: +₹{Number(computedSummary.tax_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Action Button */}
