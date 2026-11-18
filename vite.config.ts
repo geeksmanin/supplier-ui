@@ -3,28 +3,28 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import fs from 'fs';
 
-const useVendor = fs.existsSync(path.resolve(__dirname, './vendor/core-ui/src'));
-const coreUiTarget = useVendor
-  ? path.resolve(__dirname, './vendor/core-ui/src')
-  : path.resolve(__dirname, '../core-ui/src');
+function resolvePkg(isDev: boolean, vendorRel: string, siblingRel: string): string {
+  const vendorAbs = path.resolve(__dirname, vendorRel);
+  const siblingAbs = path.resolve(__dirname, siblingRel);
+  if (isDev && fs.existsSync(siblingAbs)) {
+    return siblingAbs;
+  }
+  return fs.existsSync(vendorAbs) ? vendorAbs : siblingAbs;
+}
 
-const useNotificationVendor = fs.existsSync(path.resolve(__dirname, './vendor/notification-ui/packages/notification/src'));
-const notificationTarget = useNotificationVendor
-  ? path.resolve(__dirname, './vendor/notification-ui/packages/notification/src')
-  : path.resolve(__dirname, '../notification-ui/packages/notification/src');
+export default defineConfig(({ mode }) => {
+  const isDev = mode === 'development';
 
-console.log("VITE CONFIG ALIAS TARGET:", coreUiTarget);
-console.log("VITE NOTIFICATION ALIAS TARGET:", notificationTarget);
-
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      '@geeksman/core-ui': coreUiTarget,
-      '@geeksman/notification': notificationTarget,
+  return {
+    plugins: [react()],
+    resolve: {
+      alias: {
+        '@geeksman/core-ui': resolvePkg(isDev, './vendor/core-ui/src', '../core-ui/src'),
+        '@geeksman/notification': resolvePkg(isDev, './vendor/notification-ui/packages/notification/src', '../notification-ui/packages/notification/src'),
+      },
     },
-  },
-  server: {
-    port: 3002,
-  },
+    server: {
+      port: 3002,
+    },
+  };
 });
