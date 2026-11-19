@@ -4,8 +4,13 @@ async function loadHtml2Canvas(): Promise<any> {
   if (typeof window !== 'undefined' && (window as any).html2canvas) {
     return (window as any).html2canvas;
   }
-  const mod = await import('html2canvas');
-  return mod.default || mod;
+  try {
+    const pkg = 'html2canvas';
+    const mod = await import(/* @vite-ignore */ pkg);
+    return mod.default || mod;
+  } catch {
+    return null;
+  }
 }
 
 async function loadJsPdf(): Promise<any> {
@@ -13,8 +18,13 @@ async function loadJsPdf(): Promise<any> {
     if ((window as any).jspdf?.jsPDF) return (window as any).jspdf.jsPDF;
     if ((window as any).jsPDF) return (window as any).jsPDF;
   }
-  const mod = await import('jspdf');
-  return mod.jsPDF || mod.default || mod;
+  try {
+    const pkg = 'jspdf';
+    const mod = await import(/* @vite-ignore */ pkg);
+    return mod.jsPDF || mod.default || mod;
+  } catch {
+    return null;
+  }
 }
 
 /**
