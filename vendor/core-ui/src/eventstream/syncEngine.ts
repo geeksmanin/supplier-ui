@@ -9,7 +9,7 @@ import {
   getUnsyncedReadStates,
   markReadStatesSynced,
 } from './db';
-import { broadcastEvent } from './broadcast';
+import { broadcastEvent, dispatchToNotificationConsumers } from './broadcast';
 import { StreamEventRecord, ChatMessageRecord } from './types';
 
 export interface SyncEngineOptions {
@@ -86,6 +86,15 @@ export async function syncCatchUp(
       }));
 
       await saveStreamEvents(records);
+
+      // Dispatch every caught-up event record to registered module consumers (e.g. samwad-ui, ticketing)
+      for (const r of records) {
+        try {
+          dispatchToNotificationConsumers(r);
+        } catch (consumerErr) {
+          console.warn('[SyncEngine] Error dispatching caught-up record to consumer:', consumerErr);
+        }
+      }
 
       // Extract complete chat messages and tickets from notifications so local stores process them independently
       const chatRecords: ChatMessageRecord[] = [];
