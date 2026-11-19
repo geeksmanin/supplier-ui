@@ -58,20 +58,21 @@ export function useFormDraft<T extends Record<string, any>>({
   // Prevent auto-save from firing on the very first render
   const isInitialMount = useRef(true);
   const skipNextSave = useRef(false);
-  const isDraftChecked = useRef(false);
+  const hasUserModified = useRef(false);
+  const [isDraftChecked, setIsDraftChecked] = useState(false);
 
   // ── Detect draft on mount (create mode only) ──────────────────────────────
   useEffect(() => {
     if (!enabled || isEdit) return;
     getFormDraft<T>(formKey).then(saved => {
-      isDraftChecked.current = true;
       if (saved?.data) {
         setPendingDraft(saved.data);
         setHasDraft(true);
         setDraftTime(new Date(saved.updatedAt).toLocaleTimeString());
       }
+      setIsDraftChecked(true);
     }).catch(() => {
-      isDraftChecked.current = true;
+      setIsDraftChecked(true);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formKey, isEdit, enabled]);
@@ -83,7 +84,8 @@ export function useFormDraft<T extends Record<string, any>>({
       isInitialMount.current = false;
       return;
     }
-    if (!isDraftChecked.current) {
+    hasUserModified.current = true;
+    if (!isDraftChecked || !hasUserModified.current) {
       return;
     }
     // CRITICAL: If an existing draft is detected and awaiting user action,
@@ -117,7 +119,7 @@ export function useFormDraft<T extends Record<string, any>>({
     }, 500);
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formKey, formData, isEdit, enabled, hasDraft]);
+  }, [formKey, formData, isEdit, enabled, hasDraft, isDraftChecked]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
