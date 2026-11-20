@@ -55,6 +55,11 @@ public class MainActivity extends BridgeActivity {
                 webView.setBackgroundColor(Color.parseColor("{{SPLASH_BACKGROUND}}"));
             } catch (Exception ignored) {}
 
+            android.webkit.WebSettings webSettings = webView.getSettings();
+            webSettings.setDomStorageEnabled(true);
+            webSettings.setDatabaseEnabled(true);
+            webSettings.setCacheMode(android.webkit.WebSettings.LOAD_DEFAULT);
+
             setupConnectionErrorHandler();
             setupDownloadListener();
 
@@ -158,7 +163,7 @@ public class MainActivity extends BridgeActivity {
                 if (request != null && request.isForMainFrame()) {
                     runOnUiThread(() -> {
                         dismissGalaxyLoader();
-                        showServerUnreachableDialog(request.getUrl().toString());
+                        handleMainFrameError(view, request.getUrl().toString());
                     });
                 }
             }
@@ -169,7 +174,7 @@ public class MainActivity extends BridgeActivity {
                 super.onReceivedError(view, errorCode, description, failingUrl);
                 runOnUiThread(() -> {
                     dismissGalaxyLoader();
-                    showServerUnreachableDialog(failingUrl);
+                    handleMainFrameError(view, failingUrl);
                 });
             }
 
@@ -179,7 +184,7 @@ public class MainActivity extends BridgeActivity {
                 if (request != null && request.isForMainFrame() && errorResponse != null && errorResponse.getStatusCode() >= 400) {
                     runOnUiThread(() -> {
                         dismissGalaxyLoader();
-                        showServerUnreachableDialog(request.getUrl().toString());
+                        handleMainFrameError(view, request.getUrl().toString());
                     });
                 }
             }
@@ -237,11 +242,36 @@ public class MainActivity extends BridgeActivity {
         });
     }
 
+    private void handleMainFrameError(WebView view, String failedUrl) {
+        if (isFinishing()) return;
+
+        SharedPreferences prefs = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        String customUrl = prefs.getString(KEY_SERVER_URL, null);
+
+        // If a custom dev server was configured and failed, show dialog
+        if (customUrl != null && !customUrl.trim().isEmpty()) {
+            try {
+                Uri customUri = Uri.parse(customUrl.trim());
+                if (failedUrl != null && customUri.getHost() != null && failedUrl.contains(customUri.getHost())) {
+                    showServerUnreachableDialog(failedUrl);
+                    return;
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // For production remote URLs, Service Worker (sw.js) or WebView cache handles offline gracefully.
+        // We do not show an error dialog or redirect to avoid breaking origin boundary.
+    }
+
     private void showServerUnreachableDialog(String failedUrl) {
         if (isFinishing()) return;
 
         SharedPreferences prefs = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         boolean hasCustom = prefs.contains(KEY_SERVER_URL);
+        if (!hasCustom) {
+            // Never show Server Unreachable dialog for production users without a custom dev server
+            return;
+        }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Server Unreachable");
@@ -256,7 +286,7 @@ public class MainActivity extends BridgeActivity {
         if (hasCustom) {
             builder.setNeutralButton("Reset Default", (dialog, which) -> {
                 prefs.edit().remove(KEY_SERVER_URL).apply();
-                String defaultUrl = bridge != null ? bridge.getServerUrl() : "";
+                String defaultUrl = bridge != null ? bridge.getServerUrl() : "https://localhost";
                 if (!defaultUrl.isEmpty() && bridge != null && bridge.getWebView() != null) {
                     bridge.getWebView().loadUrl(defaultUrl);
                 }
