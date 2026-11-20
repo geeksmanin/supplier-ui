@@ -128,6 +128,8 @@ export { GalaxyLoader } from './components/GalaxyLoader';
 export type { GalaxyLoaderProps } from './components/GalaxyLoader';
 export { GeeksmanOSLoader } from './components/GeeksmanOSLoader';
 export type { GeeksmanOSLoaderProps } from './components/GeeksmanOSLoader';
+export { SamwadAppLoader } from './components/SamwadAppLoader';
+export type { SamwadAppLoaderProps } from './components/SamwadAppLoader';
 export { SwipeableContainer } from './components/SwipeableContainer';
 export type { SwipeableContainerProps } from './components/SwipeableContainer';
 export { PrintPage } from './components/PrintPage';
