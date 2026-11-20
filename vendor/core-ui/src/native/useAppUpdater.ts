@@ -205,6 +205,16 @@ export const useAppUpdater = (options: UseAppUpdaterOptions = {}) => {
           setDismissed(true);
           return;
         }
+        // Suppress banner if update was initiated within the last 10 minutes in this session
+        const updatingVer = sessionStorage.getItem('updating_native_version');
+        const updatingAtStr = sessionStorage.getItem('updating_native_version_at');
+        if (updatingVer === data.version && updatingAtStr) {
+          const updatingAt = parseInt(updatingAtStr, 10);
+          if (!isNaN(updatingAt) && Date.now() - updatingAt < 10 * 60 * 1000) {
+            setDismissed(true);
+            return;
+          }
+        }
         const dismissedAtStr = localStorage.getItem(`dismissed_native_version_${data.version}`);
         if (dismissedAtStr && !data.force_update) {
           const dismissedAt = parseInt(dismissedAtStr, 10);
@@ -428,6 +438,12 @@ export const useAppUpdater = (options: UseAppUpdaterOptions = {}) => {
       });
 
       // Invoke native AppInstallerPlugin to start Android Package Installer
+      try {
+        if (versionInfo?.version) {
+          sessionStorage.setItem('updating_native_version', versionInfo.version);
+          sessionStorage.setItem('updating_native_version_at', Date.now().toString());
+        }
+      } catch {}
       const AppInstaller = getAppInstallerPlugin();
       if (AppInstaller && typeof AppInstaller.installApk === 'function') {
         try {
