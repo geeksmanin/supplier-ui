@@ -41,19 +41,7 @@ export const NotificationToastContainer: React.FC<{ onNavigate?: (link: string) 
       const isViewingActiveTicket = activeTicketId && notif.link && notif.link.includes(activeTicketId);
       const isViewingGeneralTickets = notif.link && (currentHash.includes(notif.link) || currentPath.includes(notif.link));
 
-      const notifType = String(notif.type || '').toLowerCase();
-      const cleanTitle = String(notif.title || '').trim();
-      const cleanBody = formatNotificationBody(notif.body || '').trim();
-
-      // Suppress empty notifications or background state sync events (e.g. discard/delete events)
-      if (
-        (!cleanTitle && !cleanBody) ||
-        isViewingActiveTicket ||
-        isViewingGeneralTickets ||
-        notifType === 'silent_sync' ||
-        notifType.includes('discard') ||
-        notifType.includes('delete')
-      ) {
+      if (isViewingActiveTicket || isViewingGeneralTickets || (notif.type as string) === 'silent_sync') {
         return;
       }
 

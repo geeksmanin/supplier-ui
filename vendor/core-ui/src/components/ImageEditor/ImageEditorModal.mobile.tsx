@@ -533,23 +533,21 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
         </div>
 
         {/* Apply / Send */}
-        {mode !== 'crop' && (
-          <button
-            onClick={handleApply}
-            disabled={isApplying}
-            style={{
-              ...styles.mobileTouchBtn,
-              backgroundColor: '#00a884',
-              borderRadius: '50%',
-              width: '42px',
-              height: '42px',
-            }}
-            type="button"
-            aria-label="Done"
-          >
-            <Check size={22} color="#ffffff" strokeWidth={2.8} />
-          </button>
-        )}
+        <button
+          onClick={handleApply}
+          disabled={isApplying}
+          style={{
+            ...styles.mobileTouchBtn,
+            backgroundColor: '#00a884',
+            borderRadius: '50%',
+            width: '42px',
+            height: '42px',
+          }}
+          type="button"
+          aria-label="Done"
+        >
+          <Check size={22} color="#ffffff" strokeWidth={2.8} />
+        </button>
       </header>
 
       {/* 2. Main Canvas Viewport */}

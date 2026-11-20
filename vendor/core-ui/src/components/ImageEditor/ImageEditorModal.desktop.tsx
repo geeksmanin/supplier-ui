@@ -539,30 +539,28 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
 
         {/* Right: Apply / Done Button */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {mode !== 'crop' && (
-            <button
-              onClick={handleApply}
-              disabled={isApplying}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                backgroundColor: '#00a884',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '20px',
-                padding: '8px 18px',
-                fontSize: '0.88rem',
-                fontWeight: 600,
-                cursor: isApplying ? 'wait' : 'pointer',
-                transition: 'background-color 0.15s ease',
-              }}
-              type="button"
-            >
-              <Check size={18} strokeWidth={2.5} />
-              <span>{isApplying ? 'Applying...' : 'Done'}</span>
-            </button>
-          )}
+          <button
+            onClick={handleApply}
+            disabled={isApplying}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: '#00a884',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '20px',
+              padding: '8px 18px',
+              fontSize: '0.88rem',
+              fontWeight: 600,
+              cursor: isApplying ? 'wait' : 'pointer',
+              transition: 'background-color 0.15s ease',
+            }}
+            type="button"
+          >
+            <Check size={18} strokeWidth={2.5} />
+            <span>{isApplying ? 'Applying...' : 'Done'}</span>
+          </button>
         </div>
       </header>
 
