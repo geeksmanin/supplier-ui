@@ -21,20 +21,23 @@ export const SamwadMiniIcon: React.FC<SamwadMiniIconProps> = ({
       style={{ display: 'inline-block', verticalAlign: 'middle', flexShrink: 0, ...style }}
     >
       <defs>
+        {/* Authentic 3D Blue to Green Background */}
         <linearGradient id="samwadMiniBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#00A884" />
-          <stop offset="55%" stopColor="#008069" />
-          <stop offset="100%" stopColor="#054740" />
+          <stop offset="0%" stopColor="#1E3A8A" />
+          <stop offset="50%" stopColor="#0369A1" />
+          <stop offset="100%" stopColor="#008069" />
         </linearGradient>
-        <linearGradient id="samwadMiniBubbleGrad" x1="20%" y1="10%" x2="80%" y2="90%">
-          <stop offset="0%" stopColor="#25D366" />
-          <stop offset="60%" stopColor="#00A884" />
-          <stop offset="100%" stopColor="#005C4B" />
+        {/* Main Upper Bubble: Vibrant 3D Blue */}
+        <linearGradient id="samwadMiniBubbleGrad" x1="10%" y1="10%" x2="90%" y2="90%">
+          <stop offset="0%" stopColor="#93C5FD" />
+          <stop offset="40%" stopColor="#3B82F6" />
+          <stop offset="100%" stopColor="#1D4ED8" />
         </linearGradient>
-        <linearGradient id="samwadMiniMintGrad" x1="15%" y1="15%" x2="85%" y2="85%">
-          <stop offset="0%" stopColor="#FFFFFF" />
-          <stop offset="70%" stopColor="#E2F7CB" />
-          <stop offset="100%" stopColor="#C5E898" />
+        {/* Accent Overlapping Bubble: Vibrant Emerald Green */}
+        <linearGradient id="samwadMiniAccentGrad" x1="10%" y1="10%" x2="90%" y2="90%">
+          <stop offset="0%" stopColor="#A7F3D0" />
+          <stop offset="45%" stopColor="#10B981" />
+          <stop offset="100%" stopColor="#047857" />
         </linearGradient>
       </defs>
       <rect width="464" height="464" x="24" y="24" rx="112" fill="url(#samwadMiniBgGrad)" />
@@ -47,10 +50,10 @@ export const SamwadMiniIcon: React.FC<SamwadMiniIconProps> = ({
       <circle cx="280" cy="206" r="16" fill="#FFFFFF" />
       <path
         d="M256 220 C322 220 376 220 376 220 C410 220 436 246 436 280 C436 314 410 340 376 340 L346 340 L320 380 L314 340 L256 340 C222 340 196 314 196 280 C196 246 222 220 256 220 Z"
-        fill="url(#samwadMiniMintGrad)"
+        fill="url(#samwadMiniAccentGrad)"
       />
-      <circle cx="285" cy="280" r="12" fill="#008069" />
-      <circle cx="335" cy="280" r="12" fill="#008069" />
+      <circle cx="285" cy="280" r="12" fill="#0C4A6E" />
+      <circle cx="335" cy="280" r="12" fill="#0C4A6E" />
     </svg>
   );
 };
