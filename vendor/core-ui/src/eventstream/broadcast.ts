@@ -100,6 +100,36 @@ interface RegisteredConsumer {
 const registeredConsumers = new Set<RegisteredConsumer>();
 let isDispatcherRegistered = false;
 
+/**
+ * Directly dispatch an event to all registered notification consumers.
+ * Used by syncEngine during offline catch-up so module consumers receive caught-up stream events.
+ */
+export function dispatchToNotificationConsumers(event: StreamEventRecord): void {
+  if (!event || (event as any).count !== undefined) return;
+  registeredConsumers.forEach((consumer) => {
+    try {
+      let matches = true;
+
+      if (consumer.module && consumer.module !== '*') {
+        const evMod = (event.module || '').toLowerCase();
+        if (evMod !== consumer.module.toLowerCase()) {
+          matches = false;
+        }
+      }
+
+      if (matches && consumer.filter) {
+        matches = consumer.filter(event);
+      }
+
+      if (matches) {
+        consumer.handler(event);
+      }
+    } catch (err) {
+      console.error('Error in registered notification consumer:', err);
+    }
+  });
+}
+
 function ensureConsumerDispatcher() {
   if (isDispatcherRegistered) return;
   isDispatcherRegistered = true;
@@ -107,29 +137,7 @@ function ensureConsumerDispatcher() {
   subscribeBroadcast((busMsg) => {
     if (busMsg.type !== 'EVENT_APPENDED' || !busMsg.payload) return;
     const event = busMsg.payload as StreamEventRecord;
-
-    registeredConsumers.forEach((consumer) => {
-      try {
-        let matches = true;
-
-        if (consumer.module && consumer.module !== '*') {
-          const evMod = (event.module || '').toLowerCase();
-          if (evMod !== consumer.module.toLowerCase()) {
-            matches = false;
-          }
-        }
-
-        if (matches && consumer.filter) {
-          matches = consumer.filter(event);
-        }
-
-        if (matches) {
-          consumer.handler(event);
-        }
-      } catch (err) {
-        console.error('Error in registered notification consumer:', err);
-      }
-    });
+    dispatchToNotificationConsumers(event);
   });
 }
 
