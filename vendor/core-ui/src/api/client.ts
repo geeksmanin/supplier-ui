@@ -129,7 +129,8 @@ export const resolveTenantCodeFromServer = async (): Promise<string> => {
         },
         headers: {
           'X-Tenant-Code': 'platform',
-        }
+        },
+        timeout: 2500,
       });
 
       const data = response.data?.data;
