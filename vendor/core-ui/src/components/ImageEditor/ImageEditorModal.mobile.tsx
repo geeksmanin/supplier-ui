@@ -533,7 +533,33 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
         </div>
 
         {/* Apply / Send */}
-        {mode !== 'crop' && (
+        {mode === 'crop' ? (
+          <button
+            onClick={async () => {
+              await commitCrop();
+              setMode('pencil');
+            }}
+            style={{
+              ...styles.mobileTouchBtn,
+              backgroundColor: '#00a884',
+              borderRadius: '20px',
+              padding: '6px 14px',
+              height: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              color: '#ffffff',
+              fontWeight: 700,
+              fontSize: '13px',
+            }}
+            type="button"
+            title="Apply Crop"
+            aria-label="Apply Crop"
+          >
+            <Check size={18} color="#ffffff" strokeWidth={2.8} />
+            <span>Apply</span>
+          </button>
+        ) : (
           <button
             onClick={handleApply}
             disabled={isApplying}
@@ -831,37 +857,8 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
           }}
         >
           {mode === 'crop' ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', justifyContent: 'space-around' }}>
-              <button
-                onClick={rotateCounterClockwise}
-                style={styles.mobileSubBtn}
-                type="button"
-              >
-                <RotateCcw size={15} />
-                <span>-90°</span>
-              </button>
-              <button
-                onClick={rotateClockwise}
-                style={styles.mobileSubBtn}
-                type="button"
-              >
-                <RotateCw size={15} />
-                <span>+90°</span>
-              </button>
-              {(['free', '1:1', '4:3', '16:9'] as AspectRatioOption[]).map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => applyAspectRatio(opt)}
-                  style={{
-                    ...styles.mobileSubBtn,
-                    backgroundColor: aspectRatio === opt ? '#00a884' : 'transparent',
-                    color: '#ffffff',
-                  }}
-                  type="button"
-                >
-                  {opt.toUpperCase()}
-                </button>
-              ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', minWidth: 0 }}>
+              {/* Prominent Apply Crop Button at the FRONT so it is NEVER hidden */}
               <button
                 onClick={async () => {
                   await commitCrop();
@@ -871,15 +868,56 @@ export const ImageEditorModalMobile: React.FC<ImageEditorModalProps> = ({
                   ...styles.mobileSubBtn,
                   backgroundColor: '#00a884',
                   color: '#ffffff',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   gap: 4,
+                  flexShrink: 0,
+                  padding: '6px 12px',
+                  borderRadius: '16px',
+                  boxShadow: '0 2px 6px rgba(0, 168, 132, 0.4)',
                 }}
                 type="button"
                 title="Apply crop and switch to drawing/annotations"
               >
-                <Check size={14} />
+                <Check size={16} strokeWidth={2.6} />
                 <span>Apply Crop</span>
               </button>
+
+              <div style={{ width: 1, height: 22, backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0 }} />
+
+              {/* Scrollable Aspect Ratios & Rotate controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', flex: 1, minWidth: 0, scrollbarWidth: 'none' }}>
+                <button
+                  onClick={rotateCounterClockwise}
+                  style={styles.mobileSubBtn}
+                  type="button"
+                >
+                  <RotateCcw size={15} />
+                  <span>-90°</span>
+                </button>
+                <button
+                  onClick={rotateClockwise}
+                  style={styles.mobileSubBtn}
+                  type="button"
+                >
+                  <RotateCw size={15} />
+                  <span>+90°</span>
+                </button>
+                {(['free', '1:1', '4:3', '16:9'] as AspectRatioOption[]).map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => applyAspectRatio(opt)}
+                    style={{
+                      ...styles.mobileSubBtn,
+                      backgroundColor: aspectRatio === opt ? '#00a884' : 'transparent',
+                      color: '#ffffff',
+                      flexShrink: 0,
+                    }}
+                    type="button"
+                  >
+                    {opt.toUpperCase()}
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', justifyContent: 'space-between' }}>

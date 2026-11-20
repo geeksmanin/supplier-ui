@@ -539,7 +539,33 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
 
         {/* Right: Apply / Done Button */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {mode !== 'crop' && (
+          {mode === 'crop' ? (
+            <button
+              onClick={async () => {
+                await commitCrop();
+                setMode('pencil');
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: '#00a884',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '20px',
+                padding: '8px 18px',
+                fontSize: '0.88rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'background-color 0.15s ease',
+              }}
+              type="button"
+              title="Apply Crop & Continue Editing"
+            >
+              <Check size={18} strokeWidth={2.5} />
+              <span>Apply Crop</span>
+            </button>
+          ) : (
             <button
               onClick={handleApply}
               disabled={isApplying}
@@ -603,6 +629,27 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
               </button>
             </div>
 
+            {/* Prominent Apply Crop Button */}
+            <button
+              onClick={async () => {
+                await commitCrop();
+                setMode('pencil');
+              }}
+              style={{
+                ...styles.subBtn,
+                backgroundColor: '#00a884',
+                color: '#ffffff',
+                fontWeight: 600,
+                padding: '6px 14px',
+                borderRadius: '16px',
+              }}
+              type="button"
+              title="Apply Crop & Continue Editing"
+            >
+              <Check size={14} strokeWidth={2.5} />
+              <span>Apply Crop</span>
+            </button>
+
             <div style={{ width: '1px', height: '18px', backgroundColor: 'rgba(255,255,255,0.15)' }} />
 
             {/* Aspect Ratio Presets */}
@@ -621,22 +668,6 @@ export const ImageEditorModalDesktop: React.FC<ImageEditorModalProps> = ({
                   {opt.toUpperCase()}
                 </button>
               ))}
-              <button
-                onClick={async () => {
-                  await commitCrop();
-                  setMode('pencil');
-                }}
-                style={{
-                  ...styles.subBtn,
-                  backgroundColor: '#00a884',
-                  color: '#ffffff',
-                }}
-                type="button"
-                title="Apply Crop & Continue Editing"
-              >
-                <Check size={14} />
-                <span>Apply</span>
-              </button>
             </div>
           </div>
         ) : (
