@@ -167,7 +167,7 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         gstin: b.gstin,
         is_active: b.is_active !== undefined ? !!b.is_active : true,
         default_location_id: b.default_location_id,
-      })).filter((b: BranchInfo) => b.is_active);
+      })).filter((b: BranchInfo) => b.is_active || b.is_head_office || b.code === 'HQ');
 
       let filtered: BranchInfo[] = [];
       if (isAdmin || hasWildcard) {
