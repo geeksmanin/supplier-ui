@@ -260,7 +260,14 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
               <button
                 key={opt.key}
                 type="button"
+                tabIndex={-1}
                 onClick={() => onModeChange?.(opt.key)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }
+                }}
                 style={{
                   flex: 1,
                   display: 'flex',
