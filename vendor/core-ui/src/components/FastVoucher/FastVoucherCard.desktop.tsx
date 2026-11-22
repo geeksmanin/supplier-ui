@@ -305,7 +305,14 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
                 <button
                   key={opt.key}
                   type="button"
+                  tabIndex={-1}
                   onClick={() => onModeChange?.(opt.key)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -378,6 +385,21 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
                     setIsPartyDropdownOpen(true);
                   }}
                   onFocus={() => setIsPartyDropdownOpen(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (isPartyDropdownOpen && partyOptions.length > 0) {
+                        onPartySelect?.(partyOptions[0]);
+                        setIsPartyDropdownOpen(false);
+                        searchInputRef.current?.focus();
+                      }
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsPartyDropdownOpen(false);
+                    }
+                  }}
                   style={{
                     width: '100%',
                     boxSizing: 'border-box',
@@ -472,6 +494,13 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
                 type="text"
                 value={voucherNumber || ''}
                 onChange={(e) => onVoucherNumberChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    searchInputRef.current?.focus();
+                  }
+                }}
                 placeholder={voucherNumberPlaceholder || 'e.g. INV-98214'}
                 style={{
                   width: '100%',
@@ -555,6 +584,20 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
               }}
               onBlur={() => setIsSearchFocused(false)}
               onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsSearchOpen(false);
+                  return;
+                }
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (isSearchOpen && searchResults.length > 0 && searchResults[selectedResultIndex]) {
+                    handleSelectProduct(searchResults[selectedResultIndex]);
+                  }
+                  return;
+                }
                 if (!isSearchOpen || searchResults.length === 0) return;
                 if (e.key === 'ArrowDown') {
                   e.preventDefault();
@@ -562,13 +605,6 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
                 } else if (e.key === 'ArrowUp') {
                   e.preventDefault();
                   setSelectedResultIndex((prev) => (prev > 0 ? prev - 1 : 0));
-                } else if (e.key === 'Enter') {
-                  e.preventDefault();
-                  if (searchResults[selectedResultIndex]) {
-                    handleSelectProduct(searchResults[selectedResultIndex]);
-                  }
-                } else if (e.key === 'Escape') {
-                  setIsSearchOpen(false);
                 }
               }}
               style={{

@@ -90,6 +90,7 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
+              e.stopPropagation();
               if (packagingSelectRef.current) {
                 packagingSelectRef.current.focus();
               } else if (batchInputRef.current) {
@@ -97,6 +98,8 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
               } else if (rateInputRef.current) {
                 rateInputRef.current.focus();
               }
+            } else if (e.key === 'Escape') {
+              e.stopPropagation();
             }
           }}
           style={{
@@ -128,11 +131,14 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
+                e.stopPropagation();
                 if (batchInputRef.current) {
                   batchInputRef.current.focus();
                 } else if (rateInputRef.current) {
                   rateInputRef.current.focus();
                 }
+              } else if (e.key === 'Escape') {
+                e.stopPropagation();
               }
             }}
             options={(item.packagings || []).map((p) => ({
@@ -172,7 +178,10 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
+                e.stopPropagation();
                 rateInputRef.current?.focus();
+              } else if (e.key === 'Escape') {
+                e.stopPropagation();
               }
             }}
             options={effectiveBatches.map((b) => ({
@@ -200,7 +209,10 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
+                  e.stopPropagation();
                   expiryInputRef.current?.focus();
+                } else if (e.key === 'Escape') {
+                  e.stopPropagation();
                 }
               }}
               style={{
@@ -226,7 +238,10 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
+                  e.stopPropagation();
                   rateInputRef.current?.focus();
+                } else if (e.key === 'Escape') {
+                  e.stopPropagation();
                 }
               }}
               style={{
@@ -257,7 +272,10 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
+              e.stopPropagation();
               discountInputRef.current?.focus();
+            } else if (e.key === 'Escape') {
+              e.stopPropagation();
             }
           }}
           style={{
@@ -305,11 +323,14 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
+              e.stopPropagation();
               if (taxInputRef.current) {
                 taxInputRef.current.focus();
               } else {
                 handleCommit();
               }
+            } else if (e.key === 'Escape') {
+              e.stopPropagation();
             }
           }}
           style={{
@@ -356,7 +377,10 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
+              e.stopPropagation();
               handleCommit();
+            } else if (e.key === 'Escape') {
+              e.stopPropagation();
             }
           }}
           style={{
