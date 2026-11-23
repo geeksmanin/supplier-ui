@@ -411,7 +411,8 @@ export const FastVoucherCatalogSearchDropdown: React.FC<FastVoucherCatalogSearch
             </div>
           </div>
         );
-      })}
+      })
+    )}
     </div>
   );
 };
