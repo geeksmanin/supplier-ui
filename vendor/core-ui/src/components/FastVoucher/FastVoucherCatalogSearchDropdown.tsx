@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { VoucherCatalogConfig } from './FastVoucherEntryLayout.types';
 
@@ -21,8 +21,39 @@ export const FastVoucherCatalogSearchDropdown: React.FC<FastVoucherCatalogSearch
   liveStockMap,
   onClose,
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll dropdown when keyboard arrow keys navigate past visible viewport (e.g. > 4 items)
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const container = containerRef.current;
+
+    if (selectedResultIndex === 0) {
+      container.scrollTop = 0;
+      return;
+    }
+
+    const selectedEl = container.querySelector<HTMLElement>(
+      `[data-testid="search-result-${selectedResultIndex}"]`
+    );
+    if (!selectedEl) return;
+
+    const elTop = selectedEl.offsetTop;
+    const elBottom = elTop + selectedEl.offsetHeight;
+    const containerTop = container.scrollTop;
+    const containerBottom = containerTop + container.clientHeight;
+
+    const headerOffset = 40; // Height of the sticky header
+    if (elTop - headerOffset < containerTop) {
+      container.scrollTop = Math.max(0, elTop - headerOffset);
+    } else if (elBottom > containerBottom) {
+      container.scrollTop = elBottom - container.clientHeight + 6;
+    }
+  }, [selectedResultIndex]);
+
   return (
     <div
+      ref={containerRef}
       style={{
         position: 'absolute',
         top: '100%',
@@ -50,6 +81,9 @@ export const FastVoucherCatalogSearchDropdown: React.FC<FastVoucherCatalogSearch
           backgroundColor: '#f8fafc',
           borderRadius: '6px 6px 0 0',
           marginBottom: '4px',
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
         }}
       >
         <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b' }}>

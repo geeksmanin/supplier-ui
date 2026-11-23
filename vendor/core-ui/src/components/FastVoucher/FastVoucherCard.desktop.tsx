@@ -598,13 +598,22 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
                   }
                   return;
                 }
-                if (!isSearchOpen || searchResults.length === 0) return;
                 if (e.key === 'ArrowDown') {
                   e.preventDefault();
-                  setSelectedResultIndex((prev) => (prev < searchResults.length - 1 ? prev + 1 : prev));
-                } else if (e.key === 'ArrowUp') {
+                  if (!isSearchOpen) {
+                    setIsSearchOpen(true);
+                    openSearch?.();
+                  } else if (searchResults.length > 0) {
+                    setSelectedResultIndex((prev) => (prev < searchResults.length - 1 ? prev + 1 : prev));
+                  }
+                  return;
+                }
+                if (e.key === 'ArrowUp') {
                   e.preventDefault();
-                  setSelectedResultIndex((prev) => (prev > 0 ? prev - 1 : 0));
+                  if (isSearchOpen && searchResults.length > 0) {
+                    setSelectedResultIndex((prev) => (prev > 0 ? prev - 1 : 0));
+                  }
+                  return;
                 }
               }}
               style={{
