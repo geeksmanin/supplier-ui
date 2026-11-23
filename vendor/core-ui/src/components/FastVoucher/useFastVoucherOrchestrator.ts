@@ -343,8 +343,8 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
       packagings,
       batch_code: initialBatchCode,
       expiry_date: initialExpiry,
-      is_batch_tracking_enabled: rawProduct.is_batch_tracking_enabled ?? rawProduct.product?.is_batch_tracking_enabled,
-      is_expiry_enabled: rawProduct.is_expiry_enabled ?? rawProduct.product?.is_expiry_enabled,
+      is_batch_tracking_enabled: Boolean(rawProduct.is_batch_tracking_enabled || rawProduct.product?.is_batch_tracking_enabled),
+      is_expiry_enabled: Boolean(rawProduct.is_expiry_enabled || rawProduct.product?.is_expiry_enabled),
       metadata: {
         ...(rawProduct.metadata || {}),
         batches,
