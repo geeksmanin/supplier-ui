@@ -126,21 +126,26 @@ export const FastVoucherCatalogSearchDropdown: React.FC<FastVoucherCatalogSearch
                       📦 Variant
                     </span>
                   )}
-                  {catalogConfig?.showStock && !isProduct && (() => {
+                  {catalogConfig?.showStock !== false && !isProduct && (() => {
                     const vId = String(res.id || res.variant_id || '');
-                    const hasStock = liveStockMap[vId] !== undefined;
-                    const stockQty = hasStock ? liveStockMap[vId] : Number(res.available_quantity ?? res.stock ?? 0);
+                    const hasStock = liveStockMap[vId] !== undefined || res.available_quantity !== undefined || res.stock !== undefined || res.current_stock !== undefined;
+                    const stockQty = liveStockMap[vId] !== undefined 
+                      ? liveStockMap[vId] 
+                      : Number(res.available_quantity ?? res.stock ?? res.current_stock ?? 0);
                     return (
                       <span
                         style={{
                           fontSize: '0.65rem',
                           fontWeight: 700,
-                          padding: '2px 6px',
+                          padding: '2px 7px',
                           borderRadius: '9999px',
                           backgroundColor: stockQty > 0 ? '#dcfce7' : (hasStock ? '#fee2e2' : '#f1f5f9'),
                           color: stockQty > 0 ? '#166534' : (hasStock ? '#991b1b' : '#64748b'),
                           border: stockQty > 0 ? '1px solid #bbf7d0' : (hasStock ? '1px solid #fecaca' : '1px solid #e2e8f0'),
                           transition: 'all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
                         }}
                       >
                         {hasStock ? (stockQty > 0 ? `🟢 Stock: ${stockQty}` : `🔴 Out of Stock`) : `⏳ Stock: ...`}
