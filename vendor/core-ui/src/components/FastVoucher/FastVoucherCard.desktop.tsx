@@ -100,6 +100,7 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
     handleSelectProduct,
     handleCommitStepperItem,
     memoizedStepperBatches,
+    handleNavigateToCreateProduct,
   } = useFastVoucherOrchestrator(props);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -584,6 +585,12 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
               }}
               onBlur={() => setIsSearchFocused(false)}
               onKeyDown={(e) => {
+                if (e.key === 'F3' || (e.altKey && e.key.toLowerCase() === 'n')) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleNavigateToCreateProduct(searchQuery);
+                  return;
+                }
                 if (e.key === 'Escape') {
                   e.preventDefault();
                   e.stopPropagation();
@@ -595,6 +602,8 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
                   e.stopPropagation();
                   if (isSearchOpen && searchResults.length > 0 && searchResults[selectedResultIndex]) {
                     handleSelectProduct(searchResults[selectedResultIndex]);
+                  } else if (isSearchOpen && searchResults.length === 0) {
+                    handleNavigateToCreateProduct(searchQuery);
                   }
                   return;
                 }
@@ -635,7 +644,7 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
           </div>
 
           {/* Search Dropdown */}
-          {isSearchOpen && searchResults.length > 0 && (
+          {isSearchOpen && (
             <FastVoucherCatalogSearchDropdown
               searchResults={searchResults}
               selectedResultIndex={selectedResultIndex}
@@ -643,6 +652,9 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
               handleSelectProduct={handleSelectProduct}
               catalogConfig={catalogConfig}
               liveStockMap={liveStockMap}
+              onClose={() => setIsSearchOpen(false)}
+              searchQuery={searchQuery}
+              onNavigateToCreateProduct={handleNavigateToCreateProduct}
             />
           )}
 
