@@ -66,8 +66,8 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
   taxInputRef,
   handleCommit,
 }) => {
-  const showBatch = item.is_batch_tracking_enabled !== undefined ? (item.is_batch_tracking_enabled && batchMode !== 'none') : (batchMode !== 'none');
-  const showExpiry = item.is_expiry_enabled !== undefined ? (item.is_expiry_enabled && batchMode === 'create') : (batchMode === 'create');
+  const showBatch = Boolean(item.is_batch_tracking_enabled) && batchMode !== 'none';
+  const showExpiry = Boolean(item.is_expiry_enabled) && batchMode === 'create';
   const columnCount = 5 + (showBatch ? 1 : 0) + (showExpiry ? 1 : 0);
 
   return (

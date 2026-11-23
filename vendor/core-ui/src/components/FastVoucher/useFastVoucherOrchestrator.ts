@@ -131,7 +131,12 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     partyLoading,
     resolvedLabel: resolvedPartyLabel,
     resolvedPlaceholder: resolvedPartyPlaceholder,
-  } = useFastVoucherPartySearch({ partyConfig, partyRole: props.partyRole, voucherType });
+  } = useFastVoucherPartySearch({
+    partyConfig,
+    partyRole: props.partyRole,
+    voucherType,
+    enabled: !Boolean(props.renderPartySelect || partyConfig?.renderPartySelect),
+  });
 
   // 4. Encapsulated Catalog Search Hook
   const {
