@@ -66,11 +66,15 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
   taxInputRef,
   handleCommit,
 }) => {
+  const showBatch = item.is_batch_tracking_enabled !== undefined ? (item.is_batch_tracking_enabled && batchMode !== 'none') : (batchMode !== 'none');
+  const showExpiry = item.is_expiry_enabled !== undefined ? (item.is_expiry_enabled && batchMode === 'create') : (batchMode === 'create');
+  const columnCount = 5 + (showBatch ? 1 : 0) + (showExpiry ? 1 : 0);
+
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: `repeat(${batchMode !== 'none' ? (batchMode === 'create' ? 7 : 6) : 5}, minmax(0, 1fr))`,
+        gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
         gap: '0.75rem',
         alignItems: 'end',
       }}
@@ -93,8 +97,10 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
               e.stopPropagation();
               if (packagingSelectRef.current) {
                 packagingSelectRef.current.focus();
-              } else if (batchInputRef.current) {
+              } else if (showBatch && batchInputRef.current) {
                 batchInputRef.current.focus();
+              } else if (showExpiry && expiryInputRef.current) {
+                expiryInputRef.current.focus();
               } else if (rateInputRef.current) {
                 rateInputRef.current.focus();
               }
@@ -132,8 +138,10 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
               if (e.key === 'Enter') {
                 e.preventDefault();
                 e.stopPropagation();
-                if (batchInputRef.current) {
+                if (showBatch && batchInputRef.current) {
                   batchInputRef.current.focus();
+                } else if (showExpiry && expiryInputRef.current) {
+                  expiryInputRef.current.focus();
                 } else if (rateInputRef.current) {
                   rateInputRef.current.focus();
                 }
@@ -166,8 +174,8 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
         )}
       </div>
 
-      {/* 3. Batch (Select mode: FEFO dropdown; Create mode: text input) */}
-      {batchMode === 'select' && (
+      {/* 3. Batch (Select mode: FEFO dropdown) */}
+      {showBatch && batchMode === 'select' && (
         <div>
           <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
             <Tag size={11} /> Batch (FEFO)
@@ -194,67 +202,74 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
         </div>
       )}
 
-      {batchMode === 'create' && (
-        <>
-          <div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-              <Tag size={11} /> Batch No
-            </label>
-            <input
-              ref={batchInputRef as any}
-              type="text"
-              placeholder="e.g. B2026-X"
-              value={batchCode}
-              onChange={(e) => setBatchCode(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  expiryInputRef.current?.focus();
-                } else if (e.key === 'Escape') {
-                  e.stopPropagation();
-                }
-              }}
-              style={{
-                width: '100%',
-                padding: '7px 10px',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                borderRadius: '6px',
-                border: '1px solid #cbd5e1',
-              }}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-              <Calendar size={11} /> Expiry (MM/YY)
-            </label>
-            <input
-              ref={expiryInputRef}
-              type="text"
-              placeholder="12/28"
-              value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  e.stopPropagation();
+      {/* 3b. Batch (Create mode: text input) */}
+      {showBatch && batchMode === 'create' && (
+        <div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+            <Tag size={11} /> Batch No
+          </label>
+          <input
+            ref={batchInputRef as any}
+            type="text"
+            placeholder="e.g. B2026-X"
+            value={batchCode}
+            onChange={(e) => setBatchCode(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (showExpiry && expiryInputRef.current) {
+                  expiryInputRef.current.focus();
+                } else {
                   rateInputRef.current?.focus();
-                } else if (e.key === 'Escape') {
-                  e.stopPropagation();
                 }
-              }}
-              style={{
-                width: '100%',
-                padding: '7px 10px',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                borderRadius: '6px',
-                border: '1px solid #cbd5e1',
-              }}
-            />
-          </div>
-        </>
+              } else if (e.key === 'Escape') {
+                e.stopPropagation();
+              }
+            }}
+            style={{
+              width: '100%',
+              padding: '7px 10px',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              borderRadius: '6px',
+              border: '1px solid #cbd5e1',
+            }}
+          />
+        </div>
+      )}
+
+      {/* 3c. Expiry (Create mode: text input) */}
+      {showExpiry && (
+        <div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+            <Calendar size={11} /> Expiry (MM/YY)
+          </label>
+          <input
+            ref={expiryInputRef}
+            type="text"
+            placeholder="12/28"
+            value={expiryDate}
+            onChange={(e) => setExpiryDate(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                rateInputRef.current?.focus();
+              } else if (e.key === 'Escape') {
+                e.stopPropagation();
+              }
+            }}
+            style={{
+              width: '100%',
+              padding: '7px 10px',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              borderRadius: '6px',
+              border: '1px solid #cbd5e1',
+            }}
+          />
+        </div>
       )}
 
       {/* 4. Unit Price / Rate */}
