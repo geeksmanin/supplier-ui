@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { apiClient } from '../../api/client';
 import { VoucherPartyConfig, VoucherPartyOption } from './FastVoucherEntryLayout.types';
 
@@ -6,24 +6,13 @@ export interface UseFastVoucherPartySearchProps {
   partyConfig?: VoucherPartyConfig;
   partyRole?: 'supplier' | 'customer' | 'both';
   voucherType?: string;
-  enabled?: boolean;
 }
 
-export function useFastVoucherPartySearch({
-  partyConfig,
-  partyRole,
-  voucherType,
-  enabled = true,
-}: UseFastVoucherPartySearchProps) {
+export function useFastVoucherPartySearch({ partyConfig, partyRole, voucherType }: UseFastVoucherPartySearchProps) {
   const [isPartyDropdownOpen, setIsPartyDropdownOpen] = useState(false);
   const [partySearchQuery, setPartySearchQuery] = useState('');
   const [asyncPartyOptions, setAsyncPartyOptions] = useState<VoucherPartyOption[]>([]);
   const [partyLoading, setPartyLoading] = useState(false);
-
-  const onSearchRef = useRef(partyConfig?.onSearch);
-  onSearchRef.current = partyConfig?.onSearch;
-
-  const searchParamsStr = JSON.stringify(partyConfig?.searchParams || {});
 
   // Infer effective party role (e.g. supplier for purchase, customer for sales)
   const effectivePartyRole = useMemo(() => {
@@ -58,26 +47,27 @@ export function useFastVoucherPartySearch({
   const resolvedEndpoint = partyConfig?.searchEndpoint || '/contacts/organisations';
 
   useEffect(() => {
-    if (!enabled) return;
+    if (partyConfig?.onSearch) {
+      let isCancelled = false;
+      setPartyLoading(true);
+      partyConfig
+        .onSearch(partySearchQuery)
+        .then((res) => {
+          if (!isCancelled && Array.isArray(res)) setAsyncPartyOptions(res);
+        })
+        .catch((err) => {
+          console.error('Failed onSearch parties', err);
+        })
+        .finally(() => {
+          if (!isCancelled) setPartyLoading(false);
+        });
+      return () => {
+        isCancelled = true;
+      };
+    }
 
     let isCancelled = false;
-    const timer = setTimeout(async () => {
-      const activeOnSearch = onSearchRef.current;
-      if (activeOnSearch) {
-        setPartyLoading(true);
-        try {
-          const res = await activeOnSearch(partySearchQuery);
-          if (!isCancelled && Array.isArray(res)) {
-            setAsyncPartyOptions(res);
-          }
-        } catch (err) {
-          console.error('Failed onSearch parties', err);
-        } finally {
-          if (!isCancelled) setPartyLoading(false);
-        }
-        return;
-      }
-
+    const fetchParties = async () => {
       setPartyLoading(true);
       try {
         const queryParams: Record<string, any> = {
@@ -114,13 +104,14 @@ export function useFastVoucherPartySearch({
       } finally {
         if (!isCancelled) setPartyLoading(false);
       }
-    }, 250);
+    };
 
+    const timer = setTimeout(fetchParties, 200);
     return () => {
       isCancelled = true;
       clearTimeout(timer);
     };
-  }, [enabled, partySearchQuery, resolvedEndpoint, searchParamsStr, effectivePartyRole]);
+  }, [partySearchQuery, resolvedEndpoint, partyConfig?.searchParams, partyConfig?.onSearch, effectivePartyRole]);
 
   return {
     isPartyDropdownOpen,

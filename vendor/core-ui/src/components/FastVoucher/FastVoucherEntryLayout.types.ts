@@ -120,12 +120,21 @@ export interface FastVoucherEntryLayoutProps {
   layoutMode?: 'full' | 'card';
   voucherType: string;
   documentTitle: string;
+  hideDocumentTitle?: boolean;
+  partyLayout?: 'side-by-side' | 'header';
   voucherNumber?: string;
   onVoucherNumberChange?: (number: string) => void;
   voucherNumberLabel?: string;
   voucherNumberPlaceholder?: string;
   voucherDate: string;
   onVoucherDateChange?: (date: string) => void;
+  dueDate?: string;
+  onDueDateChange?: (date: string) => void;
+  entryDate?: string;
+  autoConfirm?: boolean;
+  onAutoConfirmChange?: (val: boolean) => void;
+  notes?: string;
+  onNotesChange?: (notes: string) => void;
   status?: string;
 
   // Company / Statutory Context
@@ -177,6 +186,7 @@ export interface FastVoucherEntryLayoutProps {
   onParkBill?: () => void;
   onRecallBill?: (bill: any) => void;
   onClearForm?: () => void;
+  onDiscard?: () => void;
   parkedBillsCount?: number;
 
   // Draft Auto-Save & Banner (IndexedDB)
