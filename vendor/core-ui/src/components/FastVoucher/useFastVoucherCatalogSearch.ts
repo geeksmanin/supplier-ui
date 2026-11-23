@@ -122,7 +122,7 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
 
   // 1. Dynamic Live Stock Ingestion via Domain Event Bus (Decoupled & Non-blocking)
   useEffect(() => {
-    if (!catalogConfig?.showStock) return;
+    if (catalogConfig?.showStock === false) return;
 
     const handleStockUpdate = (e: any) => {
       const delta = e?.detail;
@@ -143,7 +143,7 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
 
   // 2. Request stock for displayed search results without blocking UI
   useEffect(() => {
-    if (!catalogConfig?.showStock || searchResults.length === 0) return;
+    if (catalogConfig?.showStock === false || searchResults.length === 0) return;
 
     searchResults.forEach((res) => {
       if (res._itemType === 'variant') {
@@ -253,7 +253,7 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
           setSelectedResultIndex(0);
 
           // Eagerly trigger stock inquiries for all returned variants immediately
-          if (catalogConfig?.showStock) {
+          if (catalogConfig?.showStock !== false) {
             merged.forEach((item) => {
               const vId = String(item.id || item.variant_id || '');
               if (vId) {
