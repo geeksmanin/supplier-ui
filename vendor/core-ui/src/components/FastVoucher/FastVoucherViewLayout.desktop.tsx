@@ -41,7 +41,7 @@ export const FastVoucherViewLayoutDesktop: React.FC<FastVoucherViewLayoutProps> 
 }) => {
   if (loading) {
     return (
-      <div style={{ maxWidth: '1320px', margin: '0 auto', padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ width: '100%', boxSizing: 'border-box', padding: '1.25rem 2rem', display: 'flex', flexDirection: 'column', gap: '16px' }}>
         <div style={{ height: '72px', backgroundColor: '#e2e8f0', borderRadius: '12px' }} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
           <div style={{ height: '140px', backgroundColor: '#e2e8f0', borderRadius: '12px' }} />
@@ -75,9 +75,9 @@ export const FastVoucherViewLayoutDesktop: React.FC<FastVoucherViewLayoutProps> 
   return (
     <div
       style={{
-        maxWidth: '1320px',
-        margin: '0 auto',
-        padding: '20px',
+        width: '100%',
+        boxSizing: 'border-box',
+        padding: '1.25rem 2rem',
         display: 'flex',
         flexDirection: 'column',
         gap: '16px',
