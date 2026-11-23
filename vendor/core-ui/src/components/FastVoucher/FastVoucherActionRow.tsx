@@ -308,23 +308,28 @@ export const FastVoucherActionRow: React.FC<FastVoucherActionRowProps> = ({
                 setIsSearchOpen(false);
                 return;
               }
-              if (!isSearchOpen) return;
-
-              if (searchResults.length === 0) {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  onNavigateToCreateProduct?.(searchQuery);
+              if (e.key === 'Enter' && isSearchOpen && searchResults.length === 0) {
+                e.preventDefault();
+                onNavigateToCreateProduct?.(searchQuery);
+                return;
+              }
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (!isSearchOpen) {
+                  setIsSearchOpen(true);
+                } else if (searchResults.length > 0) {
+                  setSelectedResultIndex((prev) => (prev < searchResults.length - 1 ? prev + 1 : prev));
                 }
                 return;
               }
-
-              if (e.key === 'ArrowDown') {
+              if (e.key === 'ArrowUp') {
                 e.preventDefault();
-                setSelectedResultIndex((prev) => (prev < searchResults.length - 1 ? prev + 1 : prev));
-              } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                setSelectedResultIndex((prev) => (prev > 0 ? prev - 1 : 0));
-              } else if (e.key === 'Enter') {
+                if (isSearchOpen && searchResults.length > 0) {
+                  setSelectedResultIndex((prev) => (prev > 0 ? prev - 1 : 0));
+                }
+                return;
+              }
+              if (e.key === 'Enter') {
                 e.preventDefault();
                 if (searchResults[selectedResultIndex]) {
                   handleSelectProduct(searchResults[selectedResultIndex]);
