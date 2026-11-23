@@ -48,7 +48,6 @@ export interface FastVoucherActionRowProps {
   setActiveStepperItem: (item: any) => void;
   setEditingRowIndex: (idx: number | null) => void;
   editingRowIndex: number | null;
-  onNavigateToCreateProduct?: (query?: string) => void;
 }
 
 export const FastVoucherActionRow: React.FC<FastVoucherActionRowProps> = ({
@@ -89,7 +88,6 @@ export const FastVoucherActionRow: React.FC<FastVoucherActionRowProps> = ({
   setActiveStepperItem,
   setEditingRowIndex,
   editingRowIndex,
-  onNavigateToCreateProduct,
 }) => {
   return (
     <div
@@ -298,19 +296,9 @@ export const FastVoucherActionRow: React.FC<FastVoucherActionRowProps> = ({
               setIsSearchFocused(false);
             }}
             onKeyDown={(e) => {
-              if (e.key === 'F3' || (e.altKey && e.key.toLowerCase() === 'n')) {
-                e.preventDefault();
-                onNavigateToCreateProduct?.(searchQuery);
-                return;
-              }
               if (e.key === 'Escape') {
                 e.preventDefault();
                 setIsSearchOpen(false);
-                return;
-              }
-              if (e.key === 'Enter' && isSearchOpen && searchResults.length === 0) {
-                e.preventDefault();
-                onNavigateToCreateProduct?.(searchQuery);
                 return;
               }
               if (e.key === 'ArrowDown') {
@@ -391,7 +379,7 @@ export const FastVoucherActionRow: React.FC<FastVoucherActionRowProps> = ({
         </div>
 
         {/* Autocomplete Results Dropdown */}
-        {isSearchOpen && (
+        {isSearchOpen && searchResults.length > 0 && (
           <FastVoucherCatalogSearchDropdown
             searchResults={searchResults}
             selectedResultIndex={selectedResultIndex}
@@ -400,8 +388,6 @@ export const FastVoucherActionRow: React.FC<FastVoucherActionRowProps> = ({
             catalogConfig={catalogConfig}
             liveStockMap={liveStockMap}
             onClose={() => setIsSearchOpen(false)}
-            searchQuery={searchQuery}
-            onNavigateToCreateProduct={onNavigateToCreateProduct}
           />
         )}
 
