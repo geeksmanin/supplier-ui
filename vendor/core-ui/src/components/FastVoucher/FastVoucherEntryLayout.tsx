@@ -1,14 +1,13 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { FastVoucherEntryLayoutProps } from './FastVoucherEntryLayout.types';
-import { VoucherQuickRowStepper } from './VoucherQuickRowStepper';
 import { VoucherLiveInvoicePreview } from './VoucherLiveInvoicePreview';
 import { VoucherParkedBillsModal } from './VoucherParkedBillsModal';
 import { DraftBanner } from '../../hooks/useFormDraft';
-import { Search, X } from 'lucide-react';
 import { useFastVoucherOrchestrator } from './useFastVoucherOrchestrator';
 import { FastVoucherHeaderRibbon } from './FastVoucherHeaderRibbon';
-import { FastVoucherCatalogSearchDropdown } from './FastVoucherCatalogSearchDropdown';
+import { FastVoucherActionRow } from './FastVoucherActionRow';
 import { FastVoucherTableSection } from './FastVoucherTableSection';
+import { FastVoucherMoreDetailsDrawer } from './FastVoucherMoreDetailsDrawer';
 import { FastVoucherCard } from './FastVoucherCard';
 
 export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (props) => {
@@ -18,9 +17,21 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
 
   const {
     documentTitle,
+    hideDocumentTitle = false,
+    partyLayout = 'side-by-side',
     voucherNumber,
+    onVoucherNumberChange,
+    voucherNumberLabel,
+    voucherNumberPlaceholder,
     voucherDate,
     onVoucherDateChange,
+    dueDate,
+    onDueDateChange,
+    entryDate,
+    autoConfirm,
+    onAutoConfirmChange,
+    notes,
+    onNotesChange,
     status = 'DRAFT',
     companyGstin,
     companyStateCode,
@@ -78,6 +89,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
     activeParkedCount,
     draftHook,
     handleParkBill,
+    handleDiscard,
     isPartyDropdownOpen,
     setIsPartyDropdownOpen,
     partySearchQuery,
@@ -97,6 +109,24 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
     handleCommitStepperItem,
     memoizedStepperBatches,
   } = useFastVoucherOrchestrator(props);
+
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Click-outside listener to dismiss search dropdown
+  useEffect(() => {
+    if (!isSearchOpen) return;
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isSearchOpen, setIsSearchOpen]);
 
   return (
     <div
@@ -123,9 +153,14 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
       {/* Top Sticky Header Ribbon */}
       <FastVoucherHeaderRibbon
         documentTitle={documentTitle}
+        hideDocumentTitle={hideDocumentTitle}
         status={status}
         voucherNumber={voucherNumber}
+        onVoucherNumberChange={onVoucherNumberChange}
+        voucherNumberLabel={voucherNumberLabel}
+        voucherNumberPlaceholder={voucherNumberPlaceholder}
         onCancel={onCancel}
+        partyLayout={partyLayout}
         partyConfig={partyConfig}
         selectedParty={selectedParty}
         onPartySelect={onPartySelect}
@@ -140,6 +175,13 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
         searchInputRef={searchInputRef}
         voucherDate={voucherDate}
         onVoucherDateChange={onVoucherDateChange}
+        dueDate={dueDate}
+        onDueDateChange={onDueDateChange}
+        entryDate={entryDate}
+        autoConfirm={autoConfirm}
+        onAutoConfirmChange={onAutoConfirmChange}
+        notes={notes}
+        onNotesChange={onNotesChange}
         isDrawerOpen={isDrawerOpen}
         setIsDrawerOpen={setIsDrawerOpen}
         moreDetailsBadgeCount={moreDetailsBadgeCount}
@@ -148,6 +190,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
         setIsParkedModalOpen={setIsParkedModalOpen}
         activeParkedCount={activeParkedCount}
         headerExtraActions={headerExtraActions}
+        onDiscard={handleDiscard}
       />
 
       {/* Main Body: Split View */}
@@ -163,128 +206,46 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
             backgroundColor: '#ffffff',
           }}
         >
-          {/* Central Product Search Bar */}
-          <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid #e2e8f0', position: 'relative' }}>
-            <div
-              className="bounding-box fast-voucher-search-box"
-              data-bounding-box="true"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                border: (isSearchFocused || isSearchOpen) ? '2px solid #2563eb' : '1.5px solid #cbd5e1',
-                borderRadius: '10px',
-                padding: '8px 12px',
-                backgroundColor: '#ffffff',
-                boxShadow: (isSearchFocused || isSearchOpen)
-                  ? '0 0 0 3px rgba(37, 99, 235, 0.15), 0 2px 8px rgba(37, 99, 235, 0.1)'
-                  : 'none',
-                transition: 'border-color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.2s cubic-bezier(0.25, 0.1, 0.25, 1)',
-              }}
-            >
-              <Search
-                size={18}
-                style={{
-                  color: (isSearchFocused || isSearchOpen) ? '#2563eb' : '#94a3b8',
-                  marginRight: '8px',
-                  flexShrink: 0,
-                }}
-              />
-              <input
-                ref={searchInputRef}
-                type="text"
-                className="fast-voucher-search-input bare-input"
-                data-bare-input="true"
-                placeholder={
-                  catalogConfig?.placeholder ||
-                  '⚡ Type Product Name, SKU code, or scan Barcode (Press F4)...'
-                }
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onFocus={() => {
-                  setIsSearchFocused(true);
-                  if (searchResults.length > 0) setIsSearchOpen(true);
-                }}
-                onBlur={() => {
-                  setIsSearchFocused(false);
-                }}
-                onKeyDown={(e) => {
-                  if (!isSearchOpen || searchResults.length === 0) return;
-
-                  if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    setSelectedResultIndex((prev) => (prev < searchResults.length - 1 ? prev + 1 : prev));
-                  } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    setSelectedResultIndex((prev) => (prev > 0 ? prev - 1 : 0));
-                  } else if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (searchResults[selectedResultIndex]) {
-                      handleSelectProduct(searchResults[selectedResultIndex]);
-                    }
-                  } else if (e.key === 'Escape') {
-                    setIsSearchOpen(false);
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  border: 'none',
-                  outline: 'none',
-                  boxShadow: 'none',
-                  backgroundColor: 'transparent',
-                  fontSize: '0.95rem',
-                  fontWeight: 600,
-                  color: '#1e293b',
-                }}
-                autoFocus
-              />
-              <span
-                style={{
-                  fontSize: '0.65rem',
-                  fontWeight: 800,
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                  backgroundColor: (isSearchFocused || isSearchOpen) ? '#eff6ff' : '#f1f5f9',
-                  color: (isSearchFocused || isSearchOpen) ? '#2563eb' : '#64748b',
-                  border: (isSearchFocused || isSearchOpen) ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                F4
-              </span>
-            </div>
-
-            {/* Search Autocomplete Results Dropdown */}
-            {isSearchOpen && searchResults.length > 0 && (
-              <FastVoucherCatalogSearchDropdown
-                searchResults={searchResults}
-                selectedResultIndex={selectedResultIndex}
-                setSelectedResultIndex={setSelectedResultIndex}
-                handleSelectProduct={handleSelectProduct}
-                catalogConfig={catalogConfig}
-                liveStockMap={liveStockMap}
-              />
-            )}
-
-            {/* Quick Row Stepper Popover */}
-            <div style={{ position: 'relative' }}>
-              <VoucherQuickRowStepper
-                isOpen={isStepperOpen}
-                item={activeStepperItem}
-                batchMode={batchMode}
-                allowRateOverride={pricingConfig.allowRateOverride}
-                onOpenStockDrilldown={(it) => onOpenStockDrilldown?.(it as any)}
-                stockBatches={memoizedStepperBatches}
-                onCommit={handleCommitStepperItem}
-                onCancel={() => {
-                  setIsStepperOpen(false);
-                  setActiveStepperItem(null);
-                  setEditingRowIndex(null);
-                  searchInputRef.current?.focus();
-                }}
-                isEditMode={editingRowIndex !== null}
-              />
-            </div>
-          </div>
+          {/* Action Row: Supplier Selection & Product Search Side by Side */}
+          <FastVoucherActionRow
+            partyLayout={partyLayout}
+            renderPartySelect={renderPartySelect}
+            partyConfig={partyConfig}
+            selectedParty={selectedParty}
+            onPartySelect={onPartySelect}
+            isPartyDropdownOpen={isPartyDropdownOpen}
+            setIsPartyDropdownOpen={setIsPartyDropdownOpen}
+            partyInputRef={partyInputRef}
+            partySearchQuery={partySearchQuery}
+            setPartySearchQuery={setPartySearchQuery}
+            partyLoading={partyLoading}
+            partyOptions={partyOptions}
+            searchInputRef={searchInputRef}
+            searchContainerRef={searchContainerRef}
+            catalogConfig={catalogConfig}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            isSearchFocused={isSearchFocused}
+            setIsSearchFocused={setIsSearchFocused}
+            isSearchOpen={isSearchOpen}
+            setIsSearchOpen={setIsSearchOpen}
+            searchResults={searchResults}
+            selectedResultIndex={selectedResultIndex}
+            setSelectedResultIndex={setSelectedResultIndex}
+            handleSelectProduct={handleSelectProduct}
+            liveStockMap={liveStockMap}
+            isStepperOpen={isStepperOpen}
+            activeStepperItem={activeStepperItem}
+            batchMode={batchMode}
+            pricingConfig={pricingConfig}
+            onOpenStockDrilldown={onOpenStockDrilldown}
+            memoizedStepperBatches={memoizedStepperBatches}
+            handleCommitStepperItem={handleCommitStepperItem}
+            setIsStepperOpen={setIsStepperOpen}
+            setActiveStepperItem={setActiveStepperItem}
+            setEditingRowIndex={setEditingRowIndex}
+            editingRowIndex={editingRowIndex}
+          />
 
           {/* Dense Tabular Items Table */}
           <FastVoucherTableSection
@@ -348,53 +309,11 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
       </div>
 
       {/* F3 Secondary Details Drawer */}
-      {isDrawerOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            right: 0,
-            bottom: 0,
-            width: '420px',
-            backgroundColor: '#ffffff',
-            borderLeft: '1px solid #cbd5e1',
-            boxShadow: '-8px 0 25px rgba(0, 0, 0, 0.15)',
-            zIndex: 70,
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '1rem',
-              borderBottom: '1px solid #e2e8f0',
-            }}
-          >
-            <div style={{ fontWeight: 800, fontSize: '1rem', color: '#0f172a' }}>
-              Additional Document Details
-            </div>
-            <button
-              onClick={() => setIsDrawerOpen(false)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          <div style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
-            {renderMoreDetailsDrawer ? (
-              renderMoreDetailsDrawer(isDrawerOpen, () => setIsDrawerOpen(false))
-            ) : (
-              <div style={{ color: '#64748b', fontSize: '0.85rem' }}>
-                No additional fields configured for this voucher.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <FastVoucherMoreDetailsDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        renderMoreDetailsDrawer={renderMoreDetailsDrawer}
+      />
 
       {/* Parked Bills Recall Modal (F7) */}
       <VoucherParkedBillsModal

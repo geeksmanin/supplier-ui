@@ -121,6 +121,26 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     }
   }, [externalParkBill, onClearForm, parking, selectedParty, voucherDate, items, summary, moreDetails, draftKey, draftHook.handleClearDraft]);
 
+  const handleDiscard = useCallback(() => {
+    const hasData = items.length > 0 || Boolean(selectedParty) || Boolean(props.voucherNumber);
+    if (hasData) {
+      const confirmDiscard = window.confirm(
+        'Are you sure you want to discard this voucher entry? All unsaved inputs and items will be reset.'
+      );
+      if (!confirmDiscard) return;
+    }
+    if (props.onDiscard) {
+      props.onDiscard();
+    } else if (onClearForm) {
+      onClearForm();
+    }
+    if (draftKey && draftHook.handleClearDraft) {
+      draftHook.handleClearDraft();
+    }
+    setIsSearchOpen(false);
+    setSearchQuery('');
+  }, [items.length, selectedParty, props.voucherNumber, props.onDiscard, onClearForm, draftKey, draftHook.handleClearDraft]);
+
   // 3. Encapsulated Party Search Hook
   const {
     isPartyDropdownOpen,
@@ -394,6 +414,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     activeParkedCount,
     draftHook,
     handleParkBill,
+    handleDiscard,
     isPartyDropdownOpen,
     setIsPartyDropdownOpen,
     partySearchQuery,
