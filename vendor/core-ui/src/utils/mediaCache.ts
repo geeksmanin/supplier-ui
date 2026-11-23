@@ -302,24 +302,11 @@ export async function getCachedMediaUrl(
       const resolved = resolveMediaUrl(rawUrl, options);
       if (!resolved) return '';
 
-      // Prepare request headers (include authentic tenant code for routing, but omit Authorization
-      // so Cloudflare edge and browser HTTP disk caches do not bypass CDN caching)
-      const headers: Record<string, string> = {};
-      if (typeof window !== 'undefined') {
-        // Include authentic tenant code so the media endpoint resolves correctly
-        const tenantCode = (options?.tenant && options.tenant !== 'business')
-          ? options.tenant
-          : getActiveTenant();
-        if (tenantCode && tenantCode !== 'business') {
-          headers['X-Tenant-Code'] = tenantCode;
-        }
-        const branchCode = localStorage.getItem('active_branch');
-        if (branchCode) {
-          headers['X-Business-Code'] = branchCode;
-        }
-      }
-
-      const response = await fetch(resolved, { headers });
+      // Omit custom headers (X-Tenant-Code, X-Business-Code, Authorization) on public media requests.
+      // The media route /api/v1/media/:tenant/:bucket/*key already encodes the tenant in the URL path.
+      // Omitting custom headers makes this a simple cross-origin GET request, eliminating CORS preflight
+      // OPTIONS requests and allowing Cloudflare Edge Cache to serve unified cached responses.
+      const response = await fetch(resolved);
       if (!response.ok) {
         return resolved;
       }
@@ -390,7 +377,10 @@ export async function preloadMediaBatch(
   options?: ResolveMediaOptions,
   concurrency: number = 4
 ): Promise<void> {
-  const uniqueUrls = Array.from(new Set(rawUrls.filter(Boolean)));
+  const uniqueUrls = Array.from(new Set(rawUrls.filter(Boolean))).filter((url) => {
+    const key = getMediaCacheKey(url);
+    return !key || !memoryBlobUrlMap.has(key);
+  });
   if (uniqueUrls.length === 0) return;
 
   let index = 0;
