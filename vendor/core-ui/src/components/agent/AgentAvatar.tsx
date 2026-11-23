@@ -1,5 +1,6 @@
 import React from 'react';
 import { VerifiedBlueTick } from './VerifiedBlueTick';
+import { Support3DIcon } from '../icons3d/Support3DIcon';
 
 export interface AgentAvatarProps {
   size?: number;
@@ -19,6 +20,19 @@ export const AgentAvatar: React.FC<AgentAvatarProps> = ({
   const tickSize = Math.max(12, Math.round(size * 0.38));
 
   const renderIcon = () => {
+    // 0. High-definition 3D volumetric glyph for Support Agent
+    if (
+      icon === 'ticket' ||
+      icon === 'agent-ticket' ||
+      icon === 'tickets' ||
+      icon === 'support-agent' ||
+      icon === 'helpdesk' ||
+      icon === '🎫'
+    ) {
+      const s = Math.round(size * 0.72);
+      return <Support3DIcon size={s} />;
+    }
+
     // 1. High-definition vector glyph for Support / Triage Agent
     if (icon === '🛠️' || icon === 'tools' || icon === 'support') {
       return (
@@ -229,12 +243,12 @@ export const AgentAvatar: React.FC<AgentAvatarProps> = ({
           width: '100%',
           height: '100%',
           borderRadius: Math.round(size * 0.28), // Continuous Apple squircle ratio
-          backgroundColor: '#FFFFFF',
+          backgroundColor: bg === 'transparent' ? 'transparent' : '#FFFFFF',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          border: '1px solid rgba(0, 0, 0, 0.08)',
-          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.06)',
+          border: bg === 'transparent' ? 'none' : '1px solid rgba(0, 0, 0, 0.08)',
+          boxShadow: bg === 'transparent' ? 'none' : '0 2px 6px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.06)',
           overflow: 'hidden',
           position: 'relative',
         }}
