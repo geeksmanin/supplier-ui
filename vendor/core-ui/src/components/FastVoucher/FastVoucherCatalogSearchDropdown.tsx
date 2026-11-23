@@ -1,4 +1,5 @@
 import React from 'react';
+import { X } from 'lucide-react';
 import { VoucherCatalogConfig } from './FastVoucherEntryLayout.types';
 
 interface FastVoucherCatalogSearchDropdownProps {
@@ -8,6 +9,7 @@ interface FastVoucherCatalogSearchDropdownProps {
   handleSelectProduct: (product: any) => void;
   catalogConfig?: VoucherCatalogConfig;
   liveStockMap: Record<string, number>;
+  onClose?: () => void;
 }
 
 export const FastVoucherCatalogSearchDropdown: React.FC<FastVoucherCatalogSearchDropdownProps> = ({
@@ -17,6 +19,7 @@ export const FastVoucherCatalogSearchDropdown: React.FC<FastVoucherCatalogSearch
   handleSelectProduct,
   catalogConfig,
   liveStockMap,
+  onClose,
 }) => {
   return (
     <div
@@ -31,11 +34,54 @@ export const FastVoucherCatalogSearchDropdown: React.FC<FastVoucherCatalogSearch
         borderRadius: '10px',
         boxShadow: '0 12px 30px rgba(0, 0, 0, 0.14)',
         zIndex: 45,
-        maxHeight: '320px',
+        maxHeight: '340px',
         overflowY: 'auto',
         padding: '6px',
       }}
     >
+      {/* Sticky Header with Close / Esc Action */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '6px 10px',
+          borderBottom: '1px solid #e2e8f0',
+          backgroundColor: '#f8fafc',
+          borderRadius: '6px 6px 0 0',
+          marginBottom: '4px',
+        }}
+      >
+        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b' }}>
+          Search Results ({searchResults.length})
+        </span>
+        {onClose && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+            title="Dismiss search results (Esc)"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '3px',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              border: '1px solid #e2e8f0',
+              backgroundColor: '#ffffff',
+              color: '#64748b',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            <X size={12} />
+            <span>Close (Esc)</span>
+          </button>
+        )}
+      </div>
       {searchResults.map((res, idx) => {
         const isProduct = res._itemType === 'product';
         const pName = isProduct ? res.name : (res.product?.name || res.product_name || res.name || 'Product');
