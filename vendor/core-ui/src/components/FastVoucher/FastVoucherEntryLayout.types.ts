@@ -87,6 +87,8 @@ export interface VoucherLineItem {
   packagings?: VoucherPackagingOption[];
   batch_code?: string;
   expiry_date?: string;
+  is_batch_tracking_enabled?: boolean;
+  is_expiry_enabled?: boolean;
   mrp?: number;
   unit_price: number;
   tax_percent: number;
