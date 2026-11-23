@@ -249,7 +249,7 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
 
         if (!isCancelled && !controller.signal.aborted) {
           setSearchResults(merged);
-          setIsSearchOpen(merged.length > 0);
+          setIsSearchOpen(merged.length > 0 || searchQuery.trim().length > 0);
           setSelectedResultIndex(0);
 
           // Eagerly trigger stock inquiries for all returned variants immediately
