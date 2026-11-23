@@ -208,6 +208,8 @@ export function useVoucherQuickRowStepper({
       hsn_code: item.hsn_code,
       remarks: item.remarks,
       metadata: item.metadata,
+      is_batch_tracking_enabled: item.is_batch_tracking_enabled,
+      is_expiry_enabled: item.is_expiry_enabled,
     };
 
     onCommit(committedItem);

@@ -119,8 +119,40 @@ export const FastVoucherTableSection: React.FC<FastVoucherTableSectionProps> = (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <div style={{ fontWeight: 700, color: '#1e293b' }}>{row.product_name}</div>
                       </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '3px' }}>
+                        {row.hsn_code && (
+                          <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#f1f5f9', color: '#475569', fontWeight: 600 }}>
+                            HSN: {row.hsn_code}
+                          </span>
+                        )}
+                        {row.mrp != null && row.mrp > 0 && (
+                          <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#fef3c7', color: '#92400e', fontWeight: 600 }}>
+                            MRP: ₹{Number(row.mrp).toFixed(2)}
+                          </span>
+                        )}
+                        {row.batch_code && (
+                          <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#e0e7ff', color: '#3730a3', fontWeight: 600 }}>
+                            Batch: {row.batch_code}
+                          </span>
+                        )}
+                        {row.expiry_date && (
+                          <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#fae8ff', color: '#86198f', fontWeight: 600 }}>
+                            Exp: {row.expiry_date}
+                          </span>
+                        )}
+                        {row.tax_percent != null && row.tax_percent > 0 && (
+                          <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#ecfdf5', color: '#065f46', fontWeight: 600 }}>
+                            GST: {row.tax_percent}%
+                          </span>
+                        )}
+                        {row.discount_percent != null && row.discount_percent > 0 && (
+                          <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#fee2e2', color: '#991b1b', fontWeight: 600 }}>
+                            Disc: {row.discount_percent}%
+                          </span>
+                        )}
+                      </div>
                       {row.remarks && (
-                        <div style={{ fontSize: '0.7rem', color: '#64748b', fontStyle: 'italic' }}>
+                        <div style={{ fontSize: '0.7rem', color: '#64748b', fontStyle: 'italic', marginTop: '2px' }}>
                           {row.remarks}
                         </div>
                       )}
