@@ -39,3 +39,4 @@ export * from './Samwad3DIcon';
 export * from './SamwadMiniIcon';
 export * from './APM3DIcon';
 export * from './Support3DIcon';
+export * from './TicketCategory3DIcon';
