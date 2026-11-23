@@ -36,11 +36,11 @@ export const FastVoucherViewLayoutMobile: React.FC<FastVoucherViewLayoutProps> =
 }) => {
   if (loading) {
     return (
-      <div className="p-4 space-y-3 animate-pulse">
-        <div className="h-12 bg-slate-200 rounded-xl" />
-        <div className="h-28 bg-slate-200 rounded-xl" />
-        <div className="h-28 bg-slate-200 rounded-xl" />
-        <div className="h-44 bg-slate-200 rounded-xl" />
+      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ height: '48px', backgroundColor: '#e2e8f0', borderRadius: '10px' }} />
+        <div style={{ height: '110px', backgroundColor: '#e2e8f0', borderRadius: '10px' }} />
+        <div style={{ height: '110px', backgroundColor: '#e2e8f0', borderRadius: '10px' }} />
+        <div style={{ height: '180px', backgroundColor: '#e2e8f0', borderRadius: '10px' }} />
       </div>
     );
   }
@@ -65,142 +65,252 @@ export const FastVoucherViewLayoutMobile: React.FC<FastVoucherViewLayoutProps> =
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 pb-20">
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh',
+        backgroundColor: '#f8fafc',
+        paddingBottom: '80px',
+        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      }}
+    >
       {renderCustomTop?.()}
 
-      {/* Top Mobile Bar */}
-      <div className="bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-20 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      {/* Top Mobile Sticky Bar */}
+      <div
+        style={{
+          backgroundColor: '#ffffff',
+          borderBottom: '1px solid #e2e8f0',
+          padding: '12px 16px',
+          position: 'sticky',
+          top: 0,
+          zIndex: 20,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {onBack && (
             <button
               type="button"
               onClick={onBack}
-              className="p-1.5 -ml-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+              style={{
+                padding: '6px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                color: '#475569',
+                cursor: 'pointer',
+              }}
             >
               <ArrowLeft size={18} />
             </button>
           )}
           <div>
-            <h1 className="text-sm font-bold text-slate-900 m-0">
-              {title} #{documentNumber}
-            </h1>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className={`px-1.5 py-0.2 text-[10px] font-bold rounded-full uppercase border ${
-                isCancelled ? 'bg-red-50 text-red-700 border-red-200' :
-                isDraft ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                'bg-emerald-50 text-emerald-700 border-emerald-200'
-              }`}>
-                {status}
-              </span>
-              {settlementStatus && (
-                <span className={`px-1.5 py-0.2 text-[10px] font-semibold rounded-full border ${
-                  settlementStatus === 'PAID' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                  settlementStatus === 'PARTIALLY_PAID' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                  'bg-slate-50 text-slate-600 border-slate-200'
-                }`}>
-                  {settlementStatus.replace(/_/g, ' ')}
-                </span>
-              )}
+            <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>
+              #{documentNumber}
+            </div>
+            <div style={{ fontSize: '11px', color: '#64748b' }}>
+              {title}
             </div>
           </div>
         </div>
 
-        {onEdit && (
-          <button
-            type="button"
-            onClick={onEdit}
-            className="p-2 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1 text-xs font-semibold"
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span
+            style={{
+              padding: '2px 8px',
+              fontSize: '10px',
+              fontWeight: 800,
+              borderRadius: '9999px',
+              textTransform: 'uppercase',
+              backgroundColor: isCancelled ? '#fee2e2' : isDraft ? '#fef3c7' : '#ecfdf5',
+              color: isCancelled ? '#991b1b' : isDraft ? '#92400e' : '#047857',
+              border: isCancelled ? '1px solid #fecaca' : isDraft ? '1px solid #fde68a' : '1px solid #a7f3d0',
+            }}
           >
-            <Pencil size={13} />
-            <span>Edit</span>
-          </button>
-        )}
+            {status}
+          </span>
+          {onEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '6px 10px',
+                fontSize: '11px',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              <Pencil size={12} /> <span>Edit</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="p-3 space-y-3">
-        {/* Party & Doc Card */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-xs space-y-2 text-xs">
-          <div className="flex items-center gap-1.5 text-slate-500 font-medium">
-            <Building2 size={13} className="text-blue-600" />
-            <span>{party?.role ? party.role.toUpperCase() : 'PARTY'} Information</span>
+      {/* Main Content Body */}
+      <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {/* Party Summary Card */}
+        <div
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '10px',
+            border: '1px solid #e2e8f0',
+            padding: '12px 14px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+            <Building2 size={14} color="#2563eb" />
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+              {party?.role ? party.role.toUpperCase() : 'PARTY'}
+            </span>
           </div>
-          <div className="font-bold text-slate-900 text-sm">{party?.name || '—'}</div>
+          <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>{party?.name || '—'}</div>
+          {party?.gstin && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>GSTIN: {party.gstin}</div>}
           {reference?.vendorBillNumber && (
-            <div className="text-slate-600">
-              Vendor Bill: <strong className="font-mono text-slate-800">{reference.vendorBillNumber}</strong>
+            <div style={{ fontSize: '11px', color: '#475569', marginTop: '4px' }}>
+              Vendor Bill: <strong style={{ fontFamily: 'monospace' }}>{reference.vendorBillNumber}</strong>
             </div>
           )}
-          <div className="flex justify-between text-slate-500 text-[11px] pt-1 border-t border-slate-100">
-            <span>Date: {formatDate(dates?.invoiceDate || dates?.documentDate)}</span>
-            <span>Due: {formatDate(dates?.dueDate)}</span>
-          </div>
         </div>
 
         {/* Commercial Totals Card */}
-        <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-xs space-y-1.5 text-xs">
-          <div className="flex items-center gap-1.5 text-slate-500 font-medium pb-1 border-b border-slate-100">
-            <Receipt size={13} className="text-emerald-600" />
-            <span>Financials</span>
-          </div>
-          <div className="flex justify-between text-slate-600">
-            <span>Subtotal:</span>
-            <span>{formatCurr(summary.subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-slate-600">
-            <span>Tax Total:</span>
-            <span>{formatCurr(summary.taxAmount)}</span>
-          </div>
-          <div className="flex justify-between font-bold text-slate-900 text-sm pt-1 border-t border-slate-100">
-            <span>Grand Total:</span>
-            <span>{formatCurr(summary.grandTotal)}</span>
-          </div>
-          <div className="flex justify-between text-[11px] pt-1">
-            <span className="text-emerald-700">Paid: {formatCurr(amountPaid)}</span>
-            <span className={balanceDue > 0 ? 'text-amber-700 font-semibold' : 'text-slate-500'}>
-              Due: {formatCurr(balanceDue)}
+        <div
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '10px',
+            border: '1px solid #e2e8f0',
+            padding: '12px 14px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+            <Receipt size={14} color="#059669" />
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+              Financial Summary
             </span>
           </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#475569', marginBottom: '4px' }}>
+            <span>Subtotal</span>
+            <span style={{ fontFamily: 'monospace' }}>{formatCurr(summary.subtotal)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#475569', marginBottom: '6px' }}>
+            <span>Tax</span>
+            <span style={{ fontFamily: 'monospace' }}>{formatCurr(summary.taxAmount)}</span>
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: '14px',
+              fontWeight: 800,
+              color: '#0f172a',
+              paddingTop: '6px',
+              borderTop: '1px solid #f1f5f9',
+            }}
+          >
+            <span>Grand Total</span>
+            <span style={{ fontFamily: 'monospace' }}>{formatCurr(summary.grandTotal)}</span>
+          </div>
+          {balanceDue > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', color: '#b45309', fontWeight: 700, marginTop: '4px' }}>
+              <span>Balance Due</span>
+              <span>{formatCurr(balanceDue)}</span>
+            </div>
+          )}
         </div>
 
-        {/* Line Items Card (with Current Stock) */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="bg-slate-50 px-3 py-2 border-b border-slate-200 flex items-center gap-1.5">
-            <Boxes size={14} className="text-blue-600" />
-            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider m-0">
-              Items ({items.length})
-            </h3>
+        {/* Line Items Card List */}
+        <div
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '10px',
+            border: '1px solid #e2e8f0',
+            padding: '12px 14px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+            <Boxes size={14} color="#2563eb" />
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+              Line Items ({items.length})
+            </span>
           </div>
-          <div className="divide-y divide-slate-100">
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {items.map((line, idx) => (
-              <div key={line.id || `line-${idx}`} className="p-3 text-xs space-y-1">
-                <div className="flex justify-between items-start">
-                  <div className="font-semibold text-slate-900">{line.itemName || 'Item'}</div>
-                  <div className="font-bold text-slate-900">{formatCurr(line.lineTotal)}</div>
-                </div>
-                <div className="flex justify-between text-slate-500 text-[11px]">
-                  <span>Qty: {line.quantity} {line.uom || ''}</span>
-                  <span>@ {formatCurr(line.unitPrice)}</span>
-                </div>
-                {/* Current Stock Badge on Mobile */}
-                {line.currentStock !== undefined && (
-                  <div className="flex items-center gap-1 pt-0.5">
-                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-semibold border ${
-                      line.currentStock > 0 
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                        : 'bg-red-50 text-red-700 border-red-200'
-                    }`}>
-                      <Package size={10} />
-                      <span>Stock: {line.currentStock} {line.uom || 'units'}</span>
-                    </span>
+              <div
+                key={line.id || `m-line-${idx}`}
+                style={{
+                  padding: '10px',
+                  borderRadius: '8px',
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ fontWeight: 700, fontSize: '12.5px', color: '#0f172a' }}>
+                    {line.itemName || 'Item'}
                   </div>
-                )}
-                {line.batchNumber && (
-                  <div className="text-[10px] text-slate-400 font-mono">
-                    Batch: {line.batchNumber}
+                  <div style={{ fontWeight: 800, fontSize: '12.5px', color: '#0f172a', fontFamily: 'monospace' }}>
+                    {formatCurr(line.lineTotal)}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#64748b' }}>
+                  <span>Qty: <strong style={{ color: '#1e293b' }}>{line.quantity} {line.uom || ''}</strong></span>
+                  <span>•</span>
+                  <span>Rate: {formatCurr(line.unitPrice)}</span>
+                  {line.sku && (
+                    <>
+                      <span>•</span>
+                      <span>SKU: {line.sku}</span>
+                    </>
+                  )}
+                </div>
+
+                {/* Mobile Stock Badge */}
+                {line.currentStock !== undefined && (
+                  <div style={{ marginTop: '4px' }}>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px',
+                        padding: '2px 7px',
+                        borderRadius: '9999px',
+                        fontSize: '10.5px',
+                        fontWeight: 700,
+                        backgroundColor: line.currentStock > 0 ? '#ecfdf5' : '#fee2e2',
+                        color: line.currentStock > 0 ? '#047857' : '#991b1b',
+                        border: line.currentStock > 0 ? '1px solid #a7f3d0' : '1px solid #fecaca',
+                      }}
+                    >
+                      <Package size={10} />
+                      <span>Current Stock: {line.currentStock} {line.uom || 'Unit'}</span>
+                    </span>
                   </div>
                 )}
               </div>
             ))}
+            {items.length === 0 && (
+              <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>
+                No line items.
+              </div>
+            )}
           </div>
         </div>
 
@@ -213,40 +323,73 @@ export const FastVoucherViewLayoutMobile: React.FC<FastVoucherViewLayoutProps> =
         />
       </div>
 
-      {/* Sticky Bottom Actions */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 flex items-center gap-2 z-20">
-        {onEdit && (
-          <button
-            type="button"
-            onClick={onEdit}
-            className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-xs transition-colors"
-          >
-            <Pencil size={13} /> Edit Voucher
-          </button>
-        )}
-
-        {isDraft && onApprove && (
-          <button
-            type="button"
-            onClick={onApprove}
-            className="flex-1 py-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
-          >
-            <CheckCircle2 size={13} /> Approve
-          </button>
-        )}
-
-        {!isDraft && !isCancelled && balanceDue > 0 && onRecordPayment && (
-          <button
-            type="button"
-            onClick={onRecordPayment}
-            className="flex-1 py-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
-          >
-            <CreditCard size={13} /> Pay
-          </button>
-        )}
-      </div>
-
       {renderCustomBottom?.()}
+
+      {/* Sticky Bottom Actions Bar on Mobile */}
+      {(!isDraft && balanceDue > 0 && onRecordPayment) || (isDraft && onApprove) ? (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: '#ffffff',
+            borderTop: '1px solid #e2e8f0',
+            padding: '10px 16px',
+            display: 'flex',
+            gap: '8px',
+            zIndex: 30,
+            boxShadow: '0 -2px 10px rgba(0,0,0,0.06)',
+          }}
+        >
+          {isDraft && onApprove && (
+            <button
+              type="button"
+              onClick={onApprove}
+              style={{
+                flex: 1,
+                padding: '10px',
+                backgroundColor: '#16a34a',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '13px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+              }}
+            >
+              <CheckCircle2 size={16} /> <span>Approve Voucher</span>
+            </button>
+          )}
+          {!isDraft && balanceDue > 0 && onRecordPayment && (
+            <button
+              type="button"
+              onClick={onRecordPayment}
+              style={{
+                flex: 1,
+                padding: '10px',
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '13px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+              }}
+            >
+              <CreditCard size={16} /> <span>Record Payment</span>
+            </button>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 };

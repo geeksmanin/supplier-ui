@@ -70,9 +70,16 @@ export interface VoucherViewPosting {
   ledger_target?: string;
   account_code?: string;
   account_name?: string;
+  account_title?: string;
+  account_id?: string;
+  subledger_name?: string;
+  subledger_id?: string;
+  quantity?: number;
+  uom?: string;
   entry_type?: 'DEBIT' | 'CREDIT' | string;
   amount: number;
   narration?: string;
+  createdAt?: string;
   // Interoperability camelCase aliases
   voucherId?: number;
   voucherNumber?: string;
@@ -80,7 +87,10 @@ export interface VoucherViewPosting {
   ledgerTarget?: string;
   accountCode?: string;
   accountName?: string;
+  accountId?: string;
+  subledgerId?: string;
   entryType?: 'DEBIT' | 'CREDIT' | string;
+  [key: string]: any;
 }
 
 export interface FastVoucherViewLayoutProps {
