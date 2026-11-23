@@ -97,16 +97,28 @@ export function useFastVoucherPartySearch({
         const list = Array.isArray(res.data?.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
         if (!isCancelled) {
           setAsyncPartyOptions(
-            list.map((it: any) => ({
-              value: String(it.id || it.uuid),
-              label: it.name || it.display_name || it.trade_name || it.company_name || 'Party',
-              gstin: it.tax_number || it.gstin || it.tax_id || '',
-              phone: it.phone || it.contact_number || it.primary_contact_phone || '',
-              email: it.email || '',
-              state: it.state || it.billing_address?.state || it.addresses?.[0]?.state || '',
-              state_code: it.state_code || it.billing_address?.state_code || it.addresses?.[0]?.state_code || '',
-              meta: it,
-            }))
+            list.map((it: any) => {
+              const billingAddr = it.billing_address || it.addresses?.find((a: any) => a.address_type === 'billing' || a.is_default) || it.addresses?.[0] || null;
+              const shippingAddr = it.shipping_address || it.addresses?.find((a: any) => a.address_type === 'shipping') || it.addresses?.[0] || null;
+              const gstinVal = it.tax_number || it.gstin || it.tax_id || '';
+              const panVal = it.pan || it.pan_number || (gstinVal.length === 15 ? gstinVal.substring(2, 12) : '');
+              const contactPerson = it.contact_person || it.primary_contact_name || it.contacts?.[0]?.full_name || '';
+
+              return {
+                value: String(it.id || it.uuid),
+                label: it.name || it.display_name || it.trade_name || it.company_name || 'Party',
+                gstin: gstinVal,
+                pan: panVal,
+                phone: it.phone || it.contact_number || it.primary_contact_phone || it.contacts?.[0]?.mobile_no || '',
+                email: it.email || it.contacts?.[0]?.email || '',
+                contact_person: contactPerson,
+                state: it.state || billingAddr?.state || it.addresses?.[0]?.state || '',
+                state_code: it.state_code || billingAddr?.state_code || it.addresses?.[0]?.state_code || '',
+                billing_address: billingAddr,
+                shipping_address: shippingAddr,
+                meta: it,
+              };
+            })
           );
         }
       } catch (err) {

@@ -51,6 +51,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
     onDocumentDiscountChange,
     shippingCharges = 0,
     onShippingChargesChange,
+    otherCharges = 0,
+    onOtherChargesChange,
     isRoundOffEnabled = true,
     onRoundOffToggle,
     onSave,
@@ -283,6 +285,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
               documentTitle={documentTitle}
               voucherNumber={voucherNumber}
               voucherDate={voucherDate}
+              dueDate={dueDate}
               status={status}
               party={selectedParty}
               companyGstin={companyGstin}
@@ -295,6 +298,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
               onDocumentDiscountChange={onDocumentDiscountChange}
               shippingCharges={shippingCharges}
               onShippingChargesChange={onShippingChargesChange}
+              otherCharges={otherCharges}
+              onOtherChargesChange={onOtherChargesChange}
               isRoundOffEnabled={isRoundOffEnabled}
               onRoundOffToggle={onRoundOffToggle}
               discountInputRef={discountInputRef}
