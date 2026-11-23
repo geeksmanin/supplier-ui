@@ -18,10 +18,14 @@ export interface VoucherPartyOption {
   value: string;
   label: string;
   gstin?: string;
+  pan?: string;
   phone?: string;
   email?: string;
+  contact_person?: string;
   state?: string;
   state_code?: string;
+  billing_address?: any;
+  shipping_address?: any;
   meta?: any;
 }
 
@@ -108,6 +112,7 @@ export interface VoucherSummary {
   subtotal: number;
   discount_total: number;
   shipping_charges: number;
+  other_charges?: number;
   tax_breakup: {
     cgst: number;
     sgst: number;
@@ -173,6 +178,8 @@ export interface FastVoucherEntryLayoutProps {
   onDocumentDiscountChange?: (amount: number, percent: number) => void;
   shippingCharges?: number;
   onShippingChargesChange?: (charges: number) => void;
+  otherCharges?: number;
+  onOtherChargesChange?: (charges: number) => void;
   isRoundOffEnabled?: boolean;
   onRoundOffToggle?: (enabled: boolean) => void;
 
