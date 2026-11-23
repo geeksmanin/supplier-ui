@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Plus, PackagePlus } from 'lucide-react';
 import { VoucherCatalogConfig } from './FastVoucherEntryLayout.types';
 
 interface FastVoucherCatalogSearchDropdownProps {
@@ -10,6 +10,8 @@ interface FastVoucherCatalogSearchDropdownProps {
   catalogConfig?: VoucherCatalogConfig;
   liveStockMap: Record<string, number>;
   onClose?: () => void;
+  searchQuery?: string;
+  onNavigateToCreateProduct?: (query?: string) => void;
 }
 
 export const FastVoucherCatalogSearchDropdown: React.FC<FastVoucherCatalogSearchDropdownProps> = ({
@@ -20,6 +22,8 @@ export const FastVoucherCatalogSearchDropdown: React.FC<FastVoucherCatalogSearch
   catalogConfig,
   liveStockMap,
   onClose,
+  searchQuery,
+  onNavigateToCreateProduct,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -70,7 +74,7 @@ export const FastVoucherCatalogSearchDropdown: React.FC<FastVoucherCatalogSearch
         padding: '6px',
       }}
     >
-      {/* Sticky Header with Close / Esc Action */}
+      {/* Sticky Header with Close / Esc Action and New Product CTA */}
       <div
         style={{
           display: 'flex',
@@ -86,37 +90,157 @@ export const FastVoucherCatalogSearchDropdown: React.FC<FastVoucherCatalogSearch
           zIndex: 10,
         }}
       >
-        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b' }}>
-          Search Results ({searchResults.length})
-        </span>
-        {onClose && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onClose();
-            }}
-            title="Dismiss search results (Esc)"
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b' }}>
+            {searchResults.length > 0 ? `Search Results (${searchResults.length})` : 'Search Catalogue'}
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {catalogConfig?.allowProductCreation !== false && onNavigateToCreateProduct && (
+            <button
+              type="button"
+              data-testid="fast-voucher-create-product-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigateToCreateProduct(searchQuery);
+              }}
+              title="Create new product in catalogue (F3)"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '3px 8px',
+                borderRadius: '5px',
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 1px 2px rgba(37, 99, 235, 0.2)',
+                transition: 'background-color 0.15s ease',
+              }}
+            >
+              <Plus size={12} strokeWidth={2.5} />
+              <span>New Product</span>
+              <span
+                style={{
+                  fontSize: '0.62rem',
+                  backgroundColor: 'rgba(255, 255, 255, 0.25)',
+                  padding: '1px 4px',
+                  borderRadius: '3px',
+                  fontWeight: 800,
+                }}
+              >
+                F3
+              </span>
+            </button>
+          )}
+          {onClose && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              title="Dismiss search results (Esc)"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                border: '1px solid #e2e8f0',
+                backgroundColor: '#ffffff',
+                color: '#64748b',
+                fontSize: '0.7rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              <X size={12} />
+              <span>Close (Esc)</span>
+            </button>
+          )}
+        </div>
+      </div>
+      {searchResults.length === 0 ? (
+        <div
+          data-testid="fast-voucher-no-products-found"
+          style={{
+            padding: '24px 16px',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <div
             style={{
-              display: 'inline-flex',
+              width: '38px',
+              height: '38px',
+              borderRadius: '50%',
+              backgroundColor: '#f1f5f9',
+              display: 'flex',
               alignItems: 'center',
-              gap: '3px',
-              padding: '2px 6px',
-              borderRadius: '4px',
-              border: '1px solid #e2e8f0',
-              backgroundColor: '#ffffff',
+              justifyContent: 'center',
               color: '#64748b',
-              fontSize: '0.7rem',
-              fontWeight: 600,
-              cursor: 'pointer',
             }}
           >
-            <X size={12} />
-            <span>Close (Esc)</span>
-          </button>
-        )}
-      </div>
-      {searchResults.map((res, idx) => {
+            <PackagePlus size={20} />
+          </div>
+          <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>
+            {searchQuery?.trim() ? (
+              <>No items found matching &quot;<span style={{ color: '#0f172a' }}>{searchQuery.trim()}</span>&quot;</>
+            ) : (
+              'Type to search or scan items'
+            )}
+          </div>
+          {catalogConfig?.allowProductCreation !== false && onNavigateToCreateProduct && (
+            <button
+              type="button"
+              data-testid="fast-voucher-empty-create-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigateToCreateProduct(searchQuery);
+              }}
+              style={{
+                marginTop: '4px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '6px',
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(37, 99, 235, 0.25)',
+              }}
+            >
+              <Plus size={14} strokeWidth={2.5} />
+              <span>
+                Create Product {searchQuery?.trim() ? `"${searchQuery.trim()}"` : ''}
+              </span>
+              <span
+                style={{
+                  fontSize: '0.65rem',
+                  backgroundColor: 'rgba(255, 255, 255, 0.25)',
+                  padding: '1px 5px',
+                  borderRadius: '3px',
+                  fontWeight: 800,
+                }}
+              >
+                F3 / ↵
+              </span>
+            </button>
+          )}
+        </div>
+      ) : (
+        searchResults.map((res, idx) => {
         const isProduct = res._itemType === 'product';
         const pName = isProduct ? res.name : (res.product?.name || res.product_name || res.name || 'Product');
         const sku = res.sku_code || res.sku || '';

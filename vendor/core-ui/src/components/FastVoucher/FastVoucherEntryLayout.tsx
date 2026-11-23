@@ -108,6 +108,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
     handleSelectProduct,
     handleCommitStepperItem,
     memoizedStepperBatches,
+    handleNavigateToCreateProduct,
   } = useFastVoucherOrchestrator(props);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -245,6 +246,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
             setActiveStepperItem={setActiveStepperItem}
             setEditingRowIndex={setEditingRowIndex}
             editingRowIndex={editingRowIndex}
+            onNavigateToCreateProduct={handleNavigateToCreateProduct}
           />
 
           {/* Dense Tabular Items Table */}

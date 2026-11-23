@@ -64,6 +64,9 @@ export interface VoucherCatalogConfig {
   }) => React.ReactNode;
   onSelectProductWithVariants?: (product: any) => void;
   resolveTaxRate?: (product: any) => Promise<number | null | undefined> | number | null | undefined;
+  allowProductCreation?: boolean;
+  onNavigateToCreateProduct?: (searchQuery: string) => void;
+  resolveProductById?: (id: string) => Promise<any>;
 }
 
 export interface VoucherPricingConfig {
