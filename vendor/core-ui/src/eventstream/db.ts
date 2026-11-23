@@ -415,6 +415,17 @@ export async function updateChatMessageStatus(
   });
 }
 
+export async function deleteChatMessage(id: string): Promise<void> {
+  const db = await openEventStreamDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORES.CHAT_MESSAGES, 'readwrite');
+    const store = tx.objectStore(STORES.CHAT_MESSAGES);
+    store.delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Conversations / Tickets Operations
 // ─────────────────────────────────────────────────────────────────────────────
