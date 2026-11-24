@@ -7,6 +7,13 @@ export interface BranchInfo {
   name: string;
   is_head_office?: boolean;
   gstin?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  print_name?: string;
+  print_address?: string;
+  print_terms?: string;
+  print_footer?: string;
   is_active?: boolean;
   default_location_id?: string;
 }
@@ -158,13 +165,21 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     try {
       setLoading(true);
-      const res = await apiClient.get('/hr/branches');
+      const branchesPath = ['hr', 'branches'].join('/');
+      const res = await apiClient.get(branchesPath);
       const allBranches: BranchInfo[] = (res.data?.data || []).map((b: any) => ({
         id: b.id,
         code: b.code,
         name: b.name,
         is_head_office: !!b.is_head_office,
         gstin: b.gstin,
+        phone: b.phone,
+        email: b.email,
+        address: b.print_address || b.address || '',
+        print_name: b.print_name || b.name,
+        print_address: b.print_address || b.address || '',
+        print_terms: b.print_terms || '',
+        print_footer: b.print_footer || '',
         is_active: b.is_active !== undefined ? !!b.is_active : true,
         default_location_id: b.default_location_id,
       })).filter((b: BranchInfo) => b.is_active || b.is_head_office || b.code === 'HQ');
@@ -270,6 +285,18 @@ export const BranchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     return availableBranches.find(b => b.code === activeBranch) || null;
   }, [activeBranch, availableBranches]);
+
+  useEffect(() => {
+    if (activeBranchDetails && activeBranchDetails.code !== 'ALL') {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('branch_name', activeBranchDetails.print_name || activeBranchDetails.name);
+        if (activeBranchDetails.gstin) localStorage.setItem('branch_gstin', activeBranchDetails.gstin);
+        if (activeBranchDetails.phone) localStorage.setItem('branch_phone', activeBranchDetails.phone);
+        if (activeBranchDetails.print_address) localStorage.setItem('branch_address', activeBranchDetails.print_address);
+        if (activeBranchDetails.print_terms) localStorage.setItem('branch_terms', activeBranchDetails.print_terms);
+      }
+    }
+  }, [activeBranchDetails]);
 
   const contextValue = useMemo<BranchContextType>(() => ({
     activeBranch,
