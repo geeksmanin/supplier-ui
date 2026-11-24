@@ -300,7 +300,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
 
     return renderFn({
       isOpen: isInternalMatrixOpen,
-      product: sanitizeProductVariants(internalMatrixProduct),
+      product: internalMatrixProduct,
       onClose: closeVariantMatrix,
       onAddVariants: (newItems) => {
         if (onAddItems) onAddItems(newItems);
@@ -391,6 +391,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     isStepperOpen,
     isDrawerOpen,
     isModalOpen: isPartyDropdownOpen || isParkedModalOpen || isInternalMatrixOpen,
+    isSearchOpen,
     itemsCount: items.length,
     focusedRowIndex,
     setFocusedRowIndex,
