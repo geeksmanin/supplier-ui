@@ -42,20 +42,19 @@ export const FastVoucherCatalogSearchDropdown: React.FC<FastVoucherCatalogSearch
     );
     if (!selectedEl) return;
 
-    if (typeof selectedEl.scrollIntoView === 'function') {
-      selectedEl.scrollIntoView({ block: 'nearest' });
-    } else {
-      const elTop = selectedEl.offsetTop;
-      const elBottom = elTop + selectedEl.offsetHeight;
-      const containerTop = container.scrollTop;
-      const containerBottom = containerTop + container.clientHeight;
+    const elTop = selectedEl.offsetTop;
+    const elHeight = selectedEl.offsetHeight || 50;
+    const elBottom = elTop + elHeight;
+    const headerOffset = 44; // Height of the sticky header
 
-      const headerOffset = 40; // Height of the sticky header
-      if (elTop - headerOffset < containerTop) {
-        container.scrollTop = Math.max(0, elTop - headerOffset);
-      } else if (elBottom > containerBottom) {
-        container.scrollTop = elBottom - container.clientHeight + 6;
-      }
+    const currentScrollTop = container.scrollTop;
+    const visibleTop = currentScrollTop + headerOffset;
+    const visibleBottom = currentScrollTop + container.clientHeight;
+
+    if (elTop < visibleTop) {
+      container.scrollTop = Math.max(0, elTop - headerOffset);
+    } else if (elBottom > visibleBottom) {
+      container.scrollTop = elBottom - container.clientHeight + 6;
     }
   }, [selectedResultIndex]);
 

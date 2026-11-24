@@ -33,23 +33,31 @@ export const NotificationToastContainer: React.FC<{ onNavigate?: (link: string) 
         }
       }
 
-      // Suppress notification toast if already viewing this chat/ticket page
-      const currentHash = window.location.hash;
-      const currentPath = window.location.pathname;
+      // Suppress notification toast if already actively viewing this specific chat/ticket
       const activeTicketId = (window as any).activeTicketId;
 
-      const isViewingActiveTicket = activeTicketId && notif.link && notif.link.includes(activeTicketId);
-      const isViewingGeneralTickets = notif.link && (currentHash.includes(notif.link) || currentPath.includes(notif.link));
+      let isViewingActiveTicket = false;
+      if (activeTicketId) {
+        if (notif.link && notif.link.includes(activeTicketId)) {
+          isViewingActiveTicket = true;
+        } else if (notif.metadata) {
+          try {
+            const meta = typeof notif.metadata === 'string' ? JSON.parse(notif.metadata) : notif.metadata;
+            if (meta?.ticket_id === activeTicketId || meta?.conversation_id === activeTicketId || meta?.entity_id === activeTicketId) {
+              isViewingActiveTicket = true;
+            }
+          } catch (_) {}
+        }
+      }
 
       const notifType = String(notif.type || '').toLowerCase();
       const cleanTitle = String(notif.title || '').trim();
       const cleanBody = formatNotificationBody(notif.body || '').trim();
 
-      // Suppress empty notifications or background state sync events (e.g. discard/delete events)
+      // Suppress empty notifications, background state sync events, or active ticket updates
       if (
         (!cleanTitle && !cleanBody) ||
         isViewingActiveTicket ||
-        isViewingGeneralTickets ||
         notifType === 'silent_sync' ||
         notifType.includes('discard') ||
         notifType.includes('delete')
