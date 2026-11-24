@@ -75,6 +75,23 @@ export function sanitizeProductVariants(product: any): any {
   };
 }
 
+export type VariantMatrixRenderer = (props: {
+  isOpen: boolean;
+  product: any;
+  onClose: () => void;
+  onAddVariants: (items: VoucherLineItem[]) => void;
+}) => React.ReactNode;
+
+let globalDefaultVariantMatrixRenderer: VariantMatrixRenderer | null = null;
+
+export function registerDefaultVariantMatrixRenderer(renderer: VariantMatrixRenderer) {
+  globalDefaultVariantMatrixRenderer = renderer;
+}
+
+export function getDefaultVariantMatrixRenderer(): VariantMatrixRenderer | null {
+  return globalDefaultVariantMatrixRenderer;
+}
+
 export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
   const {
     voucherType,
@@ -278,7 +295,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
   }, []);
 
   const renderVariantMatrixModal = useCallback(() => {
-    const renderFn = props.renderVariantMatrix || catalogConfig?.renderVariantMatrix;
+    const renderFn = props.renderVariantMatrix || catalogConfig?.renderVariantMatrix || globalDefaultVariantMatrixRenderer;
     if (!renderFn || !isInternalMatrixOpen || !internalMatrixProduct) return null;
 
     return renderFn({
