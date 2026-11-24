@@ -12,68 +12,6 @@ import { useFastVoucherPartySearch } from './useFastVoucherPartySearch';
 import { useFastVoucherCatalogSearch } from './useFastVoucherCatalogSearch';
 import { useToast } from '../Toast/Toast';
 import { saveFormDraft } from '../../utils/draftStore';
-import { apiClient } from '../../api/client';
-
-// Helper to sanitize product variant attributes so nested GORM models / objects are flattened to strings,
-// preventing React child render crashes and localeCompare crashes in matrix modals.
-export function sanitizeProductVariants(product: any): any {
-  if (!product) return product;
-  const rawVariants = Array.isArray(product.variants) ? product.variants : [];
-  const sanitizedVariants = rawVariants.map((v: any) => {
-    if (!v) return v;
-    const rawAttrs = v.attributes;
-    let sanitizedAttrs: any[] = [];
-    if (Array.isArray(rawAttrs)) {
-      sanitizedAttrs = rawAttrs.map((a: any) => {
-        if (!a) return a;
-        const name = String(
-          a.attribute?.name ||
-          a.Attribute?.Name ||
-          a.attribute_name ||
-          a.name ||
-          'Attr'
-        );
-        let val = '';
-        if (a.attribute_value && typeof a.attribute_value === 'object') {
-          val = a.attribute_value.value || a.attribute_value.name || a.attribute_value.label || '';
-        } else if (a.AttributeValue && typeof a.AttributeValue === 'object') {
-          val = a.AttributeValue.Value || a.AttributeValue.Name || a.AttributeValue.Label || '';
-        } else if (a.value !== undefined && a.value !== null) {
-          val = typeof a.value === 'object' ? (a.value.value || a.value.name || '') : String(a.value);
-        } else if (a.attribute_value !== undefined && a.attribute_value !== null) {
-          val = String(a.attribute_value);
-        } else if (a.attribute_value_id) {
-          val = String(a.attribute_value_id);
-        }
-        return {
-          ...a,
-          name,
-          attribute_name: name,
-          value: String(val),
-          attribute_value: String(val),
-        };
-      });
-    } else if (rawAttrs && typeof rawAttrs === 'object') {
-      sanitizedAttrs = Object.entries(rawAttrs).map(([k, vVal]) => {
-        const vStr = typeof vVal === 'object' && vVal !== null ? ((vVal as any).value || (vVal as any).name || '') : String(vVal ?? '');
-        return {
-          name: String(k),
-          attribute_name: String(k),
-          value: String(vStr),
-          attribute_value: String(vStr),
-        };
-      });
-    }
-    return {
-      ...v,
-      attributes: sanitizedAttrs,
-    };
-  });
-  return {
-    ...product,
-    variants: sanitizedVariants,
-  };
-}
 
 export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
   const {
