@@ -12,6 +12,68 @@ import { useFastVoucherPartySearch } from './useFastVoucherPartySearch';
 import { useFastVoucherCatalogSearch } from './useFastVoucherCatalogSearch';
 import { useToast } from '../Toast/Toast';
 import { saveFormDraft } from '../../utils/draftStore';
+import { apiClient } from '../../api/client';
+
+// Helper to sanitize product variant attributes so nested GORM models / objects are flattened to strings,
+// preventing React child render crashes and localeCompare crashes in matrix modals.
+export function sanitizeProductVariants(product: any): any {
+  if (!product) return product;
+  const rawVariants = Array.isArray(product.variants) ? product.variants : [];
+  const sanitizedVariants = rawVariants.map((v: any) => {
+    if (!v) return v;
+    const rawAttrs = v.attributes;
+    let sanitizedAttrs: any[] = [];
+    if (Array.isArray(rawAttrs)) {
+      sanitizedAttrs = rawAttrs.map((a: any) => {
+        if (!a) return a;
+        const name = String(
+          a.attribute?.name ||
+          a.Attribute?.Name ||
+          a.attribute_name ||
+          a.name ||
+          'Attr'
+        );
+        let val = '';
+        if (a.attribute_value && typeof a.attribute_value === 'object') {
+          val = a.attribute_value.value || a.attribute_value.name || a.attribute_value.label || '';
+        } else if (a.AttributeValue && typeof a.AttributeValue === 'object') {
+          val = a.AttributeValue.Value || a.AttributeValue.Name || a.AttributeValue.Label || '';
+        } else if (a.value !== undefined && a.value !== null) {
+          val = typeof a.value === 'object' ? (a.value.value || a.value.name || '') : String(a.value);
+        } else if (a.attribute_value !== undefined && a.attribute_value !== null) {
+          val = String(a.attribute_value);
+        } else if (a.attribute_value_id) {
+          val = String(a.attribute_value_id);
+        }
+        return {
+          ...a,
+          name,
+          attribute_name: name,
+          value: String(val),
+          attribute_value: String(val),
+        };
+      });
+    } else if (rawAttrs && typeof rawAttrs === 'object') {
+      sanitizedAttrs = Object.entries(rawAttrs).map(([k, vVal]) => {
+        const vStr = typeof vVal === 'object' && vVal !== null ? ((vVal as any).value || (vVal as any).name || '') : String(vVal ?? '');
+        return {
+          name: String(k),
+          attribute_name: String(k),
+          value: String(vStr),
+          attribute_value: String(vStr),
+        };
+      });
+    }
+    return {
+      ...v,
+      attributes: sanitizedAttrs,
+    };
+  });
+  return {
+    ...product,
+    variants: sanitizedVariants,
+  };
+}
 
 export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
   const {
@@ -181,11 +243,30 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
   const openVariantMatrix = useCallback((product: any) => {
     const handler = props.onSelectProductWithVariants || catalogConfig?.onSelectProductWithVariants;
     if (handler) {
-      handler(product);
+      handler(sanitizeProductVariants(product));
       return;
     }
-    setInternalMatrixProduct(product);
+    setInternalMatrixProduct(sanitizeProductVariants(product));
     setIsInternalMatrixOpen(true);
+
+    // Resilient variant fetching: If product variants are shallow or missing attributes, fetch full product details
+    const productId = product.id || product.product_id;
+    const variants = Array.isArray(product.variants) ? product.variants : [];
+    const hasFullVariants = variants.length > 0 && variants.some((v: any) => v.attributes && (Array.isArray(v.attributes) ? v.attributes.length > 0 : Object.keys(v.attributes).length > 0));
+
+    if (productId && !hasFullVariants) {
+      apiClient
+        .get(`/catalogue/products/${productId}`)
+        .then((res) => {
+          const fullProd = res.data?.data || res.data;
+          if (fullProd && Array.isArray(fullProd.variants) && fullProd.variants.length > 0) {
+            setInternalMatrixProduct(sanitizeProductVariants(fullProd));
+          }
+        })
+        .catch((err) => {
+          console.warn('[useFastVoucherOrchestrator] Could not fetch detailed variants for matrix:', err);
+        });
+    }
   }, [props.onSelectProductWithVariants, catalogConfig?.onSelectProductWithVariants]);
 
   const closeVariantMatrix = useCallback(() => {
@@ -202,7 +283,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
 
     return renderFn({
       isOpen: isInternalMatrixOpen,
-      product: internalMatrixProduct,
+      product: sanitizeProductVariants(internalMatrixProduct),
       onClose: closeVariantMatrix,
       onAddVariants: (newItems) => {
         if (onAddItems) onAddItems(newItems);
@@ -292,7 +373,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     tableRef,
     isStepperOpen,
     isDrawerOpen,
-    isModalOpen: isPartyDropdownOpen || isParkedModalOpen,
+    isModalOpen: isPartyDropdownOpen || isParkedModalOpen || isInternalMatrixOpen,
     itemsCount: items.length,
     focusedRowIndex,
     setFocusedRowIndex,
