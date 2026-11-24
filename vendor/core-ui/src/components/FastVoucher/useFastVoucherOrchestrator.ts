@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   FastVoucherEntryLayoutProps, 
   VoucherLineItem, 
@@ -9,6 +10,70 @@ import { useFormDraft } from '../../hooks/useFormDraft';
 import { normalizeSearchToken } from '../SearchableEntitySelect';
 import { useFastVoucherPartySearch } from './useFastVoucherPartySearch';
 import { useFastVoucherCatalogSearch } from './useFastVoucherCatalogSearch';
+import { useToast } from '../Toast/Toast';
+import { saveFormDraft } from '../../utils/draftStore';
+import { apiClient } from '../../api/client';
+
+// Helper to sanitize product variant attributes so nested GORM models / objects are flattened to strings,
+// preventing React child render crashes and localeCompare crashes in matrix modals.
+export function sanitizeProductVariants(product: any): any {
+  if (!product) return product;
+  const rawVariants = Array.isArray(product.variants) ? product.variants : [];
+  const sanitizedVariants = rawVariants.map((v: any) => {
+    if (!v) return v;
+    const rawAttrs = v.attributes;
+    let sanitizedAttrs: any[] = [];
+    if (Array.isArray(rawAttrs)) {
+      sanitizedAttrs = rawAttrs.map((a: any) => {
+        if (!a) return a;
+        const name = String(
+          a.attribute?.name ||
+          a.Attribute?.Name ||
+          a.attribute_name ||
+          a.name ||
+          'Attr'
+        );
+        let val = '';
+        if (a.attribute_value && typeof a.attribute_value === 'object') {
+          val = a.attribute_value.value || a.attribute_value.name || a.attribute_value.label || '';
+        } else if (a.AttributeValue && typeof a.AttributeValue === 'object') {
+          val = a.AttributeValue.Value || a.AttributeValue.Name || a.AttributeValue.Label || '';
+        } else if (a.value !== undefined && a.value !== null) {
+          val = typeof a.value === 'object' ? (a.value.value || a.value.name || '') : String(a.value);
+        } else if (a.attribute_value !== undefined && a.attribute_value !== null) {
+          val = String(a.attribute_value);
+        } else if (a.attribute_value_id) {
+          val = String(a.attribute_value_id);
+        }
+        return {
+          ...a,
+          name,
+          attribute_name: name,
+          value: String(val),
+          attribute_value: String(val),
+        };
+      });
+    } else if (rawAttrs && typeof rawAttrs === 'object') {
+      sanitizedAttrs = Object.entries(rawAttrs).map(([k, vVal]) => {
+        const vStr = typeof vVal === 'object' && vVal !== null ? ((vVal as any).value || (vVal as any).name || '') : String(vVal ?? '');
+        return {
+          name: String(k),
+          attribute_name: String(k),
+          value: String(vStr),
+          attribute_value: String(vStr),
+        };
+      });
+    }
+    return {
+      ...v,
+      attributes: sanitizedAttrs,
+    };
+  });
+  return {
+    ...product,
+    variants: sanitizedVariants,
+  };
+}
 
 export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
   const {
@@ -178,11 +243,30 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
   const openVariantMatrix = useCallback((product: any) => {
     const handler = props.onSelectProductWithVariants || catalogConfig?.onSelectProductWithVariants;
     if (handler) {
-      handler(product);
+      handler(sanitizeProductVariants(product));
       return;
     }
-    setInternalMatrixProduct(product);
+    setInternalMatrixProduct(sanitizeProductVariants(product));
     setIsInternalMatrixOpen(true);
+
+    // Resilient variant fetching: If product variants are shallow or missing attributes, fetch full product details
+    const productId = product.id || product.product_id;
+    const variants = Array.isArray(product.variants) ? product.variants : [];
+    const hasFullVariants = variants.length > 0 && variants.some((v: any) => v.attributes && (Array.isArray(v.attributes) ? v.attributes.length > 0 : Object.keys(v.attributes).length > 0));
+
+    if (productId && !hasFullVariants) {
+      apiClient
+        .get(`/catalogue/products/${productId}`)
+        .then((res) => {
+          const fullProd = res.data?.data || res.data;
+          if (fullProd && Array.isArray(fullProd.variants) && fullProd.variants.length > 0) {
+            setInternalMatrixProduct(sanitizeProductVariants(fullProd));
+          }
+        })
+        .catch((err) => {
+          console.warn('[useFastVoucherOrchestrator] Could not fetch detailed variants for matrix:', err);
+        });
+    }
   }, [props.onSelectProductWithVariants, catalogConfig?.onSelectProductWithVariants]);
 
   const closeVariantMatrix = useCallback(() => {
@@ -199,7 +283,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
 
     return renderFn({
       isOpen: isInternalMatrixOpen,
-      product: internalMatrixProduct,
+      product: sanitizeProductVariants(internalMatrixProduct),
       onClose: closeVariantMatrix,
       onAddVariants: (newItems) => {
         if (onAddItems) onAddItems(newItems);
@@ -209,7 +293,78 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     });
   }, [props.renderVariantMatrix, catalogConfig?.renderVariantMatrix, isInternalMatrixOpen, internalMatrixProduct, closeVariantMatrix, onAddItems, onAddItem]);
 
-  // 6. Global Keyboard Orchestrator
+  // 6. Navigation to Product Creation (In-App)
+  const { showToast } = useToast();
+  let navigate: any = null;
+  try {
+    navigate = useNavigate();
+  } catch {
+    // Router context not available
+  }
+  let location: any = null;
+  try {
+    location = useLocation();
+  } catch {
+    // Router context not available
+  }
+
+  const handleNavigateToCreateProduct = useCallback((query?: string) => {
+    if (catalogConfig?.onNavigateToCreateProduct) {
+      catalogConfig.onNavigateToCreateProduct(query || searchQuery);
+      return;
+    }
+
+    if (draftKey) {
+      saveFormDraft(draftKey || `${voucherType}-fast-draft`, {
+        selectedParty,
+        voucherDate,
+        items,
+        summary,
+        moreDetails,
+        documentDiscountAmount,
+        documentDiscountPercent,
+        shippingCharges,
+        isRoundOffEnabled,
+      }).catch((err) => console.warn('Failed to save draft before product creation navigation:', err));
+    }
+
+    const currentPath = (location?.pathname || window.location.pathname) + (location?.search || window.location.search);
+    const returnUrl = encodeURIComponent(currentPath);
+    const params = new URLSearchParams();
+    params.set('returnUrl', returnUrl);
+
+    const q = (query !== undefined ? query : searchQuery).trim();
+    if (/^\d{6,14}$/.test(q)) {
+      params.set('barcode', q);
+    } else if (q.length > 0) {
+      params.set('name', q);
+    }
+
+    const targetUrl = `/products/new?${params.toString()}`;
+    if (navigate) {
+      navigate(targetUrl);
+    } else {
+      window.location.href = targetUrl;
+    }
+  }, [
+    catalogConfig?.onNavigateToCreateProduct,
+    draftKey,
+    voucherType,
+    selectedParty,
+    voucherDate,
+    items,
+    summary,
+    moreDetails,
+    documentDiscountAmount,
+    documentDiscountPercent,
+    shippingCharges,
+    isRoundOffEnabled,
+    location,
+    searchQuery,
+    navigate,
+  ]);
+
+  // 7. Global Keyboard Orchestrator
   useVoucherKeyboard({
     partyInputRef,
     searchInputRef,
@@ -218,7 +373,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     tableRef,
     isStepperOpen,
     isDrawerOpen,
-    isModalOpen: isPartyDropdownOpen || isParkedModalOpen,
+    isModalOpen: isPartyDropdownOpen || isParkedModalOpen || isInternalMatrixOpen,
     itemsCount: items.length,
     focusedRowIndex,
     setFocusedRowIndex,
@@ -257,6 +412,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
       setEditingRowIndex(null);
     },
     onCloseDrawer: () => setIsDrawerOpen(false),
+    onCreateProduct: () => handleNavigateToCreateProduct(searchQuery),
   });
 
   // 7. Memoized party options
@@ -343,8 +499,8 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
       packagings,
       batch_code: initialBatchCode,
       expiry_date: initialExpiry,
-      is_batch_tracking_enabled: rawProduct.is_batch_tracking_enabled ?? rawProduct.product?.is_batch_tracking_enabled,
-      is_expiry_enabled: rawProduct.is_expiry_enabled ?? rawProduct.product?.is_expiry_enabled,
+      is_batch_tracking_enabled: Boolean(rawProduct.is_batch_tracking_enabled || rawProduct.product?.is_batch_tracking_enabled),
+      is_expiry_enabled: Boolean(rawProduct.is_expiry_enabled || rawProduct.product?.is_expiry_enabled),
       metadata: {
         ...(rawProduct.metadata || {}),
         batches,
@@ -389,6 +545,54 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
       available_quantity: Number(b.available_quantity ?? b.quantity ?? 0),
     }));
   }, [activeStepperItem?.metadata?.batches]);
+
+  // 10. Return Trip: Auto-detect created product and restore voucher draft
+  const hasProcessedAddedProduct = useRef<string | null>(null);
+
+  useEffect(() => {
+    const searchString = location?.search || window.location.search;
+    if (!searchString) return;
+    const sp = new URLSearchParams(searchString);
+    const addedProductId = sp.get('addedProductId');
+    const autoRestore = sp.get('autoRestore');
+
+    if (autoRestore === 'true' && draftHook.hasDraft && draftHook.handleRestoreDraft) {
+      draftHook.handleRestoreDraft();
+    }
+
+    if (!addedProductId || hasProcessedAddedProduct.current === addedProductId) return;
+    hasProcessedAddedProduct.current = addedProductId;
+
+    const fetchAndInjectProduct = async () => {
+      try {
+        let prod: any = null;
+        if (catalogConfig?.resolveProductById) {
+          prod = await catalogConfig.resolveProductById(addedProductId);
+        }
+        if (prod) {
+          const variants = Array.isArray(prod.variants) ? prod.variants : [];
+          if (variants.length > 0) {
+            handleSelectProduct({ ...variants[0], _itemType: 'variant', product: prod });
+          } else {
+            handleSelectProduct({ ...prod, _itemType: 'variant' });
+          }
+          showToast(`Product "${prod.name || 'New Product'}" added to voucher`, 'success');
+        }
+      } catch (err) {
+        console.warn('Failed to auto-inject created product:', err);
+      } finally {
+        sp.delete('addedProductId');
+        sp.delete('autoRestore');
+        const cleanSearch = sp.toString();
+        const cleanUrl = (location?.pathname || window.location.pathname) + (cleanSearch ? `?${cleanSearch}` : '');
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({}, '', cleanUrl);
+        }
+      }
+    };
+
+    fetchAndInjectProduct();
+  }, [location?.search, draftHook.hasDraft, draftHook.handleRestoreDraft, handleSelectProduct, showToast]);
 
   return {
     partyInputRef,
@@ -436,6 +640,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     handleSelectProduct,
     handleCommitStepperItem,
     memoizedStepperBatches,
+    handleNavigateToCreateProduct,
   };
 }
 
