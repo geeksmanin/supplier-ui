@@ -153,7 +153,7 @@ export function useVoucherParking({
       }
 
       const newBill: ParkedBill = {
-        id: `parked_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        id: `parked_${voucherType}_${data.party?.value || 'walkin'}_${Date.now()}`,
         voucherType,
         label: data.label || data.party?.label || `Held Cart (${data.items.length} items)`,
         createdAt: new Date().toISOString(),

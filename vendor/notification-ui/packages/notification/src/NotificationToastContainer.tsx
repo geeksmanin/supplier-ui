@@ -73,7 +73,7 @@ export const NotificationToastContainer: React.FC<{ onNavigate?: (link: string) 
       }
 
       const newToast: Toast = {
-        id: notif.id || Math.random().toString(),
+        id: notif.id || (notif as any).notification_id || (notif as any).client_msg_id || `toast_${now}_${notif.type || 'msg'}`,
         notification: notif,
       };
 

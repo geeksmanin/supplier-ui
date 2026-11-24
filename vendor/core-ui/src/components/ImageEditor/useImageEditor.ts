@@ -351,7 +351,7 @@ export function useImageEditor(imageUrl: string, initialFile?: File, initialMode
     const clampedX = Math.max(0.03, Math.min(0.97, x));
     const clampedY = Math.max(0.03, Math.min(0.97, y));
     const newItem: EditorTextItem = {
-      id: `text-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      id: `text-${Date.now()}-${textItems.length + 1}`,
       type: 'text',
       text,
       x: clampedX,
