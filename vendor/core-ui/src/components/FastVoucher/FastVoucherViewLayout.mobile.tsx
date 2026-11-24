@@ -31,6 +31,7 @@ export const FastVoucherViewLayoutMobile: React.FC<FastVoucherViewLayoutProps> =
   onEdit,
   onApprove,
   onRecordPayment,
+  renderExtraActions,
   renderCustomTop,
   renderCustomBottom,
 }) => {
@@ -154,6 +155,7 @@ export const FastVoucherViewLayoutMobile: React.FC<FastVoucherViewLayoutProps> =
               <Pencil size={12} /> <span>Edit</span>
             </button>
           )}
+          {renderExtraActions?.()}
         </div>
       </div>
 
