@@ -433,7 +433,29 @@ export const resolveAppConfig = <T = Record<string, any>>(
     } catch (e) {}
   }
 
-  // 2. Build-Time Environment Flags (Vite MODE / VITE_APP_ENV)
+  // 2. Runtime Hostname Assertions (Host-Level Environment Guardrail)
+  // Guarantees that production domains (*.admin.geeksman.co.in) never query staging APIs,
+  // and staging domains (*.staging.admin.geeksman.co.in) never query prod APIs,
+  // regardless of compile-time bundle flags or accidental cross-deployment.
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname.toLowerCase();
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1' || host === '10.0.2.2' || host.endsWith('.localhost');
+    const isLanIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.endsWith('.local');
+
+    if (!isLocalHost && !isLanIp) {
+      const isStagingDomain = host.includes('.staging.') || host.startsWith('staging.') || host.includes('-staging.');
+      const isKnownProdDomain = host.endsWith('.geeksman.co.in') || host.endsWith('.a3pl.in');
+
+      if (isStagingDomain) {
+        return activeStaging;
+      }
+      if (isKnownProdDomain) {
+        return activeProd;
+      }
+    }
+  }
+
+  // 3. Build-Time Environment Flags (Vite MODE / VITE_APP_ENV)
   let buildMode = '';
   if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
     const env = (import.meta as any).env;
