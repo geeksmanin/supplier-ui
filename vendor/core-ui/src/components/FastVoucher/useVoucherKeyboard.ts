@@ -9,6 +9,7 @@ interface UseVoucherKeyboardProps {
   isStepperOpen?: boolean;
   isDrawerOpen?: boolean;
   isModalOpen?: boolean;
+  isSearchOpen?: boolean;
   itemsCount: number;
   focusedRowIndex: number | null;
   setFocusedRowIndex: (idx: number | null | ((prev: number | null) => number | null)) => void;
@@ -36,6 +37,7 @@ export const useVoucherKeyboard = ({
   isStepperOpen = false,
   isDrawerOpen = false,
   isModalOpen = false,
+  isSearchOpen = false,
   itemsCount,
   focusedRowIndex,
   setFocusedRowIndex,
@@ -164,9 +166,9 @@ export const useVoucherKeyboard = ({
         }
       }
 
-      // 9. Navigation from Product Search to Items Table (ArrowDown when empty)
+      // 9. Navigation from Product Search to Items Table (ArrowDown when empty and dropdown closed)
       const isSearchFocused = document.activeElement === searchInputRef?.current;
-      if (isSearchFocused && e.key === 'ArrowDown' && !isStepperOpen) {
+      if (isSearchFocused && e.key === 'ArrowDown' && !isStepperOpen && !isSearchOpen) {
         const searchVal = searchInputRef?.current?.value || '';
         if (searchVal.trim() === '' && itemsCount > 0) {
           e.preventDefault();
