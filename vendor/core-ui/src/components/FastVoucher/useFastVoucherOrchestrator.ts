@@ -432,7 +432,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
 
   // 8. Handle Product Selection from Search Bar
   const handleSelectProduct = async (rawProduct: any) => {
-    if (rawProduct._itemType === 'product') {
+    if (rawProduct._itemType === 'product' || (!rawProduct._itemType && Array.isArray(rawProduct.variants) && rawProduct.variants.length > 1)) {
       const variants = Array.isArray(rawProduct.variants) ? rawProduct.variants : [];
       if (variants.length === 1) {
         handleSelectProduct({ ...variants[0], _itemType: 'variant', product: rawProduct });
