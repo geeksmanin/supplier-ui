@@ -42,16 +42,20 @@ export const FastVoucherCatalogSearchDropdown: React.FC<FastVoucherCatalogSearch
     );
     if (!selectedEl) return;
 
-    const elTop = selectedEl.offsetTop;
-    const elBottom = elTop + selectedEl.offsetHeight;
-    const containerTop = container.scrollTop;
-    const containerBottom = containerTop + container.clientHeight;
+    if (typeof selectedEl.scrollIntoView === 'function') {
+      selectedEl.scrollIntoView({ block: 'nearest' });
+    } else {
+      const elTop = selectedEl.offsetTop;
+      const elBottom = elTop + selectedEl.offsetHeight;
+      const containerTop = container.scrollTop;
+      const containerBottom = containerTop + container.clientHeight;
 
-    const headerOffset = 40; // Height of the sticky header
-    if (elTop - headerOffset < containerTop) {
-      container.scrollTop = Math.max(0, elTop - headerOffset);
-    } else if (elBottom > containerBottom) {
-      container.scrollTop = elBottom - container.clientHeight + 6;
+      const headerOffset = 40; // Height of the sticky header
+      if (elTop - headerOffset < containerTop) {
+        container.scrollTop = Math.max(0, elTop - headerOffset);
+      } else if (elBottom > containerBottom) {
+        container.scrollTop = elBottom - container.clientHeight + 6;
+      }
     }
   }, [selectedResultIndex]);
 
@@ -254,7 +258,10 @@ export const FastVoucherCatalogSearchDropdown: React.FC<FastVoucherCatalogSearch
             key={`${res._itemType || 'item'}-${res.id || idx}`}
             data-testid={`search-result-${idx}`}
             className="fast-voucher-search-result-row"
-            onClick={() => handleSelectProduct(res)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSelectProduct(res);
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',

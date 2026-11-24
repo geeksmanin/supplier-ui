@@ -331,6 +331,7 @@ export const FastVoucherActionRow: React.FC<FastVoucherActionRowProps> = ({
               }
               if (e.key === 'Enter') {
                 e.preventDefault();
+                e.stopPropagation();
                 if (searchResults[selectedResultIndex]) {
                   handleSelectProduct(searchResults[selectedResultIndex]);
                 }
