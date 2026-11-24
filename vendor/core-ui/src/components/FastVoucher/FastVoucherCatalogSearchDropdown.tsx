@@ -37,25 +37,31 @@ export const FastVoucherCatalogSearchDropdown: React.FC<FastVoucherCatalogSearch
       return;
     }
 
-    const selectedEl = container.querySelector<HTMLElement>(
-      `[data-testid="search-result-${selectedResultIndex}"]`
-    );
-    if (!selectedEl) return;
+    const scrollSelectedIntoView = () => {
+      if (!containerRef.current) return;
+      const selectedEl = containerRef.current.querySelector<HTMLElement>(
+        `[data-testid="search-result-${selectedResultIndex}"]`
+      );
+      if (!selectedEl) return;
 
-    const elTop = selectedEl.offsetTop;
-    const elHeight = selectedEl.offsetHeight || 50;
-    const elBottom = elTop + elHeight;
-    const headerOffset = 44; // Height of the sticky header
+      const elTop = selectedEl.offsetTop;
+      const elHeight = selectedEl.offsetHeight || 50;
+      const elBottom = elTop + elHeight;
+      const headerOffset = 44; // Height of the sticky header
 
-    const currentScrollTop = container.scrollTop;
-    const visibleTop = currentScrollTop + headerOffset;
-    const visibleBottom = currentScrollTop + container.clientHeight;
+      const currentScrollTop = container.scrollTop;
+      const visibleTop = currentScrollTop + headerOffset;
+      const visibleBottom = currentScrollTop + container.clientHeight;
 
-    if (elTop < visibleTop) {
-      container.scrollTop = Math.max(0, elTop - headerOffset);
-    } else if (elBottom > visibleBottom) {
-      container.scrollTop = elBottom - container.clientHeight + 6;
-    }
+      if (elTop < visibleTop) {
+        container.scrollTop = Math.max(0, elTop - headerOffset - 4);
+      } else if (elBottom > visibleBottom) {
+        container.scrollTop = elBottom - container.clientHeight + 8;
+      }
+    };
+
+    const animFrame = requestAnimationFrame(scrollSelectedIntoView);
+    return () => cancelAnimationFrame(animFrame);
   }, [selectedResultIndex]);
 
   return (
