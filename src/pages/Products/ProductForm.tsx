@@ -422,7 +422,7 @@ export function ProductForm() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
                   <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800 }}>Generated SKUs ({generatedVariants.length})</h4>
                   {generatedVariants.map((v, idx) => (
-                    <div key={idx} style={{ padding: '1.25rem', border: '1px solid #e2e8f0', borderRadius: '12px', backgroundColor: '#fafafa', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div key={v.id || v.sku_code || v.name || `gen_var_${idx}`} style={{ padding: '1.25rem', border: '1px solid #e2e8f0', borderRadius: '12px', backgroundColor: '#fafafa', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#4f46e5' }}>{v.name || `Variant #${idx + 1}`}</span>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <div>
@@ -450,7 +450,7 @@ export function ProductForm() {
           ) : (
             // Single SKU / No variants configuration fields
             generatedVariants.map((v, idx) => (
-              <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', maxWidth: '480px' }}>
+              <div key={v.id || v.sku_code || `single_sku_${idx}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', maxWidth: '480px' }}>
                 <div>
                   <FieldLabel label="SKU Code" required />
                   <input style={inputStyle} value={v.sku_code} onChange={e => handleVariantFieldChange(idx, 'sku_code', e.target.value)} required />
