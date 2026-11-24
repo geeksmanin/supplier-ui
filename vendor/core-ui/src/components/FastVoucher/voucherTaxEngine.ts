@@ -17,6 +17,7 @@ export interface TaxEngineInput {
   documentDiscountAmount?: number;
   documentDiscountPercent?: number;
   shippingCharges?: number;
+  otherCharges?: number;
   isRoundOffEnabled?: boolean;
   taxInclusive?: boolean;
 }
@@ -106,6 +107,7 @@ export function computeVoucherSummary({
   documentDiscountAmount = 0,
   documentDiscountPercent = 0,
   shippingCharges = 0,
+  otherCharges = 0,
   isRoundOffEnabled = true,
   taxInclusive = false,
 }: TaxEngineInput): TaxEngineResult {
@@ -215,8 +217,9 @@ export function computeVoucherSummary({
 
   const totalDiscount = +(itemDiscountsTotal + documentDiscountTotal).toFixed(2);
   const freight = +(Number(shippingCharges) || 0).toFixed(2);
+  const extraCharges = +(Number(otherCharges) || 0).toFixed(2);
 
-  const unroundedTotal = +(subtotal - documentDiscountTotal + taxTotal + freight).toFixed(2);
+  const unroundedTotal = +(subtotal - documentDiscountTotal + taxTotal + freight + extraCharges).toFixed(2);
 
   let grandTotal = unroundedTotal;
   let roundOff = 0;
@@ -232,6 +235,7 @@ export function computeVoucherSummary({
     itemDiscountsTotal,
     documentDiscountTotal,
     shipping_charges: freight,
+    other_charges: extraCharges,
     tax_breakup: {
       cgst: cgstTotal,
       sgst: sgstTotal,

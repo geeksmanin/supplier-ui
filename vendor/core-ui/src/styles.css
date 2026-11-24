@@ -284,6 +284,15 @@ h1, h2, h3, h4, h5, h6 {
   z-index: 5;
 }
 
+.sticky-action-col:has([data-actions-open="true"]) {
+  z-index: 100 !important;
+}
+
+.erp-table tr:has([data-actions-open="true"]) {
+  position: relative !important;
+  z-index: 100 !important;
+}
+
 .erp-table tbody tr:nth-child(odd) .sticky-action-col {
   background-color: #ffffff;
 }

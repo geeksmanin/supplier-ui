@@ -24,6 +24,7 @@ interface UseVoucherKeyboardProps {
   onDeleteRow?: (index: number) => void;
   onCloseStepper?: () => void;
   onCloseDrawer?: () => void;
+  onCreateProduct?: () => void;
 }
 
 export const useVoucherKeyboard = ({
@@ -50,6 +51,7 @@ export const useVoucherKeyboard = ({
   onDeleteRow,
   onCloseStepper,
   onCloseDrawer,
+  onCreateProduct,
 }: UseVoucherKeyboardProps) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -66,6 +68,13 @@ export const useVoucherKeyboard = ({
         } else if (partyInputRef?.current) {
           partyInputRef.current.focus();
         }
+        return;
+      }
+
+      // 2b. Global Hotkey: Alt+N (New Product Creation)
+      if (e.altKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        onCreateProduct?.();
         return;
       }
 
