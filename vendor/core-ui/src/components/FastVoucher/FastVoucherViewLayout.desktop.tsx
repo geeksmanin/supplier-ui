@@ -1,11 +1,11 @@
 import React from 'react';
-import { 
-  ArrowLeft, 
-  Pencil, 
-  CheckCircle2, 
-  CreditCard, 
-  XCircle, 
-  FileText, 
+import {
+  ArrowLeft,
+  Pencil,
+  CheckCircle2,
+  CreditCard,
+  XCircle,
+  FileText,
   Building2,
   Calendar,
   Receipt,
@@ -355,10 +355,34 @@ export const FastVoucherViewLayoutDesktop: React.FC<FastVoucherViewLayoutProps> 
               <span>Subtotal:</span>
               <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{formatCurr(summary.subtotal)}</span>
             </div>
+            {Boolean(summary.discountAmount && summary.discountAmount > 0) && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626' }}>
+                <span>Discount:</span>
+                <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>-{formatCurr(summary.discountAmount)}</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
               <span>Tax Total:</span>
               <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{formatCurr(summary.taxAmount)}</span>
             </div>
+            {Boolean(summary.shippingCharges && summary.shippingCharges > 0) && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                <span>Freight / Shipping:</span>
+                <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>+{formatCurr(summary.shippingCharges)}</span>
+              </div>
+            )}
+            {Boolean(summary.otherCharges && summary.otherCharges > 0) && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+                <span>Labour / Other Charges:</span>
+                <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>+{formatCurr(summary.otherCharges)}</span>
+              </div>
+            )}
+            {Boolean(summary.roundOff && Math.abs(summary.roundOff) > 0.001) && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                <span>Round Off:</span>
+                <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{summary.roundOff! > 0 ? `+${formatCurr(summary.roundOff)}` : formatCurr(summary.roundOff)}</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0f172a', fontWeight: 800, fontSize: '14.5px', paddingTop: '6px', borderTop: '1px solid #f1f5f9' }}>
               <span>Grand Total:</span>
               <span style={{ fontFamily: 'monospace' }}>{formatCurr(summary.grandTotal)}</span>

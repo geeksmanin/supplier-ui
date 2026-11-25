@@ -36,7 +36,7 @@ export type { SearchInputProps } from './components/SearchInput';
 export { Layout, TabActiveContext, useIsTabActive, updateTabTitle, closeTab, closeAllTabs } from './components/Layout/Layout';
 export type { LayoutProps, NavItem } from './components/Layout/Layout';
 export { UIRegistry } from './registry/registry';
-export type { RouteConfig, NavItemConfig, SearchItemConfig } from './registry/registry';
+export type { RouteConfig, NavItemConfig, SearchItemConfig, PartyDataBridge } from './registry/registry';
 export { DataTable } from './components/DataTable.desktop';
 export type { Column } from './components/DataTable.desktop';
 export { CardDataList } from './components/CardDataList';
@@ -281,6 +281,7 @@ export { useCurrentUserPhoto } from './hooks/useCurrentUserPhoto';
 export type { UseCurrentUserPhotoResult, UserPhotoCandidate } from './hooks/useCurrentUserPhoto';
 export { fetchLocationsList } from './services/locationService';
 export type { CoreLocationItem, FetchLocationsOptions } from './services/locationService';
+export * from './components/FastPayment';
 
 // Register Fast Voucher as an operational card for conversational and chat views
 import React from 'react';

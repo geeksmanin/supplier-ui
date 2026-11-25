@@ -1,9 +1,9 @@
 import React from 'react';
-import { 
-  ArrowLeft, 
-  Pencil, 
-  CheckCircle2, 
-  CreditCard, 
+import {
+  ArrowLeft,
+  Pencil,
+  CheckCircle2,
+  CreditCard,
   Building2,
   Receipt,
   Boxes,
@@ -31,7 +31,6 @@ export const FastVoucherViewLayoutMobile: React.FC<FastVoucherViewLayoutProps> =
   onEdit,
   onApprove,
   onRecordPayment,
-  renderExtraActions,
   renderCustomTop,
   renderCustomBottom,
 }) => {
@@ -155,7 +154,6 @@ export const FastVoucherViewLayoutMobile: React.FC<FastVoucherViewLayoutProps> =
               <Pencil size={12} /> <span>Edit</span>
             </button>
           )}
-          {renderExtraActions?.()}
         </div>
       </div>
 
@@ -206,10 +204,28 @@ export const FastVoucherViewLayoutMobile: React.FC<FastVoucherViewLayoutProps> =
             <span>Subtotal</span>
             <span style={{ fontFamily: 'monospace' }}>{formatCurr(summary.subtotal)}</span>
           </div>
+          {Boolean(summary.discountAmount && summary.discountAmount > 0) && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#dc2626', marginBottom: '4px' }}>
+              <span>Discount</span>
+              <span style={{ fontFamily: 'monospace' }}>-{formatCurr(summary.discountAmount)}</span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#475569', marginBottom: '6px' }}>
             <span>Tax</span>
             <span style={{ fontFamily: 'monospace' }}>{formatCurr(summary.taxAmount)}</span>
           </div>
+          {Boolean(summary.shippingCharges && summary.shippingCharges > 0) && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#475569', marginBottom: '4px' }}>
+              <span>Freight / Shipping</span>
+              <span style={{ fontFamily: 'monospace' }}>+{formatCurr(summary.shippingCharges)}</span>
+            </div>
+          )}
+          {Boolean(summary.otherCharges && summary.otherCharges > 0) && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#475569', marginBottom: '4px' }}>
+              <span>Labour / Other Charges</span>
+              <span style={{ fontFamily: 'monospace' }}>+{formatCurr(summary.otherCharges)}</span>
+            </div>
+          )}
           <div
             style={{
               display: 'flex',

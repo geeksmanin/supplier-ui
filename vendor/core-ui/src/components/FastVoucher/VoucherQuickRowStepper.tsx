@@ -2,6 +2,7 @@ import React from 'react';
 import {
   VoucherLineItem,
   VoucherBatchMode,
+  VoucherSerialMode,
 } from './FastVoucherEntryLayout.types';
 import { Check, X } from 'lucide-react';
 import { useVoucherQuickRowStepper } from './useVoucherQuickRowStepper';
@@ -11,6 +12,7 @@ interface VoucherQuickRowStepperProps {
   isOpen: boolean;
   item: Partial<VoucherLineItem> | null;
   batchMode?: VoucherBatchMode;
+  serialMode?: VoucherSerialMode;
   allowRateOverride?: boolean;
   stockBatches?: Array<{ batch_code: string; expiry_date?: string; mrp?: number; available_quantity?: number }>;
   onCommit: (item: VoucherLineItem) => void;
@@ -23,6 +25,7 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
   isOpen,
   item,
   batchMode = 'none',
+  serialMode = 'none',
   allowRateOverride = true,
   stockBatches = [],
   onCommit,
@@ -38,6 +41,13 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
     setBatchCode,
     expiryDate,
     setExpiryDate,
+    serialNumbers,
+    serialInputText,
+    setSerialInputText,
+    availableSerials,
+    handleAddSerialTags,
+    handleRemoveSerialTag,
+    handleToggleSelectSerial,
     unitPrice,
     setUnitPrice,
     discountPercent,
@@ -61,6 +71,7 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
     isOpen,
     item,
     batchMode,
+    serialMode,
     stockBatches,
     onCommit,
   });
@@ -180,6 +191,7 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
       <VoucherQuickRowStepperInputs
         item={item}
         batchMode={batchMode}
+        serialMode={serialMode}
         allowRateOverride={allowRateOverride}
         qty={qty}
         setQty={setQty}
@@ -191,6 +203,13 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
         effectiveBatches={effectiveBatches}
         expiryDate={expiryDate}
         setExpiryDate={setExpiryDate}
+        serialNumbers={serialNumbers}
+        serialInputText={serialInputText}
+        setSerialInputText={setSerialInputText}
+        availableSerials={availableSerials}
+        handleAddSerialTags={handleAddSerialTags}
+        handleRemoveSerialTag={handleRemoveSerialTag}
+        handleToggleSelectSerial={handleToggleSelectSerial}
         unitPrice={unitPrice}
         setUnitPrice={setUnitPrice}
         discountPercent={discountPercent}

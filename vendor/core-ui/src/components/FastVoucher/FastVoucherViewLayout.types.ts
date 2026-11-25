@@ -38,6 +38,7 @@ export interface VoucherViewSummary {
   discountAmount?: number;
   taxAmount: number;
   shippingCharges?: number;
+  otherCharges?: number;
   roundOff?: number;
   grandTotal: number;
   paidAmount?: number;

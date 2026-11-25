@@ -111,6 +111,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
     handleCommitStepperItem,
     memoizedStepperBatches,
     handleNavigateToCreateProduct,
+    resolvedBatchMode,
+    resolvedSerialMode,
   } = useFastVoucherOrchestrator(props);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -183,6 +185,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
         entryDate={entryDate}
         autoConfirm={autoConfirm}
         onAutoConfirmChange={onAutoConfirmChange}
+        autoConfirmLabel={props.autoConfirmLabel || (props.voucherType === 'SALES_INVOICE' ? 'Deduct Stock' : 'Inward Stock')}
         notes={notes}
         onNotesChange={onNotesChange}
         isDrawerOpen={isDrawerOpen}
@@ -239,7 +242,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
             liveStockMap={liveStockMap}
             isStepperOpen={isStepperOpen}
             activeStepperItem={activeStepperItem}
-            batchMode={batchMode}
+            batchMode={resolvedBatchMode}
+            serialMode={resolvedSerialMode}
             pricingConfig={pricingConfig}
             onOpenStockDrilldown={onOpenStockDrilldown}
             memoizedStepperBatches={memoizedStepperBatches}
@@ -254,7 +258,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
           {/* Dense Tabular Items Table */}
           <FastVoucherTableSection
             items={items}
-            batchMode={batchMode}
+            batchMode={resolvedBatchMode}
+            serialMode={resolvedSerialMode}
             tableRef={tableRef}
             focusedRowIndex={focusedRowIndex}
             setFocusedRowIndex={setFocusedRowIndex}
