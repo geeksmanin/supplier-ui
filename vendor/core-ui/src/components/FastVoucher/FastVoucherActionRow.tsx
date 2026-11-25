@@ -40,6 +40,7 @@ export interface FastVoucherActionRowProps {
   isStepperOpen: boolean;
   activeStepperItem: any;
   batchMode: VoucherBatchMode;
+  serialMode?: import('./FastVoucherEntryLayout.types').VoucherSerialMode;
   pricingConfig: VoucherPricingConfig;
   onOpenStockDrilldown?: (item: any) => void;
   memoizedStepperBatches: any[];
@@ -81,6 +82,7 @@ export const FastVoucherActionRow: React.FC<FastVoucherActionRowProps> = ({
   isStepperOpen,
   activeStepperItem,
   batchMode,
+  serialMode = 'none',
   pricingConfig,
   onOpenStockDrilldown,
   memoizedStepperBatches,
@@ -412,6 +414,7 @@ export const FastVoucherActionRow: React.FC<FastVoucherActionRowProps> = ({
             isOpen={isStepperOpen}
             item={activeStepperItem}
             batchMode={batchMode}
+            serialMode={serialMode}
             allowRateOverride={pricingConfig.allowRateOverride}
             onOpenStockDrilldown={(it) => onOpenStockDrilldown?.(it as any)}
             stockBatches={memoizedStepperBatches}

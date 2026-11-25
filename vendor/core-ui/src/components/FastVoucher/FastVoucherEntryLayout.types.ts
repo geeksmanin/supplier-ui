@@ -1,6 +1,12 @@
 import React from 'react';
 
 export type VoucherBatchMode = 'select' | 'create' | 'none';
+export type VoucherSerialMode = 'select' | 'create' | 'none';
+
+export interface VoucherTrackingPolicy {
+  batchMode: VoucherBatchMode;
+  serialMode: VoucherSerialMode;
+}
 
 export type VoucherPricingMode = 
   | 'auto_from_party' 
@@ -94,7 +100,10 @@ export interface VoucherLineItem {
   packagings?: VoucherPackagingOption[];
   batch_code?: string;
   expiry_date?: string;
+  location_id?: string;
+  serial_numbers?: string[];
   is_batch_tracking_enabled?: boolean;
+  is_serial_tracking_enabled?: boolean;
   is_expiry_enabled?: boolean;
   mrp?: number;
   unit_price: number;
@@ -141,6 +150,7 @@ export interface FastVoucherEntryLayoutProps {
   entryDate?: string;
   autoConfirm?: boolean;
   onAutoConfirmChange?: (val: boolean) => void;
+  autoConfirmLabel?: string;
   notes?: string;
   onNotesChange?: (notes: string) => void;
   status?: string;
@@ -154,6 +164,8 @@ export interface FastVoucherEntryLayoutProps {
   partyConfig?: VoucherPartyConfig;
   catalogConfig?: VoucherCatalogConfig;
   batchMode?: VoucherBatchMode;
+  serialMode?: VoucherSerialMode;
+  trackingPolicyMap?: Record<string, VoucherTrackingPolicy>;
   pricingConfig?: VoucherPricingConfig;
 
   // Selected State

@@ -45,6 +45,7 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
     documentDiscountAmount = 0,
     documentDiscountPercent = 0,
     shippingCharges = 0,
+    otherCharges = 0,
     isRoundOffEnabled = true,
     onSave,
     onCancel,
@@ -101,6 +102,8 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
     handleCommitStepperItem,
     memoizedStepperBatches,
     handleNavigateToCreateProduct,
+    resolvedBatchMode,
+    resolvedSerialMode,
   } = useFastVoucherOrchestrator(props);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -131,6 +134,7 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
       documentDiscountAmount,
       documentDiscountPercent,
       shippingCharges,
+      otherCharges,
       isRoundOffEnabled,
       taxInclusive: pricingConfig.taxInclusive,
     });
@@ -143,6 +147,7 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
     documentDiscountAmount,
     documentDiscountPercent,
     shippingCharges,
+    otherCharges,
     isRoundOffEnabled,
     pricingConfig.taxInclusive,
   ]);
@@ -672,7 +677,8 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
             <VoucherQuickRowStepper
               isOpen={isStepperOpen}
               item={activeStepperItem}
-              batchMode={batchMode}
+              batchMode={resolvedBatchMode}
+              serialMode={resolvedSerialMode}
               allowRateOverride={pricingConfig.allowRateOverride}
               onOpenStockDrilldown={(it) => onOpenStockDrilldown?.(it as any)}
               stockBatches={memoizedStepperBatches}
@@ -750,10 +756,15 @@ export const FastVoucherCardDesktop: React.FC<FastVoucherCardProps> = (props) =>
                       <div style={{ fontWeight: 700, color: '#0F172A', lineHeight: 1.25 }}>
                         {it.product_name}
                       </div>
-                      <div style={{ fontSize: 11, color: '#64748B', display: 'flex', gap: 6, marginTop: 1 }}>
+                      <div style={{ fontSize: 11, color: '#64748B', display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 1 }}>
                         {it.sku_code && <span>SKU: {it.sku_code}</span>}
                         {it.batch_code && it.batch_code !== 'DEFAULT' && (
                           <span>• Batch: {it.batch_code}</span>
+                        )}
+                        {Array.isArray(it.serial_numbers) && it.serial_numbers.length > 0 && (
+                          <span style={{ color: '#0F766E', fontWeight: 600 }}>
+                            • SNs: {it.serial_numbers.join(', ')}
+                          </span>
                         )}
                       </div>
                     </td>

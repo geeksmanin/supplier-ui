@@ -3,6 +3,7 @@ import { apiClient } from '../api/client';
 
 export interface BranchInfo {
   id?: string;
+  organisation_id?: string;
   code: string;
   name: string;
   is_head_office?: boolean;

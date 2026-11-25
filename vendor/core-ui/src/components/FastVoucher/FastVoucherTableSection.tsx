@@ -1,10 +1,11 @@
 import React from 'react';
 import { ShoppingBag, Edit2, Trash2 } from 'lucide-react';
-import { VoucherLineItem, VoucherBatchMode } from './FastVoucherEntryLayout.types';
+import { VoucherLineItem, VoucherBatchMode, VoucherSerialMode } from './FastVoucherEntryLayout.types';
 
 interface FastVoucherTableSectionProps {
   items: VoucherLineItem[];
   batchMode: VoucherBatchMode;
+  serialMode?: VoucherSerialMode;
   tableRef: React.RefObject<HTMLDivElement>;
   focusedRowIndex: number | null;
   setFocusedRowIndex: (idx: number) => void;
@@ -15,12 +16,14 @@ interface FastVoucherTableSectionProps {
 export const FastVoucherTableSection: React.FC<FastVoucherTableSectionProps> = ({
   items,
   batchMode,
+  serialMode = 'none',
   tableRef,
   focusedRowIndex,
   setFocusedRowIndex,
   onEditRow,
   onRemoveItem,
 }) => {
+  const showTrackingColumn = batchMode !== 'none' || serialMode !== 'none';
   return (
     <>
       <style>{`
@@ -87,7 +90,7 @@ export const FastVoucherTableSection: React.FC<FastVoucherTableSectionProps> = (
                 <th style={{ padding: '8px 6px', width: '40px', textAlign: 'center' }}>#</th>
                 <th style={{ padding: '8px 10px' }}>Item Description</th>
                 <th style={{ padding: '8px 8px', width: '90px' }}>SKU</th>
-                {batchMode !== 'none' && <th style={{ padding: '8px 8px', width: '110px' }}>Batch / Exp</th>}
+                {showTrackingColumn && <th style={{ padding: '8px 8px', width: '130px' }}>Batch / Serials</th>}
                 <th style={{ padding: '8px 8px', width: '90px' }}>Unit</th>
                 <th style={{ padding: '8px 8px', width: '70px', textAlign: 'right' }}>Qty</th>
                 <th style={{ padding: '8px 8px', width: '90px', textAlign: 'right' }}>Rate (₹)</th>
@@ -140,6 +143,11 @@ export const FastVoucherTableSection: React.FC<FastVoucherTableSectionProps> = (
                             Exp: {row.expiry_date}
                           </span>
                         )}
+                        {Array.isArray(row.serial_numbers) && row.serial_numbers.length > 0 && (
+                          <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#f0fdf4', color: '#166534', fontWeight: 600 }}>
+                            SN: {row.serial_numbers.length}/{row.quantity}
+                          </span>
+                        )}
                         {row.tax_percent != null && row.tax_percent > 0 && (
                           <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#ecfdf5', color: '#065f46', fontWeight: 600 }}>
                             GST: {row.tax_percent}%
@@ -160,11 +168,16 @@ export const FastVoucherTableSection: React.FC<FastVoucherTableSectionProps> = (
                     <td style={{ padding: '8px 8px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#64748b' }}>
                       {row.sku_code || '-'}
                     </td>
-                    {batchMode !== 'none' && (
+                    {showTrackingColumn && (
                       <td style={{ padding: '8px 8px' }}>
                         <span style={{ fontWeight: 600, color: '#334155' }}>{row.batch_code || '-'}</span>
                         {row.expiry_date && (
                           <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Exp: {row.expiry_date}</div>
+                        )}
+                        {Array.isArray(row.serial_numbers) && row.serial_numbers.length > 0 && (
+                          <div style={{ fontSize: '0.68rem', color: '#0f766e', fontWeight: 600, wordBreak: 'break-word' }}>
+                            SNs: {row.serial_numbers.join(', ')}
+                          </div>
                         )}
                       </td>
                     )}
