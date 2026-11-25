@@ -1,15 +1,18 @@
 import React from 'react';
 import { Layers, Tag, Calendar, Percent } from 'lucide-react';
 import { Select } from '../Select';
+import { VoucherQuickRowStepperSerialSection } from './VoucherQuickRowStepperSerialSection';
 import {
   VoucherLineItem,
   VoucherBatchMode,
+  VoucherSerialMode,
   VoucherPackagingOption,
 } from './FastVoucherEntryLayout.types';
 
 interface VoucherQuickRowStepperInputsProps {
   item: Partial<VoucherLineItem>;
   batchMode: VoucherBatchMode;
+  serialMode?: VoucherSerialMode;
   allowRateOverride: boolean;
   qty: number;
   setQty: (qty: number) => void;
@@ -21,6 +24,13 @@ interface VoucherQuickRowStepperInputsProps {
   effectiveBatches: Array<{ batch_code: string; expiry_date?: string; mrp?: number; available_quantity?: number }>;
   expiryDate: string;
   setExpiryDate: (exp: string) => void;
+  serialNumbers: string[];
+  serialInputText: string;
+  setSerialInputText: (val: string) => void;
+  availableSerials: string[];
+  handleAddSerialTags: (raw: string) => void;
+  handleRemoveSerialTag: (serial: string) => void;
+  handleToggleSelectSerial: (serial: string) => void;
   unitPrice: number;
   setUnitPrice: (price: number) => void;
   discountPercent: number;
@@ -40,6 +50,7 @@ interface VoucherQuickRowStepperInputsProps {
 export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputsProps> = ({
   item,
   batchMode,
+  serialMode = 'none',
   allowRateOverride,
   qty,
   setQty,
@@ -51,6 +62,13 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
   effectiveBatches,
   expiryDate,
   setExpiryDate,
+  serialNumbers,
+  serialInputText,
+  setSerialInputText,
+  availableSerials,
+  handleAddSerialTags,
+  handleRemoveSerialTag,
+  handleToggleSelectSerial,
   unitPrice,
   setUnitPrice,
   discountPercent,
@@ -68,6 +86,7 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
 }) => {
   const showBatch = Boolean(item.is_batch_tracking_enabled) && batchMode !== 'none';
   const showExpiry = Boolean(item.is_expiry_enabled) && batchMode === 'create';
+  const showSerial = Boolean(item.is_serial_tracking_enabled) && serialMode !== 'none';
   const columnCount = 5 + (showBatch ? 1 : 0) + (showExpiry ? 1 : 0);
 
   return (
@@ -408,6 +427,21 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
           }}
         />
       </div>
+
+      {/* 7. Serial Number Capture / Selector */}
+      {showSerial && (
+        <VoucherQuickRowStepperSerialSection
+          serialMode={serialMode}
+          qty={qty}
+          serialNumbers={serialNumbers}
+          serialInputText={serialInputText}
+          setSerialInputText={setSerialInputText}
+          availableSerials={availableSerials}
+          handleAddSerialTags={handleAddSerialTags}
+          handleRemoveSerialTag={handleRemoveSerialTag}
+          handleToggleSelectSerial={handleToggleSelectSerial}
+        />
+      )}
     </div>
   );
 };

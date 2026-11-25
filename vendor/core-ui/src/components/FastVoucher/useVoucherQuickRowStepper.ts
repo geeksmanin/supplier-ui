@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   VoucherLineItem,
   VoucherBatchMode,
+  VoucherSerialMode,
   VoucherPackagingOption
 } from './FastVoucherEntryLayout.types';
 
@@ -9,6 +10,7 @@ interface UseVoucherQuickRowStepperProps {
   isOpen: boolean;
   item: Partial<VoucherLineItem> | null;
   batchMode?: VoucherBatchMode;
+  serialMode?: VoucherSerialMode;
   stockBatches?: Array<{ batch_code: string; expiry_date?: string; mrp?: number; available_quantity?: number }>;
   onCommit: (item: VoucherLineItem) => void;
 }
@@ -17,6 +19,7 @@ export function useVoucherQuickRowStepper({
   isOpen,
   item,
   batchMode = 'none',
+  serialMode = 'none',
   stockBatches = [],
   onCommit,
 }: UseVoucherQuickRowStepperProps) {
@@ -25,6 +28,9 @@ export function useVoucherQuickRowStepper({
   const [packagingSize, setPackagingSize] = useState<number>(1);
   const [batchCode, setBatchCode] = useState<string>('');
   const [expiryDate, setExpiryDate] = useState<string>('');
+  const [serialNumbers, setSerialNumbers] = useState<string[]>([]);
+  const [serialInputText, setSerialInputText] = useState<string>('');
+  const [availableSerials, setAvailableSerials] = useState<string[]>([]);
   const [mrp, setMrp] = useState<number>(0);
   const [unitPrice, setUnitPrice] = useState<number>(0);
   const [discountPercent, setDiscountPercent] = useState<number>(0);
@@ -55,10 +61,18 @@ export function useVoucherQuickRowStepper({
     }
 
     setQty(item.quantity ?? 1);
-    setPackagingName(item.packaging_name || 'Unit');
+    const resolvedUnit =
+      item.packaging_name ||
+      item.metadata?.unit ||
+      item.metadata?.base_unit ||
+      'Unit';
+    setPackagingName(resolvedUnit);
     setPackagingSize(item.packaging_size || 1);
     setBatchCode(item.batch_code || '');
     setExpiryDate(item.expiry_date || '');
+    setSerialNumbers(Array.isArray(item.serial_numbers) ? item.serial_numbers : []);
+    setSerialInputText('');
+    setAvailableSerials([]);
     setMrp(item.mrp || 0);
     setUnitPrice(item.unit_price || 0);
     setDiscountPercent(item.discount_percent || 0);
@@ -139,6 +153,35 @@ export function useVoucherQuickRowStepper({
     };
   }, [isOpen, item?.id, item?.variant_id, batchMode, stockBatches.length]);
 
+  // Fetch AVAILABLE serials whenever select-mode stepper opens or batch/location changes
+  useEffect(() => {
+    const vIdStr = item?.variant_id ? String(item.variant_id) : '';
+    if (!isOpen || serialMode !== 'select' || !item?.is_serial_tracking_enabled || !vIdStr) {
+      return;
+    }
+    const handleSerialsResolved = (e: any) => {
+      const detail = e?.detail;
+      if (detail && String(detail.variant_id) === vIdStr) {
+        const list = Array.isArray(detail.serials) ? detail.serials : [];
+        const normalized = list
+          .map((s: any) => (typeof s === 'string' ? s : String(s?.barcode || s?.serial_no || '')))
+          .filter(Boolean);
+        setAvailableSerials(normalized);
+      }
+    };
+    window.addEventListener('inventory_serial_updated', handleSerialsResolved);
+    window.dispatchEvent(
+      new CustomEvent('inventory_serial_request', {
+        detail: {
+          variant_id: vIdStr,
+          batch_code: batchCode || item.batch_code || '',
+          location_id: item.location_id || '',
+        },
+      })
+    );
+    return () => window.removeEventListener('inventory_serial_updated', handleSerialsResolved);
+  }, [isOpen, item?.variant_id, item?.is_serial_tracking_enabled, item?.location_id, serialMode, batchCode]);
+
   const calculations = useMemo(() => {
     const rawQty = Math.max(0, Number(qty) || 0);
     const rawRate = Math.max(0, Number(unitPrice) || 0);
@@ -182,6 +225,34 @@ export function useVoucherQuickRowStepper({
     }
   };
 
+  const handleAddSerialTags = (rawInput: string) => {
+    const tokens = rawInput
+      .split(/[\s,;]+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (tokens.length === 0) return;
+    setSerialNumbers((prev) => {
+      const next = [...prev];
+      tokens.forEach((tok) => {
+        if (!next.includes(tok)) {
+          next.push(tok);
+        }
+      });
+      return next;
+    });
+    setSerialInputText('');
+  };
+
+  const handleRemoveSerialTag = (serial: string) => {
+    setSerialNumbers((prev) => prev.filter((s) => s !== serial));
+  };
+
+  const handleToggleSelectSerial = (serial: string) => {
+    setSerialNumbers((prev) =>
+      prev.includes(serial) ? prev.filter((s) => s !== serial) : [...prev, serial]
+    );
+  };
+
   const handleCommit = () => {
     if (!item || qty <= 0) return;
 
@@ -198,6 +269,8 @@ export function useVoucherQuickRowStepper({
       packagings: item.packagings,
       batch_code: batchCode.trim() || undefined,
       expiry_date: expiryDate.trim() || undefined,
+      location_id: item.location_id,
+      serial_numbers: serialNumbers.length > 0 ? serialNumbers : undefined,
       mrp: Number(mrp) || undefined,
       unit_price: Number(unitPrice),
       tax_percent: Number(taxPercent || 0),
@@ -209,6 +282,7 @@ export function useVoucherQuickRowStepper({
       remarks: item.remarks,
       metadata: item.metadata,
       is_batch_tracking_enabled: item.is_batch_tracking_enabled,
+      is_serial_tracking_enabled: item.is_serial_tracking_enabled,
       is_expiry_enabled: item.is_expiry_enabled,
     };
 
@@ -224,6 +298,14 @@ export function useVoucherQuickRowStepper({
     setBatchCode,
     expiryDate,
     setExpiryDate,
+    serialNumbers,
+    setSerialNumbers,
+    serialInputText,
+    setSerialInputText,
+    availableSerials,
+    handleAddSerialTags,
+    handleRemoveSerialTag,
+    handleToggleSelectSerial,
     mrp,
     setMrp,
     unitPrice,

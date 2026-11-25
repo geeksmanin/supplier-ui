@@ -32,6 +32,7 @@ interface FastVoucherHeaderRibbonProps {
   entryDate?: string;
   autoConfirm?: boolean;
   onAutoConfirmChange?: (val: boolean) => void;
+  autoConfirmLabel?: string;
   notes?: string;
   onNotesChange?: (notes: string) => void;
   isDrawerOpen: boolean;
@@ -74,6 +75,7 @@ export const FastVoucherHeaderRibbon: React.FC<FastVoucherHeaderRibbonProps> = (
   entryDate,
   autoConfirm,
   onAutoConfirmChange,
+  autoConfirmLabel,
   isDrawerOpen,
   setIsDrawerOpen,
   moreDetailsBadgeCount,
@@ -268,7 +270,7 @@ export const FastVoucherHeaderRibbon: React.FC<FastVoucherHeaderRibbonProps> = (
               onChange={(e) => onAutoConfirmChange(e.target.checked)}
               style={{ cursor: 'pointer', width: 14, height: 14 }}
             />
-            <span>Inward Stock</span>
+            <span>{autoConfirmLabel || 'Inward Stock'}</span>
           </label>
         )}
 

@@ -26,3 +26,5 @@ export * from './VoucherTotalsSummary';
 export * from './VoucherParkedBillsModal';
 export * from './useVoucherParking';
 export * from './voucherTaxEngine';
+export * from './voucherTrackingPolicy';
+export * from './fastVoucherUnitUtils';

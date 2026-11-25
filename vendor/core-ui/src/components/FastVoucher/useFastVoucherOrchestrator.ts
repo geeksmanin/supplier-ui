@@ -13,6 +13,8 @@ import { useFastVoucherCatalogSearch } from './useFastVoucherCatalogSearch';
 import { useToast } from '../Toast/Toast';
 import { saveFormDraft } from '../../utils/draftStore';
 import { apiClient } from '../../api/client';
+import { resolveVoucherTrackingModes } from './voucherTrackingPolicy';
+import { resolveCatalogPackagings } from './fastVoucherUnitUtils';
 
 // Helper to sanitize product variant attributes so nested GORM models / objects are flattened to strings,
 // preventing React child render crashes and localeCompare crashes in matrix modals.
@@ -98,7 +100,9 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     voucherDate,
     partyConfig,
     catalogConfig,
-    batchMode = 'none',
+    batchMode: explicitBatchMode,
+    serialMode: explicitSerialMode,
+    trackingPolicyMap,
     selectedParty,
     onPartySelect,
     items,
@@ -110,6 +114,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     documentDiscountAmount = 0,
     documentDiscountPercent = 0,
     shippingCharges = 0,
+    otherCharges = 0,
     isRoundOffEnabled = true,
     onSave,
     enableBillParking = true,
@@ -122,6 +127,12 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     moreDetails,
     onRestoreDraft,
   } = props;
+
+  // Config-driven batch & serial tracking policy resolution
+  const { batchMode: resolvedBatchMode, serialMode: resolvedSerialMode } = useMemo(
+    () => resolveVoucherTrackingModes(voucherType, explicitBatchMode, explicitSerialMode, trackingPolicyMap),
+    [voucherType, explicitBatchMode, explicitSerialMode, trackingPolicyMap]
+  );
 
   // Navigation & focus refs
   const partyInputRef = useRef<HTMLInputElement>(null);
@@ -172,6 +183,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
       documentDiscountAmount,
       documentDiscountPercent,
       shippingCharges,
+      otherCharges,
       isRoundOffEnabled,
     },
     isEdit: Boolean(isEdit || !draftKey),
@@ -302,13 +314,37 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
       isOpen: isInternalMatrixOpen,
       product: internalMatrixProduct,
       onClose: closeVariantMatrix,
-      onAddVariants: (newItems) => {
-        if (onAddItems) onAddItems(newItems);
-        else newItems.forEach((it) => onAddItem(it));
+      onAddVariants: async (newItems) => {
+        let resolvedItems = newItems;
+        if (catalogConfig?.resolveTaxRate) {
+          resolvedItems = await Promise.all(
+            newItems.map(async (it) => {
+              if (Number(it.tax_percent || 0) > 0) return it;
+              try {
+                const rate = Number((await catalogConfig.resolveTaxRate?.(it)) || 0);
+                if (rate <= 0) return it;
+                const qty = Number(it.quantity) || 0;
+                const price = Number(it.unit_price) || 0;
+                const taxable = Math.max(0, qty * price - Number(it.discount_amount || 0));
+                const taxAmt = +((taxable * rate) / 100).toFixed(2);
+                return {
+                  ...it,
+                  tax_percent: rate,
+                  tax_amount: taxAmt,
+                  line_total: +(taxable + taxAmt).toFixed(2),
+                };
+              } catch {
+                return it;
+              }
+            })
+          );
+        }
+        if (onAddItems) onAddItems(resolvedItems);
+        else resolvedItems.forEach((it) => onAddItem(it));
         closeVariantMatrix();
       },
     });
-  }, [props.renderVariantMatrix, catalogConfig?.renderVariantMatrix, isInternalMatrixOpen, internalMatrixProduct, closeVariantMatrix, onAddItems, onAddItem]);
+  }, [props.renderVariantMatrix, catalogConfig?.renderVariantMatrix, catalogConfig?.resolveTaxRate, isInternalMatrixOpen, internalMatrixProduct, closeVariantMatrix, onAddItems, onAddItem]);
 
   // 6. Navigation to Product Creation (In-App)
   const { showToast } = useToast();
@@ -468,7 +504,15 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
       rawProduct.sale_price ?? rawProduct.salePrice ?? rawProduct.price ?? rawProduct.selling_price ?? rawProduct.unit_cost ?? rawProduct.mrp ?? 0
     );
     const hsnCode = String(rawProduct.hsn || rawProduct.hsn_code || rawProduct.product?.hsn || rawProduct.product?.hsn_code || '');
-    let taxRate = Number(rawProduct.tax_percent ?? rawProduct.tax_rate ?? rawProduct.gst_rate ?? 0);
+    let taxRate = Number(
+      rawProduct.tax_percent ??
+      rawProduct.tax_rate ??
+      rawProduct.gst_rate ??
+      rawProduct.product?.tax_percent ??
+      rawProduct.product?.tax_rate ??
+      rawProduct.product?.gst_rate ??
+      0
+    );
 
     if (taxRate === 0 && catalogConfig?.resolveTaxRate) {
       try {
@@ -481,15 +525,17 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
       }
     }
 
-    const packagings = rawProduct.packagings || [
-      { name: rawProduct.packaging_name || 'Unit', size: Number(rawProduct.packaging_size || 1), is_default: true },
-    ];
+    const {
+      packagings: resolvedPackagings,
+      defaultName: resolvedUnitName,
+      defaultSize: resolvedUnitSize,
+    } = resolveCatalogPackagings(rawProduct);
 
     const batches = rawProduct.batches || rawProduct.stock_batches || [];
     let initialBatchCode = rawProduct.batch_code || '';
     let initialExpiry = rawProduct.expiry_date || '';
 
-    if (batchMode === 'select' && Array.isArray(batches) && batches.length > 0) {
+    if (resolvedBatchMode === 'select' && Array.isArray(batches) && batches.length > 0) {
       const sortedBatches = [...batches].sort((a: any, b: any) => {
         if (!a.expiry_date) return 1;
         if (!b.expiry_date) return -1;
@@ -512,15 +558,18 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
       product_name: pName,
       image_url: rawProduct.image_url || rawProduct.product?.image_url,
       quantity: 1,
-      packaging_name: packagings[0]?.name || 'Unit',
-      packaging_size: packagings[0]?.size || 1,
-      packagings,
+      packaging_name: resolvedUnitName,
+      packaging_size: resolvedUnitSize,
+      packagings: resolvedPackagings,
       batch_code: initialBatchCode,
       expiry_date: initialExpiry,
       is_batch_tracking_enabled: Boolean(rawProduct.is_batch_tracking_enabled || rawProduct.product?.is_batch_tracking_enabled),
+      is_serial_tracking_enabled: Boolean(rawProduct.is_serial_tracking_enabled || rawProduct.product?.is_serial_tracking_enabled),
       is_expiry_enabled: Boolean(rawProduct.is_expiry_enabled || rawProduct.product?.is_expiry_enabled),
       metadata: {
         ...(rawProduct.metadata || {}),
+        unit: rawProduct.unit || rawProduct.base_unit || resolvedUnitName,
+        base_unit: rawProduct.base_unit || rawProduct.unit || resolvedUnitName,
         batches,
         available_quantity: currentStock,
       },
@@ -659,6 +708,8 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     handleCommitStepperItem,
     memoizedStepperBatches,
     handleNavigateToCreateProduct,
+    resolvedBatchMode,
+    resolvedSerialMode,
   };
 }
 

@@ -45,6 +45,7 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
     documentDiscountAmount = 0,
     documentDiscountPercent = 0,
     shippingCharges = 0,
+    otherCharges = 0,
     isRoundOffEnabled = true,
     onSave,
     onCancel,
@@ -98,6 +99,8 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
     handleCommitStepperItem,
     memoizedStepperBatches,
     handleNavigateToCreateProduct,
+    resolvedBatchMode,
+    resolvedSerialMode,
   } = useFastVoucherOrchestrator(props);
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -127,6 +130,7 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
       documentDiscountAmount,
       documentDiscountPercent,
       shippingCharges,
+      otherCharges,
       isRoundOffEnabled,
       taxInclusive: pricingConfig.taxInclusive,
     });
@@ -139,6 +143,7 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
     documentDiscountAmount,
     documentDiscountPercent,
     shippingCharges,
+    otherCharges,
     isRoundOffEnabled,
     pricingConfig.taxInclusive,
   ]);
@@ -542,7 +547,8 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
             <VoucherQuickRowStepper
               isOpen={isStepperOpen}
               item={activeStepperItem}
-              batchMode={batchMode}
+              batchMode={resolvedBatchMode}
+              serialMode={resolvedSerialMode}
               allowRateOverride={pricingConfig.allowRateOverride}
               onOpenStockDrilldown={(it) => onOpenStockDrilldown?.(it as any)}
               stockBatches={memoizedStepperBatches}
@@ -593,9 +599,17 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
                   <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {it.product_name}
                   </div>
-                  <div style={{ fontSize: 11, color: '#64748B', display: 'flex', gap: 6, marginTop: 1 }}>
+                  <div style={{ fontSize: 11, color: '#64748B', display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 1 }}>
                     <span>₹{Number(it.unit_price || 0).toLocaleString()}</span>
                     <span>• Tax: {it.tax_percent || 0}%</span>
+                    {it.batch_code && it.batch_code !== 'DEFAULT' && (
+                      <span>• Batch: {it.batch_code}</span>
+                    )}
+                    {Array.isArray(it.serial_numbers) && it.serial_numbers.length > 0 && (
+                      <span style={{ color: '#0F766E', fontWeight: 600 }}>
+                        • SN: {it.serial_numbers.length}/{it.quantity}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -604,6 +618,7 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
                   <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 6, border: '1px solid #CBD5E1' }}>
                     <button
                       type="button"
+                      disabled={Boolean(it.is_serial_tracking_enabled || (Array.isArray(it.serial_numbers) && it.serial_numbers.length > 0))}
                       onClick={() => {
                         const newQty = Math.max(1, Number(it.quantity || 1) - 1);
                         const rate = Number(it.unit_price || 0);
@@ -617,7 +632,7 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
                           line_total: baseAmt + taxAmt,
                         });
                       }}
-                      style={{ padding: '3px 6px', background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
+                      style={{ padding: '3px 6px', background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', opacity: (it.is_serial_tracking_enabled || (Array.isArray(it.serial_numbers) && it.serial_numbers.length > 0)) ? 0.35 : 1 }}
                     >
                       <Minus size={11} />
                     </button>
@@ -626,6 +641,7 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
                     </span>
                     <button
                       type="button"
+                      disabled={Boolean(it.is_serial_tracking_enabled || (Array.isArray(it.serial_numbers) && it.serial_numbers.length > 0))}
                       onClick={() => {
                         const newQty = Number(it.quantity || 1) + 1;
                         const rate = Number(it.unit_price || 0);
@@ -639,7 +655,7 @@ export const FastVoucherCardMobile: React.FC<FastVoucherCardProps> = (props) => 
                           line_total: baseAmt + taxAmt,
                         });
                       }}
-                      style={{ padding: '3px 6px', background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
+                      style={{ padding: '3px 6px', background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', opacity: (it.is_serial_tracking_enabled || (Array.isArray(it.serial_numbers) && it.serial_numbers.length > 0)) ? 0.35 : 1 }}
                     >
                       <Plus size={11} />
                     </button>

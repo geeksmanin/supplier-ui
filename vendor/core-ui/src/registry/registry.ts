@@ -53,6 +53,16 @@ export interface NotificationOpenerConfig {
   ) => void | boolean | Promise<void | boolean>;
 }
 
+export interface PartyDataBridge {
+  fetchSubscriptions?: (orgId: string) => Promise<any[]>;
+  fetchSalesOrders?: (orgId: string, params?: any) => Promise<any[]>;
+  fetchSalesInvoices?: (orgId: string, params?: any) => Promise<any[]>;
+  fetchSalesChallans?: (orgId: string, params?: any) => Promise<any[]>;
+  fetchAccountingMappings?: () => Promise<any[]>;
+  fetchAccountingJournalLines?: (params: any) => Promise<any[]>;
+  fetchAccountingLedgerStatement?: (params: any) => Promise<any>;
+}
+
 type RegistryListener = () => void;
 
 class UIRegistryClass {
@@ -60,6 +70,7 @@ class UIRegistryClass {
   private navItems: NavItemConfig[] = [];
   private searchItems: SearchItemConfig[] = [];
   private notificationOpeners: NotificationOpenerConfig[] = [];
+  private partyDataBridge: PartyDataBridge = {};
   private listeners: Set<RegistryListener> = new Set();
 
   subscribe(listener: RegistryListener) {
@@ -151,6 +162,15 @@ class UIRegistryClass {
       }
     }
     return false;
+  }
+
+  registerPartyDataBridge(provider: Partial<PartyDataBridge>) {
+    this.partyDataBridge = { ...this.partyDataBridge, ...provider };
+    this.notify();
+  }
+
+  getPartyDataBridge(): PartyDataBridge {
+    return this.partyDataBridge;
   }
 }
 
