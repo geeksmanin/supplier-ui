@@ -50,11 +50,32 @@ public class DevServerPlugin extends Plugin {
         return null;
     }
 
+    private static String normalizeUrl(String url) {
+        if (url == null) return "";
+        String trimmed = url.trim();
+        while (trimmed.endsWith("/")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        }
+        return trimmed;
+    }
+
+    private boolean isDefaultServerUrl(String url, String defaultUrl) {
+        String normUrl = normalizeUrl(url);
+        String normDefault = normalizeUrl(defaultUrl);
+        return !normUrl.isEmpty() && !normDefault.isEmpty() && normUrl.equalsIgnoreCase(normDefault);
+    }
+
     @PluginMethod
     public void getServerUrl(PluginCall call) {
         SharedPreferences prefs = getContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         String customUrl = prefs.getString(KEY_SERVER_URL, null);
         String defaultUrl = getBridge() != null ? getBridge().getServerUrl() : "";
+
+        // Self-heal stale default URL stored as custom_server_url
+        if (customUrl != null && isDefaultServerUrl(customUrl, defaultUrl)) {
+            prefs.edit().remove(KEY_SERVER_URL).apply();
+            customUrl = null;
+        }
 
         JSObject ret = new JSObject();
         ret.put("url", (customUrl != null && !customUrl.isEmpty()) ? customUrl : defaultUrl);
@@ -72,7 +93,23 @@ public class DevServerPlugin extends Plugin {
         }
 
         String cleanUrl = url.trim();
+        String defaultUrl = getBridge() != null ? getBridge().getServerUrl() : "";
         SharedPreferences prefs = getContext().getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+
+        if (isDefaultServerUrl(cleanUrl, defaultUrl)) {
+            prefs.edit().remove(KEY_SERVER_URL).apply();
+            String targetUrl = (defaultUrl != null && !defaultUrl.trim().isEmpty()) ? defaultUrl.trim() : cleanUrl;
+            if (getActivity() != null) {
+                getActivity().runOnUiThread(() -> {
+                    if (getBridge() != null && getBridge().getWebView() != null) {
+                        getBridge().getWebView().loadUrl(targetUrl);
+                    }
+                });
+            }
+            call.resolve();
+            return;
+        }
+
         prefs.edit().putString(KEY_SERVER_URL, cleanUrl).apply();
 
         // Reload the WebView to the new target URL
