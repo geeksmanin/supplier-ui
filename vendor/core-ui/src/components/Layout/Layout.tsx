@@ -11,6 +11,8 @@ import { NotificationProvider, NotificationDrawer, NotificationToastContainer, u
 import { useToast } from '../Toast/Toast';
 import { NativeContainer } from '../../native/NativeContainer';
 import { BranchProvider } from '../../context/BranchContext';
+import { ConfirmModal } from '../ConfirmModal';
+import { hasDirtyTabGuard, checkDirtyTabs } from '../../hooks/useUnsavedChangesGuard';
 
 export interface NavItem {
   id?: string;
@@ -112,7 +114,7 @@ const resolveTabTitle = (path: string, navItems: NavItem[], routes: RouteConfig[
   }
 
   const baseTitle = bestMatch.label;
-  
+
   if (cleanPath.endsWith('/new')) {
     const singleName = baseTitle.endsWith('ies') ? baseTitle.slice(0, -3) + 'y' : baseTitle.endsWith('s') ? baseTitle.slice(0, -1) : baseTitle;
     return `New ${singleName}`;
@@ -193,6 +195,11 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
   const location = useLocation();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const [tabCloseConfirm, setTabCloseConfirm] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   const [registryNavItems, setRegistryNavItems] = React.useState<NavItem[]>(() => {
     return UIRegistry.getNavItems().map(item => ({
@@ -364,11 +371,11 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
       return currentList;
     });
     setActiveTabPath(cleanPath);
-  // NOTE: location.search is intentionally excluded from deps.
-  // Tabs are keyed by pathname only. Including location.search caused the entire
-  // layout to re-render whenever a query param changed (e.g. ?page=2&limit=20),
-  // making pagination feel like a full page reload.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // NOTE: location.search is intentionally excluded from deps.
+    // Tabs are keyed by pathname only. Including location.search caused the entire
+    // layout to re-render whenever a query param changed (e.g. ?page=2&limit=20),
+    // making pagination feel like a full page reload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, finalNavItems]);
 
   React.useEffect(() => {
@@ -393,7 +400,7 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
     };
   }, [location.pathname]);
 
-  const handleCloseTab = (pathClose: string, destinationPath?: string) => {
+  const performCloseTab = (pathClose: string, destinationPath?: string) => {
     let cleanClose = (pathClose || '').split('?')[0];
     if (cleanClose.startsWith('#')) cleanClose = cleanClose.replace(/^#/, '');
 
@@ -423,7 +430,26 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
     }
   };
 
-  const handleCloseAllTabs = () => {
+  const handleCloseTab = (pathClose: string, destinationPath?: string) => {
+    let cleanClose = (pathClose || '').split('?')[0];
+    if (cleanClose.startsWith('#')) cleanClose = cleanClose.replace(/^#/, '');
+    const targetPath = (cleanClose && cleanClose !== '/') ? cleanClose : (activeTabPath || location.pathname);
+    const guard = hasDirtyTabGuard(targetPath);
+    if (guard.dirty) {
+      setTabCloseConfirm({
+        title: 'Discard unsaved changes?',
+        message: guard.message || 'This tab has unsaved changes. Closing it now will discard your work.',
+        onConfirm: () => {
+          setTabCloseConfirm(null);
+          performCloseTab(pathClose, destinationPath);
+        },
+      });
+      return;
+    }
+    performCloseTab(pathClose, destinationPath);
+  };
+
+  const performCloseAllTabs = () => {
     const dashTab = tabsRef.current.find(t => t.path === '/dashboard');
     if (dashTab) {
       tabsRef.current = [dashTab];
@@ -441,6 +467,23 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
       setTabs([defaultTab]);
     }
     navigate('/dashboard');
+  };
+
+  const handleCloseAllTabs = () => {
+    const openPaths = tabsRef.current.map(t => t.path);
+    const guard = checkDirtyTabs(openPaths);
+    if (guard.dirty) {
+      setTabCloseConfirm({
+        title: 'Discard unsaved changes?',
+        message: guard.message || 'One or more open tabs have unsaved changes. Close all tabs anyway?',
+        onConfirm: () => {
+          setTabCloseConfirm(null);
+          performCloseAllTabs();
+        },
+      });
+      return;
+    }
+    performCloseAllTabs();
   };
 
   React.useEffect(() => {
@@ -495,9 +538,9 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
 
     // Periodically check for updates via the REST API (Desktop/Wails mode only)
     const isDesktop = !!(window as any).wails ||
-                      window.location.hostname === 'wails' ||
-                      window.location.protocol === 'wails:' ||
-                      window.location.hostname.includes('wails');
+      window.location.hostname === 'wails' ||
+      window.location.protocol === 'wails:' ||
+      window.location.hostname.includes('wails');
 
     if (!isDesktop) {
       return () => {
@@ -557,9 +600,9 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
 
   const handleUpdate = async () => {
     const isDesktop = !!(window as any).wails ||
-                      window.location.hostname === 'wails' ||
-                      window.location.protocol === 'wails:' ||
-                      window.location.hostname.includes('wails');
+      window.location.hostname === 'wails' ||
+      window.location.protocol === 'wails:' ||
+      window.location.hostname.includes('wails');
     if (isDesktop) {
       try {
         await apiClient.post('/runtime/trigger-update');
@@ -651,7 +694,8 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
 
   return (
     <>
-      <style dangerouslySetInnerHTML={{__html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes slide-up-right {
           from { transform: translateY(30px) scale(0.95); opacity: 0; }
           to { transform: translateY(0) scale(1); opacity: 1; }
@@ -813,6 +857,18 @@ const LayoutInner: React.FC<CustomLayoutProps> = ({ children, customNavItems }) 
         onNavigate={(path) => navigate(path)}
       />
       <NotificationToastContainer onNavigate={(path) => navigate(path)} />
+      {tabCloseConfirm && (
+        <ConfirmModal
+          isOpen={true}
+          title={tabCloseConfirm.title}
+          message={tabCloseConfirm.message}
+          confirmText="Close Tab"
+          cancelText="Stay"
+          variant="danger"
+          onConfirm={tabCloseConfirm.onConfirm}
+          onCancel={() => setTabCloseConfirm(null)}
+        />
+      )}
     </>
   );
 };

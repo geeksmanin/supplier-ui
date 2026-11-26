@@ -109,6 +109,8 @@ export interface VoucherLineItem {
   unit_price: number;
   tax_percent: number;
   tax_amount: number;
+  discount_type?: 'FIXED' | 'PERCENTAGE';
+  discount_value?: number;
   discount_percent: number;
   discount_amount: number;
   line_total: number;
@@ -120,6 +122,8 @@ export interface VoucherLineItem {
 export interface VoucherSummary {
   subtotal: number;
   discount_total: number;
+  itemDiscountsTotal?: number;
+  documentDiscountTotal?: number;
   shipping_charges: number;
   other_charges?: number;
   tax_breakup: {
@@ -214,6 +218,7 @@ export interface FastVoucherEntryLayoutProps {
   // Draft Auto-Save & Banner (IndexedDB)
   draftKey?: string;
   isEdit?: boolean;
+  isDirty?: boolean;
   moreDetails?: any;
   onRestoreDraft?: (draft: any) => void;
 

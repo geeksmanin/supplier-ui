@@ -33,7 +33,9 @@ export function useVoucherQuickRowStepper({
   const [availableSerials, setAvailableSerials] = useState<string[]>([]);
   const [mrp, setMrp] = useState<number>(0);
   const [unitPrice, setUnitPrice] = useState<number>(0);
+  const [discountMode, setDiscountMode] = useState<'flat' | 'percent'>('percent');
   const [discountPercent, setDiscountPercent] = useState<number>(0);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [taxPercent, setTaxPercent] = useState<number>(0);
   const [dynamicBatches, setDynamicBatches] = useState<Array<{ batch_code: string; expiry_date?: string; mrp?: number; available_quantity?: number }>>([]);
   const [liveStock, setLiveStock] = useState<number | null>(null);
@@ -75,7 +77,20 @@ export function useVoucherQuickRowStepper({
     setAvailableSerials([]);
     setMrp(item.mrp || 0);
     setUnitPrice(item.unit_price || 0);
-    setDiscountPercent(item.discount_percent || 0);
+    const hasFlatDiscount =
+      item.discount_type === 'FIXED' ||
+      (Number(item.discount_amount) > 0 && !(Number(item.discount_percent) > 0));
+    if (hasFlatDiscount) {
+      setDiscountMode('flat');
+      setDiscountAmount(Number(item.discount_amount ?? item.discount_value ?? 0));
+      setDiscountPercent(0);
+    } else {
+      setDiscountMode('percent');
+      setDiscountPercent(
+        Number(item.discount_percent ?? (item.discount_type === 'PERCENTAGE' ? item.discount_value : 0) ?? 0)
+      );
+      setDiscountAmount(0);
+    }
     setTaxPercent(item.tax_percent ?? 0);
     setLiveStock(item.metadata?.available_quantity !== undefined ? Number(item.metadata.available_quantity) : null);
 
@@ -185,12 +200,16 @@ export function useVoucherQuickRowStepper({
   const calculations = useMemo(() => {
     const rawQty = Math.max(0, Number(qty) || 0);
     const rawRate = Math.max(0, Number(unitPrice) || 0);
-    const rawDisc = Math.min(100, Math.max(0, Number(discountPercent) || 0));
+    const rawDiscPct = Math.min(100, Math.max(0, Number(discountPercent) || 0));
+    const rawDiscAmt = Math.max(0, Number(discountAmount) || 0);
     const taxRate = Math.max(0, Number(taxPercent || 0));
 
     const isInclusive = Boolean(item?.tax_inclusive ?? item?.metadata?.is_price_tax_inclusive);
     const baseAmount = rawQty * rawRate;
-    const discAmount = (baseAmount * rawDisc) / 100;
+    const discAmount =
+      discountMode === 'flat'
+        ? Math.min(baseAmount, rawDiscAmt)
+        : (baseAmount * rawDiscPct) / 100;
     const grossAfterDisc = Math.max(0, baseAmount - discAmount);
 
     let taxableAmount = grossAfterDisc;
@@ -209,7 +228,22 @@ export function useVoucherQuickRowStepper({
       taxAmount: Number(taxAmount.toFixed(2)),
       lineTotal: Number(lineTotal.toFixed(2)),
     };
-  }, [qty, unitPrice, discountPercent, taxPercent, item]);
+  }, [qty, unitPrice, discountMode, discountPercent, discountAmount, taxPercent, item]);
+
+  const handleDiscountModeChange = (nextMode: 'flat' | 'percent') => {
+    if (nextMode === discountMode) return;
+    const base = Math.max(0, Number(qty) || 0) * Math.max(0, Number(unitPrice) || 0);
+    if (nextMode === 'flat') {
+      const converted = base > 0 ? +((base * (Number(discountPercent) || 0)) / 100).toFixed(2) : 0;
+      setDiscountAmount(converted);
+      setDiscountPercent(0);
+    } else {
+      const convertedPct = base > 0 ? +(((Number(discountAmount) || 0) / base) * 100).toFixed(2) : 0;
+      setDiscountPercent(Math.min(100, convertedPct));
+      setDiscountAmount(0);
+    }
+    setDiscountMode(nextMode);
+  };
 
   const handlePackagingChange = (opt: VoucherPackagingOption) => {
     setPackagingName(opt.name);
@@ -275,7 +309,9 @@ export function useVoucherQuickRowStepper({
       unit_price: Number(unitPrice),
       tax_percent: Number(taxPercent || 0),
       tax_amount: calculations.taxAmount,
-      discount_percent: Number(discountPercent),
+      discount_type: discountMode === 'flat' ? 'FIXED' : 'PERCENTAGE',
+      discount_value: discountMode === 'flat' ? Number(calculations.discAmount) : Number(discountPercent),
+      discount_percent: discountMode === 'percent' ? Number(discountPercent) : 0,
       discount_amount: calculations.discAmount,
       line_total: calculations.lineTotal,
       hsn_code: item.hsn_code,
@@ -310,8 +346,12 @@ export function useVoucherQuickRowStepper({
     setMrp,
     unitPrice,
     setUnitPrice,
+    discountMode,
+    handleDiscountModeChange,
     discountPercent,
     setDiscountPercent,
+    discountAmount,
+    setDiscountAmount,
     taxPercent,
     setTaxPercent,
     liveStock,
