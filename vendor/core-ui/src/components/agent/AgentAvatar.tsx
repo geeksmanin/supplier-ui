@@ -1,6 +1,6 @@
 import React from 'react';
 import { VerifiedBlueTick } from './VerifiedBlueTick';
-import { Support3DIcon } from '../icons3d/Support3DIcon';
+import { ModernTicketIcon } from '../icons3d/ModernTicketIcon';
 
 export interface AgentAvatarProps {
   size?: number;
@@ -20,7 +20,7 @@ export const AgentAvatar: React.FC<AgentAvatarProps> = ({
   const tickSize = Math.max(12, Math.round(size * 0.38));
 
   const renderIcon = () => {
-    // 0. High-definition 3D volumetric glyph for Support Agent
+    // 0. Clean modern vector glyph for Support Agent
     if (
       icon === 'ticket' ||
       icon === 'agent-ticket' ||
@@ -30,7 +30,7 @@ export const AgentAvatar: React.FC<AgentAvatarProps> = ({
       icon === '🎫'
     ) {
       const s = Math.round(size * 0.72);
-      return <Support3DIcon size={s} />;
+      return <ModernTicketIcon size={s} />;
     }
 
     // 1. High-definition vector glyph for Support / Triage Agent
