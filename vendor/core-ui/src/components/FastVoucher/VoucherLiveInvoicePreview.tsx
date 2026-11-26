@@ -32,6 +32,7 @@ export interface VoucherLiveInvoicePreviewProps {
   onOtherChargesChange?: (charges: number) => void;
   isRoundOffEnabled?: boolean;
   onRoundOffToggle?: (enabled: boolean) => void;
+  taxInclusive?: boolean;
   discountInputRef?: React.RefObject<HTMLInputElement | null>;
   freightInputRef?: React.RefObject<HTMLInputElement | null>;
   otherChargesInputRef?: React.RefObject<HTMLInputElement | null>;
@@ -62,6 +63,7 @@ export const VoucherLiveInvoicePreview: React.FC<VoucherLiveInvoicePreviewProps>
   onOtherChargesChange,
   isRoundOffEnabled = true,
   onRoundOffToggle,
+  taxInclusive,
   discountInputRef,
   freightInputRef,
   otherChargesInputRef,
@@ -82,8 +84,9 @@ export const VoucherLiveInvoicePreview: React.FC<VoucherLiveInvoicePreviewProps>
       shippingCharges,
       otherCharges,
       isRoundOffEnabled,
+      taxInclusive: taxInclusive ?? true,
     });
-  }, [items, party, companyGstin, companyStateCode, documentDiscountAmount, documentDiscountPercent, shippingCharges, otherCharges, isRoundOffEnabled]);
+  }, [items, party, companyGstin, companyStateCode, documentDiscountAmount, documentDiscountPercent, shippingCharges, otherCharges, isRoundOffEnabled, taxInclusive]);
 
   // Use external summary if provided by parent, otherwise computed
   const activeSummary = externalSummary || computed;
