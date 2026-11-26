@@ -17,6 +17,7 @@ import {
   Invoices3DIcon,
   Accounts3DIcon,
   Inventory3DIcon,
+  StockLedger3DIcon,
   WMS3DIcon,
   CRM3DIcon,
   Chat3DIcon,
@@ -175,6 +176,9 @@ export const LayoutDesktop: React.FC<any> = ({
     }
     if (p.includes('catalogue') || p.includes('category') || p.includes('brand') || p.includes('hsn')) {
       return <Catalogue3DIcon size={16} />;
+    }
+    if (p.includes('stock-ledger') || p.includes('inventory-ledger') || p === '/stock' || p.startsWith('/stock/')) {
+      return <StockLedger3DIcon size={16} />;
     }
     if (p.includes('inventory') || p.includes('item') || p.includes('stock')) {
       return <Inventory3DIcon size={16} />;
