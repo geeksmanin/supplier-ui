@@ -598,6 +598,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     const batches = rawProduct.batches || rawProduct.stock_batches || [];
     let initialBatchCode = rawProduct.batch_code || '';
     let initialExpiry = rawProduct.expiry_date || '';
+    let initialLocationId = rawProduct.location_id || '';
 
     if (resolvedBatchMode === 'select' && Array.isArray(batches) && batches.length > 0) {
       const sortedBatches = [...batches].sort((a: any, b: any) => {
@@ -607,6 +608,9 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
       });
       initialBatchCode = sortedBatches[0].batch_code || sortedBatches[0].batch_number || '';
       initialExpiry = sortedBatches[0].expiry_date || '';
+      if (sortedBatches[0].location_id) {
+        initialLocationId = String(sortedBatches[0].location_id);
+      }
     }
 
     const vIdStr = String(rawProduct.id || rawProduct.variant_id || '');
@@ -627,6 +631,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
       packagings: resolvedPackagings,
       batch_code: initialBatchCode,
       expiry_date: initialExpiry,
+      location_id: initialLocationId || undefined,
       is_batch_tracking_enabled: Boolean(rawProduct.is_batch_tracking_enabled || rawProduct.product?.is_batch_tracking_enabled),
       is_serial_tracking_enabled: Boolean(rawProduct.is_serial_tracking_enabled || rawProduct.product?.is_serial_tracking_enabled),
       is_expiry_enabled: Boolean(rawProduct.is_expiry_enabled || rawProduct.product?.is_expiry_enabled),
@@ -674,6 +679,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
       expiry_date: b.expiry_date,
       mrp: b.mrp,
       available_quantity: Number(b.available_quantity ?? b.quantity ?? 0),
+      location_id: b.location_id ? String(b.location_id) : undefined,
     }));
   }, [activeStepperItem?.metadata?.batches]);
 

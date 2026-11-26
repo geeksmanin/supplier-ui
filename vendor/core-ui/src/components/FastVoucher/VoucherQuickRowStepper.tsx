@@ -14,7 +14,7 @@ interface VoucherQuickRowStepperProps {
   batchMode?: VoucherBatchMode;
   serialMode?: VoucherSerialMode;
   allowRateOverride?: boolean;
-  stockBatches?: Array<{ batch_code: string; expiry_date?: string; mrp?: number; available_quantity?: number }>;
+  stockBatches?: Array<{ batch_code: string; expiry_date?: string; mrp?: number; available_quantity?: number; location_id?: string }>;
   onCommit: (item: VoucherLineItem) => void;
   onCancel: () => void;
   isEditMode?: boolean;
@@ -45,6 +45,7 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
     serialInputText,
     setSerialInputText,
     availableSerials,
+    serialError,
     handleAddSerialTags,
     handleRemoveSerialTag,
     handleToggleSelectSerial,
@@ -211,6 +212,7 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
         serialInputText={serialInputText}
         setSerialInputText={setSerialInputText}
         availableSerials={availableSerials}
+        serialError={serialError}
         handleAddSerialTags={handleAddSerialTags}
         handleRemoveSerialTag={handleRemoveSerialTag}
         handleToggleSelectSerial={handleToggleSelectSerial}
