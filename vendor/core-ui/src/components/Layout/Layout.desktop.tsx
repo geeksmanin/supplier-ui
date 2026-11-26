@@ -432,6 +432,15 @@ export const LayoutDesktop: React.FC<any> = ({
         return;
       }
 
+      // Alt+W: Close active tab (consults Layout dirty-tab guard before leaving)
+      if (e.altKey && !e.ctrlKey && !e.metaKey && e.key.toLowerCase() === 'w') {
+        if (activeTabPath && activeTabPath !== '/dashboard') {
+          e.preventDefault();
+          onCloseTab(activeTabPath);
+        }
+        return;
+      }
+
       if (isInput) return;
 
 
@@ -466,7 +475,7 @@ export const LayoutDesktop: React.FC<any> = ({
       window.removeEventListener('keydown', handleKeyDown, true);
       if (gTimeout) clearTimeout(gTimeout);
     };
-  }, [tabs, activeTabPath, onSelectTab]);
+  }, [tabs, activeTabPath, onSelectTab, onCloseTab]);
 
   useEffect(() => {
     if (searchOpen && searchInputRef.current) {
@@ -1410,146 +1419,147 @@ export const LayoutDesktop: React.FC<any> = ({
                     height: '100%',
                   }}
                 >
-                  <style dangerouslySetInnerHTML={{__html: `
+                  <style dangerouslySetInnerHTML={{
+                    __html: `
                     div::-webkit-scrollbar {
                       display: none;
                     }
                   `}} />
-                {(() => {
-                  const getTabColor = (path: string, isActive: boolean) => {
-                    const p = path.toLowerCase();
-                    if (p.includes('catalogue') || p.includes('products') || p.includes('variants') || p.includes('categories') || p.includes('groups') || p.includes('brands') || p.includes('hsn')) {
-                      return isActive 
-                        ? { bg: 'linear-gradient(to bottom, #fdf2f8, #fce7f3)', text: '#be185d', borderTop: '2.5px solid #db2777' }
-                        : { bg: '#fbcfe8', text: '#9d174d', borderTop: '2.5px solid transparent' };
-                    }
-                    if (p.includes('inventory') || p.includes('items') || p.includes('locations')) {
-                      return isActive 
-                        ? { bg: 'linear-gradient(to bottom, #faf5ff, #f3e8ff)', text: '#6d28d9', borderTop: '2.5px solid #7c3aed' }
-                        : { bg: '#e9d5ff', text: '#5b21b6', borderTop: '2.5px solid transparent' };
-                    }
-                    if (p.includes('crm') || p.includes('leads')) {
-                      return isActive 
-                        ? { bg: 'linear-gradient(to bottom, #f0fdf4, #dcfce7)', text: '#15803d', borderTop: '2.5px solid #16a34a' }
-                        : { bg: '#bbf7d0', text: '#166534', borderTop: '2.5px solid transparent' };
-                    }
-                    if (p.includes('subscription') || p.includes('license')) {
-                      return isActive 
+                  {(() => {
+                    const getTabColor = (path: string, isActive: boolean) => {
+                      const p = path.toLowerCase();
+                      if (p.includes('catalogue') || p.includes('products') || p.includes('variants') || p.includes('categories') || p.includes('groups') || p.includes('brands') || p.includes('hsn')) {
+                        return isActive
+                          ? { bg: 'linear-gradient(to bottom, #fdf2f8, #fce7f3)', text: '#be185d', borderTop: '2.5px solid #db2777' }
+                          : { bg: '#fbcfe8', text: '#9d174d', borderTop: '2.5px solid transparent' };
+                      }
+                      if (p.includes('inventory') || p.includes('items') || p.includes('locations')) {
+                        return isActive
+                          ? { bg: 'linear-gradient(to bottom, #faf5ff, #f3e8ff)', text: '#6d28d9', borderTop: '2.5px solid #7c3aed' }
+                          : { bg: '#e9d5ff', text: '#5b21b6', borderTop: '2.5px solid transparent' };
+                      }
+                      if (p.includes('crm') || p.includes('leads')) {
+                        return isActive
+                          ? { bg: 'linear-gradient(to bottom, #f0fdf4, #dcfce7)', text: '#15803d', borderTop: '2.5px solid #16a34a' }
+                          : { bg: '#bbf7d0', text: '#166534', borderTop: '2.5px solid transparent' };
+                      }
+                      if (p.includes('subscription') || p.includes('license')) {
+                        return isActive
+                          ? { bg: 'linear-gradient(to bottom, #eff6ff, #dbeafe)', text: '#1d4ed8', borderTop: '2.5px solid #2563eb' }
+                          : { bg: '#bfdbfe', text: '#1e40af', borderTop: '2.5px solid transparent' };
+                      }
+                      if (p.includes('sales')) {
+                        return isActive
+                          ? { bg: 'linear-gradient(to bottom, #fff1f2, #ffe4e6)', text: '#be123c', borderTop: '2.5px solid #e11d48' }
+                          : { bg: '#fecdd3', text: '#9f1239', borderTop: '2.5px solid transparent' };
+                      }
+                      if (p.includes('contact')) {
+                        return isActive
+                          ? { bg: 'linear-gradient(to bottom, #fff7ed, #ffedd5)', text: '#c2410c', borderTop: '2.5px solid #ea580c' }
+                          : { bg: '#fed7aa', text: '#9a3412', borderTop: '2.5px solid transparent' };
+                      }
+                      if (p.includes('location')) {
+                        return isActive
+                          ? { bg: 'linear-gradient(to bottom, #f0fdfa, #ccfbf1)', text: '#0f766e', borderTop: '2.5px solid #0d9488' }
+                          : { bg: '#99f6e4', text: '#115e59', borderTop: '2.5px solid transparent' };
+                      }
+                      return isActive
                         ? { bg: 'linear-gradient(to bottom, #eff6ff, #dbeafe)', text: '#1d4ed8', borderTop: '2.5px solid #2563eb' }
                         : { bg: '#bfdbfe', text: '#1e40af', borderTop: '2.5px solid transparent' };
-                    }
-                    if (p.includes('sales')) {
-                      return isActive 
-                        ? { bg: 'linear-gradient(to bottom, #fff1f2, #ffe4e6)', text: '#be123c', borderTop: '2.5px solid #e11d48' }
-                        : { bg: '#fecdd3', text: '#9f1239', borderTop: '2.5px solid transparent' };
-                    }
-                    if (p.includes('contact')) {
-                      return isActive 
-                        ? { bg: 'linear-gradient(to bottom, #fff7ed, #ffedd5)', text: '#c2410c', borderTop: '2.5px solid #ea580c' }
-                        : { bg: '#fed7aa', text: '#9a3412', borderTop: '2.5px solid transparent' };
-                    }
-                    if (p.includes('location')) {
-                      return isActive 
-                        ? { bg: 'linear-gradient(to bottom, #f0fdfa, #ccfbf1)', text: '#0f766e', borderTop: '2.5px solid #0d9488' }
-                        : { bg: '#99f6e4', text: '#115e59', borderTop: '2.5px solid transparent' };
-                    }
-                    return isActive 
-                      ? { bg: 'linear-gradient(to bottom, #eff6ff, #dbeafe)', text: '#1d4ed8', borderTop: '2.5px solid #2563eb' }
-                      : { bg: '#bfdbfe', text: '#1e40af', borderTop: '2.5px solid transparent' };
-                  };
+                    };
 
-                  return tabs.map((tab: any, idx: number) => {
-                    const isActive = tab.path === activeTabPath;
-                    const theme = getTabColor(tab.path, isActive);
-                    return (
-                      <div
-                        key={tab.path}
-                        onClick={() => onSelectTab(tab.path)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          padding: '0 8px',
-                          height: '24px',
-                          borderTop: theme.borderTop,
-                          borderLeft: '1px solid rgba(0, 0, 0, 0.08)',
-                          borderRight: '1px solid rgba(0, 0, 0, 0.08)',
-                          borderRadius: '5px 5px 0 0',
-                          cursor: 'pointer',
-                          fontSize: '0.74rem',
-                          fontWeight: isActive ? 600 : 500,
-                          color: theme.text,
-                          background: theme.bg,
-                          transition: 'all 0.15s ease',
-                          userSelect: 'none',
-                          marginBottom: '-1px',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isActive) e.currentTarget.style.filter = 'brightness(0.95)';
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isActive) e.currentTarget.style.filter = 'none';
-                        }}
-                      >
-                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {getTabIcon(tab.path)}
-                        </span>
-                        <span
+                    return tabs.map((tab: any, idx: number) => {
+                      const isActive = tab.path === activeTabPath;
+                      const theme = getTabColor(tab.path, isActive);
+                      return (
+                        <div
+                          key={tab.path}
+                          onClick={() => onSelectTab(tab.path)}
                           style={{
-                            maxWidth: '120px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            display: 'inline-block',
-                            verticalAlign: 'middle',
-                          }}
-                          title={tab.title}
-                        >
-                          {tab.title}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            onCloseTab(tab.path);
-                          }}
-                          onMouseDown={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                          }}
-                          onMouseUp={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                          }}
-                          style={{
-                            border: 'none',
-                            background: 'none',
-                            color: theme.text,
-                            opacity: 0.7,
-                            fontSize: '10px',
-                            cursor: 'pointer',
-                            width: '16px',
-                            height: '16px',
-                            display: 'inline-flex',
+                            display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            borderRadius: '50%',
-                            flexShrink: 0,
-                            padding: 0,
+                            gap: '5px',
+                            padding: '0 8px',
+                            height: '24px',
+                            borderTop: theme.borderTop,
+                            borderLeft: '1px solid rgba(0, 0, 0, 0.08)',
+                            borderRight: '1px solid rgba(0, 0, 0, 0.08)',
+                            borderRadius: '5px 5px 0 0',
+                            cursor: 'pointer',
+                            fontSize: '0.74rem',
+                            fontWeight: isActive ? 600 : 500,
+                            color: theme.text,
+                            background: theme.bg,
+                            transition: 'all 0.15s ease',
+                            userSelect: 'none',
+                            marginBottom: '-1px',
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.08)';
+                            if (!isActive) e.currentTarget.style.filter = 'brightness(0.95)';
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
+                            if (!isActive) e.currentTarget.style.filter = 'none';
                           }}
                         >
-                          ✕
-                        </button>
-                      </div>
-                    );
-                  });
-                })()}
+                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {getTabIcon(tab.path)}
+                          </span>
+                          <span
+                            style={{
+                              maxWidth: '120px',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              display: 'inline-block',
+                              verticalAlign: 'middle',
+                            }}
+                            title={tab.title}
+                          >
+                            {tab.title}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              onCloseTab(tab.path);
+                            }}
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                            }}
+                            onMouseUp={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                            }}
+                            style={{
+                              border: 'none',
+                              background: 'none',
+                              color: theme.text,
+                              opacity: 0.7,
+                              fontSize: '10px',
+                              cursor: 'pointer',
+                              width: '16px',
+                              height: '16px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: '50%',
+                              flexShrink: 0,
+                              padding: 0,
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.08)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
 
                 {/* Right Scroll Button */}
@@ -1632,7 +1642,7 @@ export const LayoutDesktop: React.FC<any> = ({
                   >
                     ▼
                   </button>
-                  
+
                   {tabSearchOpen && (
                     <div style={{
                       position: 'absolute',
@@ -1651,7 +1661,7 @@ export const LayoutDesktop: React.FC<any> = ({
                       gap: '8px',
                       fontFamily: 'Inter, system-ui, sans-serif',
                     }}
-                    onMouseLeave={() => setTabSearchOpen(false)}
+                      onMouseLeave={() => setTabSearchOpen(false)}
                     >
                       <input
                         type="text"
@@ -1877,7 +1887,7 @@ export const LayoutDesktop: React.FC<any> = ({
                 )}
 
                 {/* Segmented Pill Track */}
-                <div 
+                <div
                   ref={scrollContainerRef}
                   style={{
                     display: 'flex',
@@ -1893,7 +1903,8 @@ export const LayoutDesktop: React.FC<any> = ({
                     boxSizing: 'border-box'
                   }}
                 >
-                  <style dangerouslySetInnerHTML={{__html: `
+                  <style dangerouslySetInnerHTML={{
+                    __html: `
                     div::-webkit-scrollbar {
                       display: none;
                     }

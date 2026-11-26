@@ -115,3 +115,17 @@ export function findMatchingStateOption(
   return match;
 }
 
+/**
+ * Centralized overlay z-index stacking hierarchy above Layout chrome
+ * (Layout sticky top header = 100, sticky tab+subnav bar = 90).
+ */
+export const Z_INDEX = {
+  FULLSCREEN_PAGE: 110,
+  DROPDOWN: 115,
+  DRAWER_BACKDROP: 119,
+  DRAWER: 120,
+  MODAL_BACKDROP: 130,
+  MODAL: 131,
+  CONFIRM_MODAL: 100000,
+} as const;
+

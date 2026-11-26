@@ -51,8 +51,12 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
     handleToggleSelectSerial,
     unitPrice,
     setUnitPrice,
+    discountMode,
+    handleDiscountModeChange,
     discountPercent,
     setDiscountPercent,
+    discountAmount,
+    setDiscountAmount,
     taxPercent,
     setTaxPercent,
     liveStock,
@@ -214,8 +218,12 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
         handleToggleSelectSerial={handleToggleSelectSerial}
         unitPrice={unitPrice}
         setUnitPrice={setUnitPrice}
+        discountMode={discountMode}
+        handleDiscountModeChange={handleDiscountModeChange}
         discountPercent={discountPercent}
         setDiscountPercent={setDiscountPercent}
+        discountAmount={discountAmount}
+        setDiscountAmount={setDiscountAmount}
         qtyInputRef={qtyInputRef}
         packagingSelectRef={packagingSelectRef}
         batchInputRef={batchInputRef}
