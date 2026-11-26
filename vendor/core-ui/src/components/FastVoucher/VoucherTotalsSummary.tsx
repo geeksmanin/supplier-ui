@@ -14,6 +14,10 @@ export const VoucherTotalsSummary: React.FC<VoucherTotalsSummaryProps> = ({
 }) => {
   const [isTaxDetailsExpanded, setIsTaxDetailsExpanded] = useState(false);
 
+  const itemDiscounts = activeSummary.itemDiscountsTotal ?? computed.itemDiscountsTotal ?? 0;
+  const docDiscount = activeSummary.documentDiscountTotal ?? computed.documentDiscountTotal ?? 0;
+  const grossSubtotal = itemDiscounts > 0 ? +(activeSummary.subtotal + itemDiscounts).toFixed(2) : activeSummary.subtotal;
+
   const slabsList = Object.values(computed.taxSlabs).filter(
     (s) => s.taxableAmount > 0 || s.taxAmount > 0
   );
@@ -29,22 +33,29 @@ export const VoucherTotalsSummary: React.FC<VoucherTotalsSummaryProps> = ({
         fontSize: '0.8rem',
       }}
     >
+      {itemDiscounts > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
+          <span>Gross Amount:</span>
+          <strong>₹{grossSubtotal.toFixed(2)}</strong>
+        </div>
+      )}
+
+      {itemDiscounts > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', fontSize: '0.75rem' }}>
+          <span>Item Discounts:</span>
+          <span>-₹{itemDiscounts.toFixed(2)}</span>
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
         <span>Subtotal (Taxable):</span>
         <strong>₹{activeSummary.subtotal.toFixed(2)}</strong>
       </div>
 
-      {computed.itemDiscountsTotal > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', fontSize: '0.75rem' }}>
-          <span>Item Discounts:</span>
-          <span>-₹{computed.itemDiscountsTotal.toFixed(2)}</span>
-        </div>
-      )}
-
-      {computed.documentDiscountTotal > 0 && (
+      {docDiscount > 0 && (
         <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', fontSize: '0.75rem' }}>
           <span>Overall Discount:</span>
-          <span>-₹{computed.documentDiscountTotal.toFixed(2)}</span>
+          <span>-₹{docDiscount.toFixed(2)}</span>
         </div>
       )}
 

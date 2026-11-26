@@ -314,6 +314,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
               onOtherChargesChange={onOtherChargesChange}
               isRoundOffEnabled={isRoundOffEnabled}
               onRoundOffToggle={onRoundOffToggle}
+              taxInclusive={pricingConfig?.taxInclusive}
               discountInputRef={discountInputRef}
               freightInputRef={freightInputRef}
               onSave={onSave}
