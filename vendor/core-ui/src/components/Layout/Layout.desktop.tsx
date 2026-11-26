@@ -27,6 +27,7 @@ import {
   Automations3DIcon,
   HR3DIcon,
   Backupsync3DIcon,
+  CloudSync3DIcon,
   Pricing3DIcon,
   Requisition3DIcon,
   RFQ3DIcon,
@@ -197,6 +198,9 @@ export const LayoutDesktop: React.FC<any> = ({
     }
     if (p.includes('hr') || p.includes('staff') || p.includes('employee') || p.includes('designation')) {
       return <HR3DIcon size={16} />;
+    }
+    if (p.includes('cloud')) {
+      return <CloudSync3DIcon size={16} />;
     }
     if (p.includes('backup') || p.includes('sync')) {
       return <Backupsync3DIcon size={16} />;
