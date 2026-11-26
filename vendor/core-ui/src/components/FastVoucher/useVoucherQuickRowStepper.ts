@@ -193,7 +193,16 @@ export function useVoucherQuickRowStepper({
         const list = Array.isArray(detail.serials) ? detail.serials : [];
         const nextMeta: Record<string, { location_id?: string; batch_code?: string }> = {};
         const normalized = list
-          .map((s) => (typeof s === 'string' ? s : String(s?.barcode || s?.serial_no || '')))
+          .map((s) => {
+            const sn = typeof s === 'string' ? s : String(s?.barcode || s?.serial_no || '');
+            if (sn && typeof s === 'object' && s !== null) {
+              nextMeta[sn] = {
+                location_id: s.location_id ? String(s.location_id) : undefined,
+                batch_code: s.batch_code ? String(s.batch_code) : undefined,
+              };
+            }
+            return sn;
+          })
           .filter(Boolean);
         setSerialMetaMap(nextMeta);
         setAvailableSerials(normalized);
