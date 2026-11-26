@@ -10,6 +10,7 @@ export interface VoucherQuickRowStepperSerialSectionProps {
   serialInputText: string;
   setSerialInputText: (val: string) => void;
   availableSerials: string[];
+  serialError?: string;
   handleAddSerialTags: (raw: string) => void;
   handleRemoveSerialTag: (serial: string) => void;
   handleToggleSelectSerial: (serial: string) => void;
@@ -22,12 +23,15 @@ export const VoucherQuickRowStepperSerialSection: React.FC<VoucherQuickRowSteppe
   serialInputText,
   setSerialInputText,
   availableSerials,
+  serialError,
   handleAddSerialTags,
   handleRemoveSerialTag,
   handleToggleSelectSerial,
 }) => {
-  const targetCount = Math.round(Number(qty) || 0);
+  const targetCount = Math.max(0, Math.round(Number(qty) || 0));
   const countMatches = serialNumbers.length === targetCount;
+  const countExceeds = serialNumbers.length > targetCount;
+  const atLimit = targetCount > 0 && serialNumbers.length >= targetCount;
 
   return (
     <div
@@ -37,7 +41,7 @@ export const VoucherQuickRowStepperSerialSection: React.FC<VoucherQuickRowSteppe
         padding: '0.65rem 0.75rem',
         borderRadius: '8px',
         backgroundColor: '#f8fafc',
-        border: '1px solid #cbd5e1',
+        border: countExceeds ? '1px solid #fca5a5' : '1px solid #cbd5e1',
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
@@ -46,13 +50,14 @@ export const VoucherQuickRowStepperSerialSection: React.FC<VoucherQuickRowSteppe
           {serialMode === 'create' ? 'Serial Numbers (Scan / Enter)' : 'Select Serial Numbers'}
         </label>
         <span
+          data-testid="stepper-serial-count-badge"
           style={{
             fontSize: '0.7rem',
             fontWeight: 700,
             padding: '1px 7px',
             borderRadius: '9999px',
-            backgroundColor: countMatches ? '#dcfce7' : '#fef3c7',
-            color: countMatches ? '#166534' : '#92400e',
+            backgroundColor: countExceeds ? '#fee2e2' : (countMatches ? '#dcfce7' : '#fef3c7'),
+            color: countExceeds ? '#991b1b' : (countMatches ? '#166534' : '#92400e'),
           }}
         >
           {serialMode === 'create' ? 'Captured' : 'Selected'}: {serialNumbers.length} / {targetCount}
@@ -60,11 +65,16 @@ export const VoucherQuickRowStepperSerialSection: React.FC<VoucherQuickRowSteppe
       </div>
 
       {serialMode === 'create' ? (
-        <div style={{ display: 'flex', gap: '6px', marginBottom: serialNumbers.length > 0 ? '6px' : 0 }}>
+        <div style={{ display: 'flex', gap: '6px', marginBottom: (serialNumbers.length > 0 || serialError) ? '6px' : 0 }}>
           <input
             type="text"
             data-testid="stepper-serial-create-input"
-            placeholder="Scan barcode or enter serial numbers (comma / space separated) and press Enter"
+            disabled={atLimit}
+            placeholder={
+              atLimit
+                ? `Serial limit reached (${targetCount} / ${targetCount}) — increase Qty to add more`
+                : 'Scan barcode or enter serial numbers (comma / space separated) and press Enter'
+            }
             value={serialInputText}
             onChange={(e) => setSerialInputText(e.target.value)}
             onKeyDown={(e) => {
@@ -83,11 +93,14 @@ export const VoucherQuickRowStepperSerialSection: React.FC<VoucherQuickRowSteppe
               fontWeight: 600,
               borderRadius: '6px',
               border: '1px solid #cbd5e1',
-              backgroundColor: '#ffffff',
+              backgroundColor: atLimit ? '#f1f5f9' : '#ffffff',
+              color: atLimit ? '#94a3b8' : '#0f172a',
             }}
           />
           <button
             type="button"
+            data-testid="stepper-serial-add-btn"
+            disabled={atLimit}
             onClick={() => handleAddSerialTags(serialInputText)}
             style={{
               display: 'inline-flex',
@@ -98,18 +111,19 @@ export const VoucherQuickRowStepperSerialSection: React.FC<VoucherQuickRowSteppe
               fontWeight: 700,
               borderRadius: '6px',
               border: 'none',
-              backgroundColor: '#2563eb',
+              backgroundColor: atLimit ? '#94a3b8' : '#2563eb',
               color: '#ffffff',
-              cursor: 'pointer',
+              cursor: atLimit ? 'not-allowed' : 'pointer',
             }}
           >
             <Plus size={13} /> Add
           </button>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: serialNumbers.length > 0 ? '6px' : 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: (serialNumbers.length > 0 || serialError) ? '6px' : 0 }}>
           <Select
             value=""
+            disabled={atLimit}
             onChange={(val) => {
               const chosen = String(val);
               if (chosen) handleToggleSelectSerial(chosen);
@@ -118,12 +132,32 @@ export const VoucherQuickRowStepperSerialSection: React.FC<VoucherQuickRowSteppe
               .filter((sn) => !serialNumbers.includes(sn))
               .map((sn) => ({ value: sn, label: sn }))}
             placeholder={
-              availableSerials.length === 0
-                ? 'No AVAILABLE serials found for selected batch/location'
-                : `Select from ${availableSerials.length} available serial(s)...`
+              atLimit
+                ? `All ${targetCount} serial(s) selected`
+                : availableSerials.length === 0
+                  ? 'No AVAILABLE serials found for selected batch/location'
+                  : `Select from ${availableSerials.length} available serial(s)...`
             }
             style={{ fontSize: '0.8rem' }}
           />
+        </div>
+      )}
+
+      {serialError && (
+        <div
+          data-testid="stepper-serial-error"
+          style={{
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            color: '#991b1b',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '6px',
+            padding: '4px 8px',
+            marginBottom: serialNumbers.length > 0 ? '6px' : 0,
+          }}
+        >
+          {serialError}
         </div>
       )}
 

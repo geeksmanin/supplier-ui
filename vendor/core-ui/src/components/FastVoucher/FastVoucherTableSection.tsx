@@ -140,7 +140,7 @@ export const FastVoucherTableSection: React.FC<FastVoucherTableSectionProps> = (
                         )}
                         {row.expiry_date && (
                           <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#fae8ff', color: '#86198f', fontWeight: 600 }}>
-                            Exp: {row.expiry_date}
+                            Exp: {String(row.expiry_date).includes('T') ? String(row.expiry_date).slice(0, 10) : row.expiry_date}
                           </span>
                         )}
                         {Array.isArray(row.serial_numbers) && row.serial_numbers.length > 0 && (
@@ -172,7 +172,9 @@ export const FastVoucherTableSection: React.FC<FastVoucherTableSectionProps> = (
                       <td style={{ padding: '8px 8px' }}>
                         <span style={{ fontWeight: 600, color: '#334155' }}>{row.batch_code || '-'}</span>
                         {row.expiry_date && (
-                          <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Exp: {row.expiry_date}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                            Exp: {String(row.expiry_date).includes('T') ? String(row.expiry_date).slice(0, 10) : row.expiry_date}
+                          </div>
                         )}
                         {Array.isArray(row.serial_numbers) && row.serial_numbers.length > 0 && (
                           <div style={{ fontSize: '0.68rem', color: '#0f766e', fontWeight: 600, wordBreak: 'break-word' }}>
