@@ -306,5 +306,13 @@ if (typeof registerOperationalCard === 'function') {
   registerOperationalCard('operational_fast_voucher', FastVoucherOperationalCard as any);
 }
 
+export type {
+  InventoryStockUpdatedDetail,
+  InventoryBatchUpdatedItem,
+  InventoryBatchUpdatedDetail,
+  InventorySerialUpdatedItem,
+  InventorySerialUpdatedDetail,
+} from './types/inventoryEvents';
+
 
 
