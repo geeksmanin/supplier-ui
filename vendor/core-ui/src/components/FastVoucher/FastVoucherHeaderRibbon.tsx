@@ -35,6 +35,7 @@ interface FastVoucherHeaderRibbonProps {
   autoConfirmLabel?: string;
   notes?: string;
   onNotesChange?: (notes: string) => void;
+  hasMoreDetails?: boolean;
   isDrawerOpen: boolean;
   setIsDrawerOpen: (fn: (prev: boolean) => boolean) => void;
   moreDetailsBadgeCount: number;
@@ -76,6 +77,7 @@ export const FastVoucherHeaderRibbon: React.FC<FastVoucherHeaderRibbonProps> = (
   autoConfirm,
   onAutoConfirmChange,
   autoConfirmLabel,
+  hasMoreDetails,
   isDrawerOpen,
   setIsDrawerOpen,
   moreDetailsBadgeCount,
@@ -322,40 +324,42 @@ export const FastVoucherHeaderRibbon: React.FC<FastVoucherHeaderRibbonProps> = (
         )}
 
         {/* More Details (F3) */}
-        <button
-          type="button"
-          onClick={() => setIsDrawerOpen((prev) => !prev)}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px',
-            padding: '4px 8px',
-            borderRadius: '6px',
-            border: '1px solid #cbd5e1',
-            backgroundColor: isDrawerOpen ? '#eff6ff' : '#ffffff',
-            color: isDrawerOpen ? '#2563eb' : '#475569',
-            fontSize: '0.75rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <span>More Info</span>
-          {moreDetailsBadgeCount > 0 && (
-            <span
-              style={{
-                fontSize: '0.65rem',
-                backgroundColor: '#2563eb',
-                color: '#ffffff',
-                borderRadius: '9999px',
-                padding: '1px 5px',
-              }}
-            >
-              {moreDetailsBadgeCount}
-            </span>
-          )}
-          <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>[F3]</span>
-        </button>
+        {hasMoreDetails && (
+          <button
+            type="button"
+            onClick={() => setIsDrawerOpen((prev) => !prev)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '4px 8px',
+              borderRadius: '6px',
+              border: '1px solid #cbd5e1',
+              backgroundColor: isDrawerOpen ? '#eff6ff' : '#ffffff',
+              color: isDrawerOpen ? '#2563eb' : '#475569',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <span>More Info</span>
+            {moreDetailsBadgeCount > 0 && (
+              <span
+                style={{
+                  fontSize: '0.65rem',
+                  backgroundColor: '#2563eb',
+                  color: '#ffffff',
+                  borderRadius: '9999px',
+                  padding: '1px 5px',
+                }}
+              >
+                {moreDetailsBadgeCount}
+              </span>
+            )}
+            <span style={{ fontSize: '0.65rem', color: '#94a3b8' }}>[F3]</span>
+          </button>
+        )}
 
         {/* Park Bill (F6) & Recall (F7) */}
         {enableBillParking && (

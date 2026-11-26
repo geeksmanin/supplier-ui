@@ -1,13 +1,22 @@
 import React from 'react';
-import { Layers, Tag, Calendar, Percent } from 'lucide-react';
+import { Layers, Percent } from 'lucide-react';
 import { Select } from '../Select';
 import { VoucherQuickRowStepperSerialSection } from './VoucherQuickRowStepperSerialSection';
+import { VoucherQuickRowDiscountField } from './VoucherQuickRowDiscountField';
+import { VoucherQuickRowStepperBatchExpirySection } from './VoucherQuickRowStepperBatchExpirySection';
 import {
   VoucherLineItem,
   VoucherBatchMode,
   VoucherSerialMode,
   VoucherPackagingOption,
 } from './FastVoucherEntryLayout.types';
+
+function formatExpiryLabel(raw?: string): string {
+  if (!raw) return '';
+  const trimmed = String(raw).trim();
+  if (!trimmed) return '';
+  return trimmed.includes('T') ? trimmed.slice(0, 10) : trimmed;
+}
 
 interface VoucherQuickRowStepperInputsProps {
   item: Partial<VoucherLineItem>;
@@ -21,20 +30,25 @@ interface VoucherQuickRowStepperInputsProps {
   batchCode: string;
   setBatchCode: (code: string) => void;
   handleBatchSelect: (code: string) => void;
-  effectiveBatches: Array<{ batch_code: string; expiry_date?: string; mrp?: number; available_quantity?: number }>;
+  effectiveBatches: Array<{ batch_code: string; expiry_date?: string; mrp?: number; available_quantity?: number; location_id?: string }>;
   expiryDate: string;
   setExpiryDate: (exp: string) => void;
   serialNumbers: string[];
   serialInputText: string;
   setSerialInputText: (val: string) => void;
   availableSerials: string[];
+  serialError?: string;
   handleAddSerialTags: (raw: string) => void;
   handleRemoveSerialTag: (serial: string) => void;
   handleToggleSelectSerial: (serial: string) => void;
   unitPrice: number;
   setUnitPrice: (price: number) => void;
+  discountMode: 'flat' | 'percent';
+  handleDiscountModeChange: (mode: 'flat' | 'percent') => void;
   discountPercent: number;
   setDiscountPercent: (disc: number) => void;
+  discountAmount: number;
+  setDiscountAmount: (amt: number) => void;
   taxPercent: number;
   setTaxPercent: (tax: number) => void;
   qtyInputRef: React.RefObject<HTMLInputElement>;
@@ -66,13 +80,18 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
   serialInputText,
   setSerialInputText,
   availableSerials,
+  serialError,
   handleAddSerialTags,
   handleRemoveSerialTag,
   handleToggleSelectSerial,
   unitPrice,
   setUnitPrice,
+  discountMode,
+  handleDiscountModeChange,
   discountPercent,
   setDiscountPercent,
+  discountAmount,
+  setDiscountAmount,
   taxPercent,
   setTaxPercent,
   qtyInputRef,
@@ -84,8 +103,8 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
   taxInputRef,
   handleCommit,
 }) => {
-  const showBatch = Boolean(item.is_batch_tracking_enabled) && batchMode !== 'none';
-  const showExpiry = Boolean(item.is_expiry_enabled) && batchMode === 'create';
+  const showBatch = (Boolean(item.is_batch_tracking_enabled) || Boolean(item.is_expiry_enabled)) && batchMode !== 'none';
+  const showExpiry = Boolean(item.is_expiry_enabled) && batchMode !== 'none';
   const showSerial = Boolean(item.is_serial_tracking_enabled) && serialMode !== 'none';
   const columnCount = 5 + (showBatch ? 1 : 0) + (showExpiry ? 1 : 0);
 
@@ -193,103 +212,21 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
         )}
       </div>
 
-      {/* 3. Batch (Select mode: FEFO dropdown) */}
-      {showBatch && batchMode === 'select' && (
-        <div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-            <Tag size={11} /> Batch (FEFO)
-          </label>
-          <Select
-            value={batchCode}
-            onChange={(val) => handleBatchSelect(String(val))}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                e.stopPropagation();
-                rateInputRef.current?.focus();
-              } else if (e.key === 'Escape') {
-                e.stopPropagation();
-              }
-            }}
-            options={effectiveBatches.map((b) => ({
-              value: b.batch_code,
-              label: `${b.batch_code} ${b.expiry_date ? `(Exp: ${b.expiry_date})` : ''} ${b.available_quantity != null ? `• Avail: ${b.available_quantity}` : ''}`.trim(),
-            }))}
-            placeholder={effectiveBatches.length === 0 ? 'Loading batches...' : '-- Select Batch --'}
-            style={{ fontSize: '0.8rem' }}
-          />
-        </div>
-      )}
-
-      {/* 3b. Batch (Create mode: text input) */}
-      {showBatch && batchMode === 'create' && (
-        <div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-            <Tag size={11} /> Batch No
-          </label>
-          <input
-            ref={batchInputRef as any}
-            type="text"
-            placeholder="e.g. B2026-X"
-            value={batchCode}
-            onChange={(e) => setBatchCode(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                e.stopPropagation();
-                if (showExpiry && expiryInputRef.current) {
-                  expiryInputRef.current.focus();
-                } else {
-                  rateInputRef.current?.focus();
-                }
-              } else if (e.key === 'Escape') {
-                e.stopPropagation();
-              }
-            }}
-            style={{
-              width: '100%',
-              padding: '7px 10px',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              borderRadius: '6px',
-              border: '1px solid #cbd5e1',
-            }}
-          />
-        </div>
-      )}
-
-      {/* 3c. Expiry (Create mode: text input) */}
-      {showExpiry && (
-        <div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-            <Calendar size={11} /> Expiry (MM/YY)
-          </label>
-          <input
-            ref={expiryInputRef}
-            type="text"
-            placeholder="12/28"
-            value={expiryDate}
-            onChange={(e) => setExpiryDate(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                e.stopPropagation();
-                rateInputRef.current?.focus();
-              } else if (e.key === 'Escape') {
-                e.stopPropagation();
-              }
-            }}
-            style={{
-              width: '100%',
-              padding: '7px 10px',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              borderRadius: '6px',
-              border: '1px solid #cbd5e1',
-            }}
-          />
-        </div>
-      )}
+      {/* 3. Batch & Expiry */}
+      <VoucherQuickRowStepperBatchExpirySection
+        showBatch={showBatch}
+        showExpiry={showExpiry}
+        batchMode={batchMode}
+        batchCode={batchCode}
+        setBatchCode={setBatchCode}
+        handleBatchSelect={handleBatchSelect}
+        effectiveBatches={effectiveBatches}
+        expiryDate={expiryDate}
+        setExpiryDate={setExpiryDate}
+        batchInputRef={batchInputRef}
+        expiryInputRef={expiryInputRef}
+        rateInputRef={rateInputRef}
+      />
 
       {/* 4. Unit Price / Rate */}
       <div>
@@ -324,59 +261,18 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
         />
       </div>
 
-      {/* 5. Discount % */}
-      <div>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-          <Percent size={11} /> Disc %
-        </label>
-        <input
-          ref={discountInputRef}
-          type="number"
-          min="0"
-          max="100"
-          step="any"
-          placeholder="0"
-          value={discountPercent === 0 ? '' : discountPercent}
-          onFocus={(e) => {
-            if (Number(e.target.value) === 0) {
-              e.target.value = '';
-            }
-            e.target.select();
-          }}
-          onClick={(e) => {
-            const target = e.target as HTMLInputElement;
-            if (Number(target.value) === 0) {
-              target.value = '';
-            }
-            target.select();
-          }}
-          onChange={(e) => {
-            const raw = e.target.value;
-            setDiscountPercent(raw === '' ? 0 : Number(raw));
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              e.stopPropagation();
-              if (taxInputRef.current) {
-                taxInputRef.current.focus();
-              } else {
-                handleCommit();
-              }
-            } else if (e.key === 'Escape') {
-              e.stopPropagation();
-            }
-          }}
-          style={{
-            width: '100%',
-            padding: '7px 10px',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            borderRadius: '6px',
-            border: '1px solid #cbd5e1',
-          }}
-        />
-      </div>
+      {/* 5. Line Discount (Flat ₹ or %) */}
+      <VoucherQuickRowDiscountField
+        discountMode={discountMode}
+        handleDiscountModeChange={handleDiscountModeChange}
+        discountPercent={discountPercent}
+        setDiscountPercent={setDiscountPercent}
+        discountAmount={discountAmount}
+        setDiscountAmount={setDiscountAmount}
+        discountInputRef={discountInputRef}
+        taxInputRef={taxInputRef}
+        handleCommit={handleCommit}
+      />
 
       {/* 6. GST % */}
       <div>
@@ -437,6 +333,7 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
           serialInputText={serialInputText}
           setSerialInputText={setSerialInputText}
           availableSerials={availableSerials}
+          serialError={serialError}
           handleAddSerialTags={handleAddSerialTags}
           handleRemoveSerialTag={handleRemoveSerialTag}
           handleToggleSelectSerial={handleToggleSelectSerial}

@@ -28,6 +28,25 @@ public class MainActivity extends BridgeActivity {
     private static final String PREF_NAME = "GeeksmanAppConfig";
     private static final String KEY_SERVER_URL = "custom_server_url";
     private GalaxyLoaderView galaxyLoaderView;
+    private volatile boolean hasCustomLoadCompleted = false;
+    private volatile boolean isServerDialogShowing = false;
+
+    private static String normalizeUrl(String url) {
+        if (url == null) return "";
+        String trimmed = url.trim();
+        while (trimmed.endsWith("/")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        }
+        return trimmed;
+    }
+
+    private boolean isDefaultServerUrl(String url) {
+        String normUrl = normalizeUrl(url);
+        if (normUrl.isEmpty()) return false;
+        String defaultUrl = bridge != null ? bridge.getServerUrl() : "";
+        String normDefault = normalizeUrl(defaultUrl);
+        return !normDefault.isEmpty() && normUrl.equalsIgnoreCase(normDefault);
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -48,6 +67,8 @@ public class MainActivity extends BridgeActivity {
             ViewGroup.LayoutParams.MATCH_PARENT
         ));
 
+        String activeCustomDevUrl = null;
+
         // Configure WebView styling, error handling, downloads, and load dev URL
         if (this.bridge != null && this.bridge.getWebView() != null) {
             WebView webView = this.bridge.getWebView();
@@ -66,25 +87,41 @@ public class MainActivity extends BridgeActivity {
             SharedPreferences prefs = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
             String customUrl = prefs.getString(KEY_SERVER_URL, null);
             if (customUrl != null && !customUrl.trim().isEmpty()) {
-                webView.loadUrl(customUrl.trim());
+                if (isDefaultServerUrl(customUrl)) {
+                    // Self-heal stale production URL stored as custom override
+                    prefs.edit().remove(KEY_SERVER_URL).apply();
+                } else {
+                    activeCustomDevUrl = customUrl.trim();
+                    webView.loadUrl(activeCustomDevUrl);
+                }
             }
         }
 
         // Safety watchdog: ensure splash and loader never block the UI for more than 3 seconds
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
             dismissGalaxyLoader();
-            SharedPreferences prefs = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-            String customUrl = prefs.getString(KEY_SERVER_URL, null);
-            if (customUrl != null && !customUrl.trim().isEmpty()) {
-                if (bridge != null && bridge.getWebView() != null) {
-                    String currentUrl = bridge.getWebView().getUrl();
-                    int progress = bridge.getWebView().getProgress();
-                    if (progress < 60 || currentUrl == null || currentUrl.equals("about:blank") || currentUrl.startsWith("data:")) {
-                        showServerUnreachableDialog(customUrl);
+        }, 3000);
+
+        // Dev-server-only watchdog: only fires if a non-production dev server failed to commit
+        if (activeCustomDevUrl != null) {
+            final String watchedDevUrl = activeCustomDevUrl;
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                if (hasCustomLoadCompleted || isFinishing() || isDestroyed()) {
+                    return;
+                }
+                SharedPreferences prefs = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+                String currentPref = prefs.getString(KEY_SERVER_URL, null);
+                if (currentPref != null && !currentPref.trim().isEmpty() && !isDefaultServerUrl(currentPref)) {
+                    if (bridge != null && bridge.getWebView() != null) {
+                        String currentUrl = bridge.getWebView().getUrl();
+                        int progress = bridge.getWebView().getProgress();
+                        if (progress < 20 || currentUrl == null || currentUrl.equals("about:blank") || currentUrl.startsWith("data:")) {
+                            showServerUnreachableDialog(watchedDevUrl);
+                        }
                     }
                 }
-            }
-        }, 3000);
+            }, 6000);
+        }
     }
 
     public void dismissGalaxyLoader() {
@@ -150,9 +187,19 @@ public class MainActivity extends BridgeActivity {
             }
 
             @Override
+            public void onPageCommitVisible(WebView view, String url) {
+                super.onPageCommitVisible(view, url);
+                if (url != null && !url.equals("about:blank") && !url.startsWith("data:")) {
+                    hasCustomLoadCompleted = true;
+                    dismissGalaxyLoader();
+                }
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                if (url != null && !url.equals("about:blank")) {
+                if (url != null && !url.equals("about:blank") && !url.startsWith("data:")) {
+                    hasCustomLoadCompleted = true;
                     dismissGalaxyLoader();
                 }
             }
@@ -160,6 +207,9 @@ public class MainActivity extends BridgeActivity {
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 super.onReceivedError(view, request, error);
+                if (error != null && error.getDescription() != null && error.getDescription().toString().contains("ERR_ABORTED")) {
+                    return;
+                }
                 if (request != null && request.isForMainFrame()) {
                     runOnUiThread(() -> {
                         dismissGalaxyLoader();
@@ -172,10 +222,16 @@ public class MainActivity extends BridgeActivity {
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                 super.onReceivedError(view, errorCode, description, failingUrl);
-                runOnUiThread(() -> {
-                    dismissGalaxyLoader();
-                    handleMainFrameError(view, failingUrl);
-                });
+                if (errorCode == ERROR_UNKNOWN && description != null && description.contains("ERR_ABORTED")) {
+                    return;
+                }
+                String currentUrl = view != null ? view.getUrl() : null;
+                if (failingUrl != null && (failingUrl.equals(currentUrl) || currentUrl == null)) {
+                    runOnUiThread(() -> {
+                        dismissGalaxyLoader();
+                        handleMainFrameError(view, failingUrl);
+                    });
+                }
             }
 
             @Override
@@ -243,13 +299,13 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void handleMainFrameError(WebView view, String failedUrl) {
-        if (isFinishing()) return;
+        if (isFinishing() || isDestroyed()) return;
 
         SharedPreferences prefs = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         String customUrl = prefs.getString(KEY_SERVER_URL, null);
 
-        // If a custom dev server was configured and failed, show dialog
-        if (customUrl != null && !customUrl.trim().isEmpty()) {
+        // If a non-default custom dev server was configured and failed, show dialog
+        if (customUrl != null && !customUrl.trim().isEmpty() && !isDefaultServerUrl(customUrl)) {
             try {
                 Uri customUri = Uri.parse(customUrl.trim());
                 if (failedUrl != null && customUri.getHost() != null && failedUrl.contains(customUri.getHost())) {
@@ -264,20 +320,23 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void showServerUnreachableDialog(String failedUrl) {
-        if (isFinishing()) return;
+        if (isFinishing() || isDestroyed() || isServerDialogShowing) return;
 
         SharedPreferences prefs = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        boolean hasCustom = prefs.contains(KEY_SERVER_URL);
+        String customUrl = prefs.getString(KEY_SERVER_URL, null);
+        boolean hasCustom = customUrl != null && !customUrl.trim().isEmpty() && !isDefaultServerUrl(customUrl);
         if (!hasCustom) {
             // Never show Server Unreachable dialog for production users without a custom dev server
             return;
         }
 
+        isServerDialogShowing = true;
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Server Unreachable");
         builder.setMessage("Could not connect to:\n" + failedUrl + "\n\nIs your local development server running on the network?");
 
         builder.setPositiveButton("Retry", (dialog, which) -> {
+            hasCustomLoadCompleted = false;
             if (bridge != null && bridge.getWebView() != null) {
                 bridge.getWebView().reload();
             }
@@ -294,7 +353,9 @@ public class MainActivity extends BridgeActivity {
         }
 
         builder.setNegativeButton("Dismiss", null);
-        builder.show();
+        AlertDialog dialog = builder.create();
+        dialog.setOnDismissListener(d -> isServerDialogShowing = false);
+        dialog.show();
     }
 
     @Override

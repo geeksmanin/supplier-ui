@@ -11,6 +11,7 @@ interface FastVoucherTableSectionProps {
   setFocusedRowIndex: (idx: number) => void;
   onEditRow: (idx: number, item: VoucherLineItem) => void;
   onRemoveItem: (idx: number) => void;
+  hasMoreDetails?: boolean;
 }
 
 export const FastVoucherTableSection: React.FC<FastVoucherTableSectionProps> = ({
@@ -22,6 +23,7 @@ export const FastVoucherTableSection: React.FC<FastVoucherTableSectionProps> = (
   setFocusedRowIndex,
   onEditRow,
   onRemoveItem,
+  hasMoreDetails = false,
 }) => {
   const showTrackingColumn = batchMode !== 'none' || serialMode !== 'none';
   return (
@@ -140,7 +142,7 @@ export const FastVoucherTableSection: React.FC<FastVoucherTableSectionProps> = (
                         )}
                         {row.expiry_date && (
                           <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#fae8ff', color: '#86198f', fontWeight: 600 }}>
-                            Exp: {row.expiry_date}
+                            Exp: {String(row.expiry_date).includes('T') ? String(row.expiry_date).slice(0, 10) : row.expiry_date}
                           </span>
                         )}
                         {Array.isArray(row.serial_numbers) && row.serial_numbers.length > 0 && (
@@ -153,9 +155,11 @@ export const FastVoucherTableSection: React.FC<FastVoucherTableSectionProps> = (
                             GST: {row.tax_percent}%
                           </span>
                         )}
-                        {row.discount_percent != null && row.discount_percent > 0 && (
+                        {(Number(row.discount_percent) > 0 || Number(row.discount_amount) > 0) && (
                           <span style={{ fontSize: '0.68rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#fee2e2', color: '#991b1b', fontWeight: 600 }}>
-                            Disc: {row.discount_percent}%
+                            Disc: {Number(row.discount_percent) > 0
+                              ? `${row.discount_percent}%`
+                              : `₹${Number(row.discount_amount).toFixed(2)}`}
                           </span>
                         )}
                       </div>
@@ -172,7 +176,9 @@ export const FastVoucherTableSection: React.FC<FastVoucherTableSectionProps> = (
                       <td style={{ padding: '8px 8px' }}>
                         <span style={{ fontWeight: 600, color: '#334155' }}>{row.batch_code || '-'}</span>
                         {row.expiry_date && (
-                          <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Exp: {row.expiry_date}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                            Exp: {String(row.expiry_date).includes('T') ? String(row.expiry_date).slice(0, 10) : row.expiry_date}
+                          </div>
                         )}
                         {Array.isArray(row.serial_numbers) && row.serial_numbers.length > 0 && (
                           <div style={{ fontSize: '0.68rem', color: '#0f766e', fontWeight: 600, wordBreak: 'break-word' }}>
@@ -191,8 +197,12 @@ export const FastVoucherTableSection: React.FC<FastVoucherTableSectionProps> = (
                     <td style={{ padding: '8px 8px', textAlign: 'right', color: '#334155' }}>
                       ₹{Number(row.unit_price).toFixed(2)}
                     </td>
-                    <td style={{ padding: '8px 8px', textAlign: 'right', color: row.discount_percent ? '#dc2626' : '#94a3b8' }}>
-                      {row.discount_percent ? `${row.discount_percent}%` : '-'}
+                    <td style={{ padding: '8px 8px', textAlign: 'right', color: (Number(row.discount_percent) > 0 || Number(row.discount_amount) > 0) ? '#dc2626' : '#94a3b8' }}>
+                      {Number(row.discount_percent) > 0
+                        ? `${row.discount_percent}% (-₹${Number(row.discount_amount || 0).toFixed(2)})`
+                        : Number(row.discount_amount) > 0
+                          ? `₹${Number(row.discount_amount).toFixed(2)}`
+                          : '-'}
                     </td>
                     <td style={{ padding: '8px 8px', textAlign: 'right', color: '#059669', fontSize: '0.75rem' }}>
                       {row.tax_percent ? `${row.tax_percent}%` : '-'}
@@ -252,9 +262,11 @@ export const FastVoucherTableSection: React.FC<FastVoucherTableSectionProps> = (
           <span>
             <strong style={{ color: '#2563eb' }}>[Del]</strong> Delete
           </span>
-          <span>
-            <strong style={{ color: '#2563eb' }}>[F3]</strong> More Info
-          </span>
+          {hasMoreDetails && (
+            <span>
+              <strong style={{ color: '#2563eb' }}>[F3]</strong> More Info
+            </span>
+          )}
           <span>
             <strong style={{ color: '#2563eb' }}>[F6]</strong> Park
           </span>

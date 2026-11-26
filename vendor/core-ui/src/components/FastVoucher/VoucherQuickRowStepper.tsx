@@ -14,7 +14,7 @@ interface VoucherQuickRowStepperProps {
   batchMode?: VoucherBatchMode;
   serialMode?: VoucherSerialMode;
   allowRateOverride?: boolean;
-  stockBatches?: Array<{ batch_code: string; expiry_date?: string; mrp?: number; available_quantity?: number }>;
+  stockBatches?: Array<{ batch_code: string; expiry_date?: string; mrp?: number; available_quantity?: number; location_id?: string }>;
   onCommit: (item: VoucherLineItem) => void;
   onCancel: () => void;
   isEditMode?: boolean;
@@ -45,13 +45,18 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
     serialInputText,
     setSerialInputText,
     availableSerials,
+    serialError,
     handleAddSerialTags,
     handleRemoveSerialTag,
     handleToggleSelectSerial,
     unitPrice,
     setUnitPrice,
+    discountMode,
+    handleDiscountModeChange,
     discountPercent,
     setDiscountPercent,
+    discountAmount,
+    setDiscountAmount,
     taxPercent,
     setTaxPercent,
     liveStock,
@@ -207,13 +212,18 @@ export const VoucherQuickRowStepper: React.FC<VoucherQuickRowStepperProps> = ({
         serialInputText={serialInputText}
         setSerialInputText={setSerialInputText}
         availableSerials={availableSerials}
+        serialError={serialError}
         handleAddSerialTags={handleAddSerialTags}
         handleRemoveSerialTag={handleRemoveSerialTag}
         handleToggleSelectSerial={handleToggleSelectSerial}
         unitPrice={unitPrice}
         setUnitPrice={setUnitPrice}
+        discountMode={discountMode}
+        handleDiscountModeChange={handleDiscountModeChange}
         discountPercent={discountPercent}
         setDiscountPercent={setDiscountPercent}
+        discountAmount={discountAmount}
+        setDiscountAmount={setDiscountAmount}
         qtyInputRef={qtyInputRef}
         packagingSelectRef={packagingSelectRef}
         batchInputRef={batchInputRef}

@@ -3,6 +3,7 @@ import { FastVoucherEntryLayoutProps } from './FastVoucherEntryLayout.types';
 import { VoucherLiveInvoicePreview } from './VoucherLiveInvoicePreview';
 import { VoucherParkedBillsModal } from './VoucherParkedBillsModal';
 import { DraftBanner } from '../../hooks/useFormDraft';
+import { ConfirmModal } from '../ConfirmModal';
 import { useFastVoucherOrchestrator } from './useFastVoucherOrchestrator';
 import { FastVoucherHeaderRibbon } from './FastVoucherHeaderRibbon';
 import { FastVoucherActionRow } from './FastVoucherActionRow';
@@ -92,6 +93,8 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
     draftHook,
     handleParkBill,
     handleDiscard,
+    handleRequestCancel,
+    unsavedGuard,
     isPartyDropdownOpen,
     setIsPartyDropdownOpen,
     partySearchQuery,
@@ -164,7 +167,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
         onVoucherNumberChange={onVoucherNumberChange}
         voucherNumberLabel={voucherNumberLabel}
         voucherNumberPlaceholder={voucherNumberPlaceholder}
-        onCancel={onCancel}
+        onCancel={onCancel ? handleRequestCancel : undefined}
         partyLayout={partyLayout}
         partyConfig={partyConfig}
         selectedParty={selectedParty}
@@ -188,6 +191,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
         autoConfirmLabel={props.autoConfirmLabel || (props.voucherType === 'SALES_INVOICE' ? 'Deduct Stock' : 'Inward Stock')}
         notes={notes}
         onNotesChange={onNotesChange}
+        hasMoreDetails={Boolean(renderMoreDetailsDrawer)}
         isDrawerOpen={isDrawerOpen}
         setIsDrawerOpen={setIsDrawerOpen}
         moreDetailsBadgeCount={moreDetailsBadgeCount}
@@ -263,6 +267,7 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
             tableRef={tableRef}
             focusedRowIndex={focusedRowIndex}
             setFocusedRowIndex={setFocusedRowIndex}
+            hasMoreDetails={Boolean(renderMoreDetailsDrawer)}
             onEditRow={(idx, row) => {
               setEditingRowIndex(idx);
               setActiveStepperItem(row);
@@ -314,18 +319,20 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
               onSave={onSave}
               isSaving={isSaving}
               saveButtonLabel={saveButtonLabel}
-              onCancel={onCancel}
+              onCancel={onCancel ? handleRequestCancel : undefined}
             />
           )}
         </div>
       </div>
 
       {/* F3 Secondary Details Drawer */}
-      <FastVoucherMoreDetailsDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        renderMoreDetailsDrawer={renderMoreDetailsDrawer}
-      />
+      {renderMoreDetailsDrawer && (
+        <FastVoucherMoreDetailsDrawer
+          isOpen={isDrawerOpen}
+          onClose={() => setIsDrawerOpen(false)}
+          renderMoreDetailsDrawer={renderMoreDetailsDrawer}
+        />
+      )}
 
       {/* Parked Bills Recall Modal (F7) */}
       <VoucherParkedBillsModal
@@ -339,6 +346,9 @@ export const FastVoucherEntryLayout: React.FC<FastVoucherEntryLayoutProps> = (pr
 
       {/* Product Variant Matrix Modal */}
       {renderVariantMatrixModal()}
+
+      {/* Unsaved Changes Confirmation Modal */}
+      <ConfirmModal {...unsavedGuard.confirmModalProps} />
     </div>
   );
 };

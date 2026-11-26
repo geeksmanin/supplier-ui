@@ -1,12 +1,13 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  FastVoucherEntryLayoutProps, 
-  VoucherLineItem, 
+import {
+  FastVoucherEntryLayoutProps,
+  VoucherLineItem,
 } from './FastVoucherEntryLayout.types';
 import { useVoucherKeyboard } from './useVoucherKeyboard';
 import { useVoucherParking, ParkedBill } from './useVoucherParking';
 import { useFormDraft } from '../../hooks/useFormDraft';
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard';
 import { normalizeSearchToken } from '../SearchableEntitySelect';
 import { useFastVoucherPartySearch } from './useFastVoucherPartySearch';
 import { useFastVoucherCatalogSearch } from './useFastVoucherCatalogSearch';
@@ -216,24 +217,86 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
   }, [externalParkBill, onClearForm, parking, selectedParty, voucherDate, items, summary, moreDetails, draftKey, draftHook.handleClearDraft]);
 
   const handleDiscard = useCallback(() => {
-    const hasData = items.length > 0 || Boolean(selectedParty) || Boolean(props.voucherNumber);
-    if (hasData) {
-      const confirmDiscard = window.confirm(
-        'Are you sure you want to discard this voucher entry? All unsaved inputs and items will be reset.'
-      );
-      if (!confirmDiscard) return;
-    }
-    if (props.onDiscard) {
-      props.onDiscard();
-    } else if (onClearForm) {
-      onClearForm();
-    }
-    if (draftKey && draftHook.handleClearDraft) {
-      draftHook.handleClearDraft();
-    }
-    setIsSearchOpen(false);
-    setSearchQuery('');
-  }, [items.length, selectedParty, props.voucherNumber, props.onDiscard, onClearForm, draftKey, draftHook.handleClearDraft]);
+    const performReset = () => {
+      baselineFingerprintRef.current = null;
+      if (props.onDiscard) {
+        props.onDiscard();
+      } else if (onClearForm) {
+        onClearForm();
+      }
+      if (draftKey && draftHook.handleClearDraft) {
+        draftHook.handleClearDraft();
+      }
+      setIsSearchOpen(false);
+      setSearchQuery('');
+    };
+    unsavedGuard.requestLeave(performReset);
+  }, [props.onDiscard, onClearForm, draftKey, draftHook.handleClearDraft]);
+
+  // Dirty-state tracking: only prompts when user has actually entered/modified voucher data
+  const currentFingerprint = useMemo(
+    () =>
+      JSON.stringify({
+        party: selectedParty?.value || '',
+        items: items.map((it) => ({
+          id: it.variant_id || it.product_id || it.sku_code,
+          q: it.quantity,
+          p: it.unit_price,
+          dp: it.discount_percent,
+          da: it.discount_amount,
+          tp: it.tax_percent,
+          b: it.batch_code || '',
+        })),
+        ddAmt: documentDiscountAmount,
+        ddPct: documentDiscountPercent,
+        ship: shippingCharges,
+        other: otherCharges,
+        notes: props.notes || '',
+        voucherNumber: props.voucherNumber || '',
+        moreDetails,
+      }),
+    [
+      selectedParty?.value,
+      items,
+      documentDiscountAmount,
+      documentDiscountPercent,
+      shippingCharges,
+      otherCharges,
+      props.notes,
+      props.voucherNumber,
+      moreDetails,
+    ]
+  );
+  const baselineFingerprintRef = useRef<string | null>(null);
+  const editHydratedRef = useRef<boolean>(false);
+
+  if (baselineFingerprintRef.current === null) {
+    baselineFingerprintRef.current = currentFingerprint;
+  } else if (
+    isEdit &&
+    !editHydratedRef.current &&
+    baselineFingerprintRef.current !== currentFingerprint &&
+    (items.length > 0 || Boolean(selectedParty?.value) || Boolean(props.voucherNumber))
+  ) {
+    // Capture first hydrated async edit state as clean baseline so opening & exiting Edit does not false-prompt
+    baselineFingerprintRef.current = currentFingerprint;
+    editHydratedRef.current = true;
+  }
+
+  const computedIsDirty =
+    Boolean(props.isDirty) ||
+    (baselineFingerprintRef.current !== null && currentFingerprint !== baselineFingerprintRef.current);
+
+  const unsavedGuard = useUnsavedChangesGuard({
+    isDirty: computedIsDirty,
+    title: 'Discard unsaved changes?',
+    message: 'You have unsaved entries in this voucher. Leaving now will discard your unsubmitted changes.',
+  });
+
+  const handleRequestCancel = useCallback(() => {
+    if (!props.onCancel) return;
+    unsavedGuard.requestLeave(() => props.onCancel?.());
+  }, [props.onCancel, unsavedGuard.requestLeave]);
 
   // 3. Encapsulated Party Search Hook
   const {
@@ -426,7 +489,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     tableRef,
     isStepperOpen,
     isDrawerOpen,
-    isModalOpen: isPartyDropdownOpen || isParkedModalOpen || isInternalMatrixOpen,
+    isModalOpen: isPartyDropdownOpen || isParkedModalOpen || isInternalMatrixOpen || unsavedGuard.isConfirmOpen,
     isSearchOpen,
     itemsCount: items.length,
     focusedRowIndex,
@@ -447,7 +510,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
       freightInputRef.current?.focus();
       freightInputRef.current?.select();
     },
-    onToggleDrawer: () => setIsDrawerOpen((prev) => !prev),
+    onToggleDrawer: props.renderMoreDetailsDrawer ? () => setIsDrawerOpen((prev) => !prev) : undefined,
     onParkBill: enableBillParking ? handleParkBill : undefined,
     onRecallBillModal: enableBillParking ? () => setIsParkedModalOpen(true) : undefined,
     onSubmit: onSave,
@@ -467,6 +530,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     },
     onCloseDrawer: () => setIsDrawerOpen(false),
     onCreateProduct: () => handleNavigateToCreateProduct(searchQuery),
+    onCancel: props.onCancel ? handleRequestCancel : undefined,
   });
 
   // 7. Memoized party options
@@ -534,6 +598,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     const batches = rawProduct.batches || rawProduct.stock_batches || [];
     let initialBatchCode = rawProduct.batch_code || '';
     let initialExpiry = rawProduct.expiry_date || '';
+    let initialLocationId = rawProduct.location_id || '';
 
     if (resolvedBatchMode === 'select' && Array.isArray(batches) && batches.length > 0) {
       const sortedBatches = [...batches].sort((a: any, b: any) => {
@@ -543,6 +608,9 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
       });
       initialBatchCode = sortedBatches[0].batch_code || sortedBatches[0].batch_number || '';
       initialExpiry = sortedBatches[0].expiry_date || '';
+      if (sortedBatches[0].location_id) {
+        initialLocationId = String(sortedBatches[0].location_id);
+      }
     }
 
     const vIdStr = String(rawProduct.id || rawProduct.variant_id || '');
@@ -563,6 +631,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
       packagings: resolvedPackagings,
       batch_code: initialBatchCode,
       expiry_date: initialExpiry,
+      location_id: initialLocationId || undefined,
       is_batch_tracking_enabled: Boolean(rawProduct.is_batch_tracking_enabled || rawProduct.product?.is_batch_tracking_enabled),
       is_serial_tracking_enabled: Boolean(rawProduct.is_serial_tracking_enabled || rawProduct.product?.is_serial_tracking_enabled),
       is_expiry_enabled: Boolean(rawProduct.is_expiry_enabled || rawProduct.product?.is_expiry_enabled),
@@ -610,6 +679,7 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
       expiry_date: b.expiry_date,
       mrp: b.mrp,
       available_quantity: Number(b.available_quantity ?? b.quantity ?? 0),
+      location_id: b.location_id ? String(b.location_id) : undefined,
     }));
   }, [activeStepperItem?.metadata?.batches]);
 
@@ -686,6 +756,9 @@ export function useFastVoucherOrchestrator(props: FastVoucherEntryLayoutProps) {
     draftHook,
     handleParkBill,
     handleDiscard,
+    handleRequestCancel,
+    unsavedGuard,
+    isDirty: computedIsDirty,
     isPartyDropdownOpen,
     setIsPartyDropdownOpen,
     partySearchQuery,

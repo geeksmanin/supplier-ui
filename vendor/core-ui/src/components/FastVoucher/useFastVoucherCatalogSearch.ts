@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { apiClient } from '../../api/client';
+import type { InventoryStockUpdatedDetail } from '../../types/inventoryEvents';
 import { VoucherCatalogConfig } from './FastVoucherEntryLayout.types';
 
 function mergeCatalogItems(rawVariants: any[], rawProducts: any[]): any[] {
@@ -124,7 +125,7 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
   useEffect(() => {
     if (catalogConfig?.showStock === false) return;
 
-    const handleStockUpdate = (e: any) => {
+    const handleStockUpdate = (e: CustomEvent<InventoryStockUpdatedDetail>) => {
       const delta = e?.detail;
       if (!delta?.variant_id) return;
       const vId = String(delta.variant_id);
@@ -135,9 +136,9 @@ export function useFastVoucherCatalogSearch({ catalogConfig }: UseFastVoucherCat
       }));
     };
 
-    window.addEventListener('inventory_stock_updated', handleStockUpdate);
+    window.addEventListener('inventory_stock_updated', handleStockUpdate as EventListener);
     return () => {
-      window.removeEventListener('inventory_stock_updated', handleStockUpdate);
+      window.removeEventListener('inventory_stock_updated', handleStockUpdate as EventListener);
     };
   }, [catalogConfig?.showStock]);
 
