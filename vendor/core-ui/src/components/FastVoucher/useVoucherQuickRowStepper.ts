@@ -1,4 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import type {
+  InventoryStockUpdatedDetail,
+  InventoryBatchUpdatedDetail,
+  InventorySerialUpdatedDetail,
+} from '../../types/inventoryEvents';
 import {
   VoucherLineItem,
   VoucherBatchMode,
@@ -83,14 +88,14 @@ export function useVoucherQuickRowStepper({
 
     let stockCleanup: (() => void) | undefined;
     if (vIdStr) {
-      const handleStockUpdate = (e: any) => {
+      const handleStockUpdate = (e: CustomEvent<InventoryStockUpdatedDetail>) => {
         const detail = e?.detail;
         if (detail && String(detail.variant_id) === vIdStr) {
           setLiveStock(Number(detail.passed_quantity ?? detail.available_quantity ?? 0));
         }
       };
-      window.addEventListener('inventory_stock_updated', handleStockUpdate);
-      stockCleanup = () => window.removeEventListener('inventory_stock_updated', handleStockUpdate);
+      window.addEventListener('inventory_stock_updated', handleStockUpdate as EventListener);
+      stockCleanup = () => window.removeEventListener('inventory_stock_updated', handleStockUpdate as EventListener);
 
       if (lastRequestedStockVariantRef.current !== vIdStr) {
         lastRequestedStockVariantRef.current = vIdStr;
@@ -104,11 +109,18 @@ export function useVoucherQuickRowStepper({
 
     let batchCleanup: (() => void) | undefined;
     if (batchMode === 'select' && stockBatches.length === 0 && vIdStr) {
-      const handleBatchesResolved = (e: any) => {
+      const handleBatchesResolved = (e: CustomEvent<InventoryBatchUpdatedDetail>) => {
         const detail = e?.detail;
         if (detail && String(detail.variant_id) === vIdStr) {
           const fetched = Array.isArray(detail.batches) ? detail.batches : [];
-          setDynamicBatches(fetched);
+          setDynamicBatches(
+            fetched.map((b) => ({
+              batch_code: b.batch_code,
+              expiry_date: b.expiry_date ?? undefined,
+              mrp: b.mrp,
+              available_quantity: b.available_quantity,
+            }))
+          );
 
           if (fetched.length > 0 && !item.batch_code) {
             setBatchCode(fetched[0].batch_code);
@@ -118,8 +130,8 @@ export function useVoucherQuickRowStepper({
         }
       };
 
-      window.addEventListener('inventory_batch_updated', handleBatchesResolved);
-      batchCleanup = () => window.removeEventListener('inventory_batch_updated', handleBatchesResolved);
+      window.addEventListener('inventory_batch_updated', handleBatchesResolved as EventListener);
+      batchCleanup = () => window.removeEventListener('inventory_batch_updated', handleBatchesResolved as EventListener);
 
       if (lastRequestedBatchVariantRef.current !== vIdStr) {
         lastRequestedBatchVariantRef.current = vIdStr;
@@ -159,17 +171,17 @@ export function useVoucherQuickRowStepper({
     if (!isOpen || serialMode !== 'select' || !item?.is_serial_tracking_enabled || !vIdStr) {
       return;
     }
-    const handleSerialsResolved = (e: any) => {
+    const handleSerialsResolved = (e: CustomEvent<InventorySerialUpdatedDetail>) => {
       const detail = e?.detail;
       if (detail && String(detail.variant_id) === vIdStr) {
         const list = Array.isArray(detail.serials) ? detail.serials : [];
         const normalized = list
-          .map((s: any) => (typeof s === 'string' ? s : String(s?.barcode || s?.serial_no || '')))
+          .map((s) => (typeof s === 'string' ? s : String(s?.barcode || s?.serial_no || '')))
           .filter(Boolean);
         setAvailableSerials(normalized);
       }
     };
-    window.addEventListener('inventory_serial_updated', handleSerialsResolved);
+    window.addEventListener('inventory_serial_updated', handleSerialsResolved as EventListener);
     window.dispatchEvent(
       new CustomEvent('inventory_serial_request', {
         detail: {
@@ -179,7 +191,7 @@ export function useVoucherQuickRowStepper({
         },
       })
     );
-    return () => window.removeEventListener('inventory_serial_updated', handleSerialsResolved);
+    return () => window.removeEventListener('inventory_serial_updated', handleSerialsResolved as EventListener);
   }, [isOpen, item?.variant_id, item?.is_serial_tracking_enabled, item?.location_id, serialMode, batchCode]);
 
   const calculations = useMemo(() => {
