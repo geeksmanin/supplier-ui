@@ -2,6 +2,7 @@ import React from 'react';
 import { Layers, Percent } from 'lucide-react';
 import { Select } from '../Select';
 import { VoucherQuickRowStepperSerialSection } from './VoucherQuickRowStepperSerialSection';
+import { VoucherQuickRowDiscountField } from './VoucherQuickRowDiscountField';
 import { VoucherQuickRowStepperBatchExpirySection } from './VoucherQuickRowStepperBatchExpirySection';
 import {
   VoucherLineItem,
@@ -42,8 +43,12 @@ interface VoucherQuickRowStepperInputsProps {
   handleToggleSelectSerial: (serial: string) => void;
   unitPrice: number;
   setUnitPrice: (price: number) => void;
+  discountMode: 'flat' | 'percent';
+  handleDiscountModeChange: (mode: 'flat' | 'percent') => void;
   discountPercent: number;
   setDiscountPercent: (disc: number) => void;
+  discountAmount: number;
+  setDiscountAmount: (amt: number) => void;
   taxPercent: number;
   setTaxPercent: (tax: number) => void;
   qtyInputRef: React.RefObject<HTMLInputElement>;
@@ -81,8 +86,12 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
   handleToggleSelectSerial,
   unitPrice,
   setUnitPrice,
+  discountMode,
+  handleDiscountModeChange,
   discountPercent,
   setDiscountPercent,
+  discountAmount,
+  setDiscountAmount,
   taxPercent,
   setTaxPercent,
   qtyInputRef,
@@ -252,59 +261,18 @@ export const VoucherQuickRowStepperInputs: React.FC<VoucherQuickRowStepperInputs
         />
       </div>
 
-      {/* 5. Discount % */}
-      <div>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-          <Percent size={11} /> Disc %
-        </label>
-        <input
-          ref={discountInputRef}
-          type="number"
-          min="0"
-          max="100"
-          step="any"
-          placeholder="0"
-          value={discountPercent === 0 ? '' : discountPercent}
-          onFocus={(e) => {
-            if (Number(e.target.value) === 0) {
-              e.target.value = '';
-            }
-            e.target.select();
-          }}
-          onClick={(e) => {
-            const target = e.target as HTMLInputElement;
-            if (Number(target.value) === 0) {
-              target.value = '';
-            }
-            target.select();
-          }}
-          onChange={(e) => {
-            const raw = e.target.value;
-            setDiscountPercent(raw === '' ? 0 : Number(raw));
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              e.stopPropagation();
-              if (taxInputRef.current) {
-                taxInputRef.current.focus();
-              } else {
-                handleCommit();
-              }
-            } else if (e.key === 'Escape') {
-              e.stopPropagation();
-            }
-          }}
-          style={{
-            width: '100%',
-            padding: '7px 10px',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            borderRadius: '6px',
-            border: '1px solid #cbd5e1',
-          }}
-        />
-      </div>
+      {/* 5. Line Discount (Flat ₹ or %) */}
+      <VoucherQuickRowDiscountField
+        discountMode={discountMode}
+        handleDiscountModeChange={handleDiscountModeChange}
+        discountPercent={discountPercent}
+        setDiscountPercent={setDiscountPercent}
+        discountAmount={discountAmount}
+        setDiscountAmount={setDiscountAmount}
+        discountInputRef={discountInputRef}
+        taxInputRef={taxInputRef}
+        handleCommit={handleCommit}
+      />
 
       {/* 6. GST % */}
       <div>

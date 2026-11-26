@@ -138,8 +138,8 @@ export function computeVoucherSummary({
       item.tax_inclusive !== undefined
         ? item.tax_inclusive
         : item.metadata?.is_price_tax_inclusive !== undefined
-        ? Boolean(item.metadata.is_price_tax_inclusive)
-        : Boolean(taxInclusive);
+          ? Boolean(item.metadata.is_price_tax_inclusive)
+          : Boolean(taxInclusive);
 
     const grossAfterDisc = Math.max(0, +(grossAmount - lineDiscount).toFixed(2));
     const taxRate = Number(item.tax_percent) || 0;
@@ -188,14 +188,45 @@ export function computeVoucherSummary({
   subtotal = +subtotal.toFixed(2);
   itemDiscountsTotal = +itemDiscountsTotal.toFixed(2);
 
-  // Document-level discount
+  // Document-level discount (clamped to [0, subtotal])
   let documentDiscountTotal = 0;
   if (documentDiscountAmount > 0) {
     documentDiscountTotal = Number(documentDiscountAmount);
   } else if (documentDiscountPercent > 0) {
     documentDiscountTotal = +((subtotal * documentDiscountPercent) / 100).toFixed(2);
   }
-  documentDiscountTotal = +documentDiscountTotal.toFixed(2);
+  documentDiscountTotal = +Math.min(subtotal, Math.max(0, documentDiscountTotal)).toFixed(2);
+
+  // Prorate document-level discount across tax slabs so taxable base and GST match post-discount value
+  const docDiscountFactor = subtotal > 0 && documentDiscountTotal > 0
+    ? Math.max(0, (subtotal - documentDiscountTotal) / subtotal)
+    : 1;
+
+  if (docDiscountFactor < 1) {
+    const targetNetSubtotal = +(subtotal - documentDiscountTotal).toFixed(2);
+    const slabList = Object.values(taxSlabs);
+    let allocatedTaxable = 0;
+    slabList.forEach((slab, idx) => {
+      const adjustedTaxable =
+        idx === slabList.length - 1
+          ? +Math.max(0, targetNetSubtotal - allocatedTaxable).toFixed(2)
+          : +Math.max(0, slab.taxableAmount * docDiscountFactor).toFixed(2);
+      allocatedTaxable = +(allocatedTaxable + adjustedTaxable).toFixed(2);
+      const adjustedTax = +((adjustedTaxable * slab.rate) / 100).toFixed(2);
+      slab.taxableAmount = adjustedTaxable;
+      slab.taxAmount = adjustedTax;
+      if (isInterState) {
+        slab.igst = adjustedTax;
+        slab.cgst = 0;
+        slab.sgst = 0;
+      } else {
+        const halfTax = +(adjustedTax / 2).toFixed(2);
+        slab.cgst = halfTax;
+        slab.sgst = +(adjustedTax - halfTax).toFixed(2);
+        slab.igst = 0;
+      }
+    });
+  }
 
   // Total tax from slabs
   let cgstTotal = 0;

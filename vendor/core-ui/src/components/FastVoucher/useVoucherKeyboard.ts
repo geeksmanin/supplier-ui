@@ -26,6 +26,7 @@ interface UseVoucherKeyboardProps {
   onCloseStepper?: () => void;
   onCloseDrawer?: () => void;
   onCreateProduct?: () => void;
+  onCancel?: () => void;
 }
 
 export const useVoucherKeyboard = ({
@@ -54,6 +55,7 @@ export const useVoucherKeyboard = ({
   onCloseStepper,
   onCloseDrawer,
   onCreateProduct,
+  onCancel,
 }: UseVoucherKeyboardProps) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -164,6 +166,11 @@ export const useVoucherKeyboard = ({
           searchInputRef?.current?.focus();
           return;
         }
+        if (!isSearchOpen && onCancel) {
+          e.preventDefault();
+          onCancel();
+          return;
+        }
       }
 
       // 9. Navigation from Product Search to Items Table (ArrowDown when empty and dropdown closed)
@@ -239,6 +246,9 @@ export const useVoucherKeyboard = ({
     onDeleteRow,
     onCloseStepper,
     onCloseDrawer,
+    onCreateProduct,
+    onCancel,
     setFocusedRowIndex,
+    isSearchOpen,
   ]);
 };
