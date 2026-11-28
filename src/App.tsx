@@ -5,6 +5,7 @@ import { PortalSettingsProvider, PortalPostLoginRedirect, usePortalSettings } fr
 import { Login } from './pages/Login';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { SupplierLayout } from './components/SupplierLayout';
+import { SupplierNotificationProvider } from './components/SupplierNotificationProvider';
 import Overlays from './components/Overlays';
 
 const SupplierDefaultRedirect: React.FC = () => {
@@ -149,7 +150,9 @@ export const App: React.FC = () => {
                     path={route.path}
                     element={
                       <ProtectedRoute>
-                        <SupplierLayout>{route.element}</SupplierLayout>
+                        <SupplierNotificationProvider>
+                          <SupplierLayout>{route.element}</SupplierLayout>
+                        </SupplierNotificationProvider>
                       </ProtectedRoute>
                     }
                   />

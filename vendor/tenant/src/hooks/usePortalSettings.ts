@@ -291,7 +291,7 @@ export const PortalSettingsProvider: React.FC<PortalSettingsProviderProps> = ({
       if (!update) return;
       const currentTc = getActiveTenantCode(propTenantCode);
       if (update.tenant_code && update.tenant_code !== currentTc) return;
-      applySinglePortalPatch(update.portal_code, update.config, update.tenant_code, true);
+      applySinglePortalPatch(update.portal_code, update.config, update.tenant_code, false);
     };
 
     const handleCustomConfigUpdated = (evt: any) => {
@@ -349,7 +349,7 @@ export const PortalSettingsProvider: React.FC<PortalSettingsProviderProps> = ({
     if (!update) return;
     const currentTc = getActiveTenantCode(propTenantCode);
     if (update.tenant_code && update.tenant_code !== currentTc) return;
-    applySinglePortalPatch(update.portal_code, update.config, update.tenant_code, true);
+    applySinglePortalPatch(update.portal_code, update.config, update.tenant_code, false);
   });
 
   useRefreshOnVisible(() => {
