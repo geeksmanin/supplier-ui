@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, MoreVertical } from 'lucide-react';
 import { getAgent } from '../../agents/registry';
 import { AgentConfig, AgentContext } from '../../agents/types';
@@ -21,6 +21,7 @@ export const AgentRoomPage: React.FC<AgentRoomPageProps> = ({
 }) => {
   const params = useParams<{ id?: string; agentId?: string; tab?: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
 
   const idToLookup = propAgentId || params.id || params.agentId || '';
@@ -60,6 +61,8 @@ export const AgentRoomPage: React.FC<AgentRoomPageProps> = ({
   const handleBack = () => {
     if (propOnBack) {
       propOnBack();
+    } else if (location.key === 'default' || (typeof window !== 'undefined' && window.history.length <= 2)) {
+      navigate('/home');
     } else {
       navigate(-1);
     }

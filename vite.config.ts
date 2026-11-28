@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@geeksman/core-ui': resolvePkg(isDev, './vendor/core-ui/src', '../core-ui/src'),
         '@geeksman/notification': resolvePkg(isDev, './vendor/notification-ui/packages/notification/src', '../notification-ui/packages/notification/src'),
+        '@geeksman/tenant': resolvePkg(isDev, './vendor/tenant/src/portal-settings.ts', '../tenant-ui/packages/tenant/src/portal-settings.ts'),
       },
     },
     server: {
