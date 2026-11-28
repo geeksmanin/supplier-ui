@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": false,
+    "baseUrl": ".",
+    "paths": {
+      "@geeksman/core-ui": ["../../../core-ui/src"],
+      "@geeksman/core-ui/*": ["../../../core-ui/src/*"],
+      "@geeksman/contacts": ["../../../contacts-ui/src"],
+      "@geeksman/contacts/*": ["../../../contacts-ui/src/*"]
+    }
+  },
+  "include": ["src"]
+}

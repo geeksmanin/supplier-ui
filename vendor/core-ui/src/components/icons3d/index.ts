@@ -42,3 +42,4 @@ export * from './APM3DIcon';
 export * from './ModernTicketIcon';
 export * from './Support3DIcon';
 export * from './TicketCategory3DIcon';
+export * from './Portals3DIcon';

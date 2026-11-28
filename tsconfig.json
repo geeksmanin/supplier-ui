@@ -14,7 +14,9 @@
       "@geeksman/core-ui": ["./vendor/core-ui/src"],
       "@geeksman/core-ui/*": ["./vendor/core-ui/src/*"],
       "@geeksman/notification": ["./vendor/notification-ui/packages/notification/src"],
-      "@geeksman/notification/*": ["./vendor/notification-ui/packages/notification/src/*"]
+      "@geeksman/notification/*": ["./vendor/notification-ui/packages/notification/src/*"],
+      "@geeksman/tenant": ["./vendor/tenant/src/portal-settings.ts"],
+      "@geeksman/tenant/*": ["./vendor/tenant/src/*"]
     }
   },
   "include": ["src"]

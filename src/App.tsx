@@ -1,10 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider, UIRegistry, PortalConfigModal, HelpGuide } from '@geeksman/core-ui';
+import { PortalSettingsProvider, PortalPostLoginRedirect, usePortalSettings } from '@geeksman/tenant';
 import { Login } from './pages/Login';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { SupplierLayout } from './components/SupplierLayout';
 import Overlays from './components/Overlays';
+
+const SupplierDefaultRedirect: React.FC = () => {
+  const { defaultLandingRoute } = usePortalSettings('supplier');
+  return <Navigate to={defaultLandingRoute || '/dashboard'} replace />;
+};
 
 export const App: React.FC = () => {
   const [routes, setRoutes] = useState(() => UIRegistry.getRoutes());
@@ -128,47 +134,50 @@ export const App: React.FC = () => {
 
   return (
     <ToastProvider>
-      <PortalConfigModal />
-      <HashRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+      <PortalSettingsProvider portalCode="supplier">
+        <PortalConfigModal />
+        <HashRouter>
+          <PortalPostLoginRedirect portalCode="supplier" expectedDefault="/dashboard" />
+          <Routes>
+            <Route path="/login" element={<Login />} />
 
-          {routes.map((route) => {
-            if (route.isProtected) {
+            {routes.map((route) => {
+              if (route.isProtected) {
+                return (
+                  <Route
+                    key={route.path}
+                    path={route.path}
+                    element={
+                      <ProtectedRoute>
+                        <SupplierLayout>{route.element}</SupplierLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                );
+              }
               return (
                 <Route
                   key={route.path}
                   path={route.path}
-                  element={
-                    <ProtectedRoute>
-                      <SupplierLayout>{route.element}</SupplierLayout>
-                    </ProtectedRoute>
-                  }
+                  element={route.element}
                 />
               );
-            }
-            return (
-              <Route
-                key={route.path}
-                path={route.path}
-                element={route.element}
-              />
-            );
-          })}
+            })}
 
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </HashRouter>
-      <Overlays
-        showInstallBanner={showInstallBanner}
-        setShowInstallBanner={setShowInstallBanner}
-        isIOS={isIOS}
-        deferredPrompt={deferredPrompt}
-        handleInstallClick={handleInstallClick}
-        showUpdateBanner={showUpdateBanner}
-        handleUpdateApp={handleUpdateApp}
-        isUpdating={isUpdating}
-      />
+            <Route path="*" element={<SupplierDefaultRedirect />} />
+          </Routes>
+        </HashRouter>
+        <Overlays
+          showInstallBanner={showInstallBanner}
+          setShowInstallBanner={setShowInstallBanner}
+          isIOS={isIOS}
+          deferredPrompt={deferredPrompt}
+          handleInstallClick={handleInstallClick}
+          showUpdateBanner={showUpdateBanner}
+          handleUpdateApp={handleUpdateApp}
+          isUpdating={isUpdating}
+        />
+      </PortalSettingsProvider>
     </ToastProvider>
   );
 };
