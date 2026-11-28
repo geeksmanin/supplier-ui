@@ -9,6 +9,7 @@ import {
 } from '@geeksman/core-ui';
 import type { PortalLandingMode } from '../../types/portal';
 import type { PortalManagementViewProps } from './PortalManagement.types';
+import { RegisterPortalModal } from './RegisterPortalModal';
 import './PortalManagement.css';
 
 const LANDING_MODE_OPTIONS = [
@@ -167,49 +168,15 @@ export const PortalManagementMobile: React.FC<PortalManagementViewProps> = ({
         </div>
       </MobileBottomBanner>
 
-      <MobileBottomBanner
+      <RegisterPortalModal
+        key={isRegisterModalOpen ? 'register-open-mobile' : 'register-closed-mobile'}
         isOpen={isRegisterModalOpen}
+        saving={saving}
+        form={registerForm}
+        onFieldChange={onRegisterFieldChange}
         onClose={onCloseRegisterModal}
-        title="Register New Portal"
-      >
-        <div className="ptl-mobile-drawer">
-          <div className="ptl-field">
-            <label className="ptl-label">Portal Code</label>
-            <input
-              className="ptl-input"
-              value={registerForm.portal_code}
-              onChange={(e) => onRegisterFieldChange('portal_code', e.target.value)}
-              placeholder="pos_portal"
-            />
-          </div>
-          <div className="ptl-field">
-            <label className="ptl-label">Display Name</label>
-            <input
-              className="ptl-input"
-              value={registerForm.display_name}
-              onChange={(e) => onRegisterFieldChange('display_name', e.target.value)}
-              placeholder="POS Portal"
-            />
-          </div>
-          <div className="ptl-field">
-            <label className="ptl-label">Default Route</label>
-            <input
-              className="ptl-input"
-              value={registerForm.default_route}
-              onChange={(e) => onRegisterFieldChange('default_route', e.target.value)}
-              placeholder="/home"
-            />
-          </div>
-          <button
-            type="button"
-            className="ptl-btn ptl-btn-primary"
-            disabled={saving || !registerForm.portal_code.trim() || !registerForm.display_name.trim()}
-            onClick={onRegisterSubmit}
-          >
-            {saving ? 'Saving...' : 'Register Portal'}
-          </button>
-        </div>
-      </MobileBottomBanner>
+        onSubmit={onRegisterSubmit}
+      />
 
       <ConfirmModal
         isOpen={isResetConfirmOpen}
