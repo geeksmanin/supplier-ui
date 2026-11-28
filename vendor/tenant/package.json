@@ -1,0 +1,19 @@
+{
+  "name": "@geeksman/tenant",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@geeksman/core-ui": "file:../../../core-ui",
+    "@geeksman/contacts": "file:../../../contacts-ui",
+    "@geeksman/notification": "file:../../../notification-ui/packages/notification",
+    "lucide-react": "^0.475.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
+  }
+}

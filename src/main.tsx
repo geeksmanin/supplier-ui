@@ -4,6 +4,7 @@ import { App } from './App';
 import { registerSupplierPortalModule } from './register';
 import './index.css';
 import { apiClient, resolveTenantCodeFromServer } from '@geeksman/core-ui';
+import { fetchTenantResolution } from '@geeksman/tenant';
 import { getAppConfig } from './config';
 
 // Initialize configuration
@@ -33,10 +34,7 @@ const applyDynamicBranding = async (target: 'staff' | 'customer') => {
   const isCustomHost = !!host && !host.includes('localhost') && !host.includes('127.0.0.1');
 
   try {
-    const res = await apiClient.get('/tenant/resolve', {
-      params: isCustomHost ? { host } : { code: workspace }
-    });
-    const info = res.data?.data;
+    const info = await fetchTenantResolution(isCustomHost ? { host } : { code: workspace });
     if (info) {
       const appName = target === 'staff' ? (info.staff_app_name || 'Staff Portal') : (info.customer_app_name || 'Customer Portal');
       const logoUrl = getAbsoluteLogoUrl(target === 'staff' ? info.staff_logo_url : info.customer_logo_url);
