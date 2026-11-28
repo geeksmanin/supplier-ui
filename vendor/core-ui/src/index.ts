@@ -296,6 +296,30 @@ export type {
   UseUnsavedChangesGuardResult,
 } from './hooks/useUnsavedChangesGuard';
 
+// Canonical Date/Time Formatting & Durable Transactional Outbox Primitives
+export {
+  parseDate,
+  isSameDay,
+  formatDateDivider,
+  formatTime,
+  formatCardTimestamp,
+  formatWhatsAppDate,
+} from './utils/formatTime';
+export {
+  nextOutboxClientMsgId,
+  enqueueTypedOutboxItem,
+  getPendingTypedOutboxItems,
+  markTypedOutboxSending,
+  markTypedOutboxFailed,
+  removeTypedOutboxItem,
+} from './utils/outboxStore';
+export type { TypedOutboxEntry } from './utils/outboxStore';
+export { useOutboxMutation } from './hooks/useOutboxMutation';
+export type {
+  UseOutboxMutationOptions,
+  UseOutboxMutationResult,
+} from './hooks/useOutboxMutation';
+
 // Register Fast Voucher as an operational card for conversational and chat views
 import React from 'react';
 import { registerOperationalCard } from './agents/registry';

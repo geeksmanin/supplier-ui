@@ -36,8 +36,8 @@ export type OutboxStatus = 'queued' | 'sending' | 'failed';
 
 export interface OutboxItem {
   id: string;
-  /** Discriminates chat vs stock_movement entries in the shared outbox table */
-  outbox_type?: 'chat' | 'stock_movement';
+  /** Discriminates outbox entry types in the shared outbox table */
+  outbox_type?: 'chat' | 'stock_movement' | (string & {});
   conversation_id?: string;
   endpoint: string;
   method: 'POST' | 'PUT' | 'PATCH';
