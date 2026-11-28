@@ -36,12 +36,16 @@ export type OutboxStatus = 'queued' | 'sending' | 'failed';
 
 export interface OutboxItem {
   id: string;
+  /** Discriminates chat vs stock_movement entries in the shared outbox table */
+  outbox_type?: 'chat' | 'stock_movement';
   conversation_id?: string;
   endpoint: string;
   method: 'POST' | 'PUT' | 'PATCH';
   payload: any;
   status: OutboxStatus;
   attempts: number;
+  /** Maximum retry attempts before permanent failure. Defaults to 5. */
+  max_attempts?: number;
   last_attempt?: string;
   error?: string;
   created_at: string;
