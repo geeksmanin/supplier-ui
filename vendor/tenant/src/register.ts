@@ -297,6 +297,17 @@ export function registerTenantModule(options?: {
       section: 'extended',
       parentId: 'tenant-settings'
     });
+
+    UIRegistry.registerNavItem({
+      id: 'portals-main',
+      label: 'Portals',
+      path: '/settings/portals',
+      icon: React.createElement(Portals3DIcon),
+      section: 'main',
+      bgGradient: 'transparent',
+      sublabel: 'Portals & Routing Config',
+      iconColor: '#ffffff'
+    });
   }
 
   if (enableTenantOnboarding) {
